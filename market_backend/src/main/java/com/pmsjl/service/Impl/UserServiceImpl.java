@@ -63,7 +63,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user=new User();
         BeanUtil.copyProperties(userUpdateRequest,user);
         boolean result = updateById(user);
-        ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR,"数据库操作失败");
+        ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR,"数据库操作失败");
         return result;
 
 
@@ -225,7 +225,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setUpdateTime(DateTime.now());
             user.setCreateTime(DateTime.now());
             boolean result = save(user);
-            ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR,"数据库操作失败，请重试");
+            ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR,"数据库操作失败，请重试");
             return user.getId();
         }
 

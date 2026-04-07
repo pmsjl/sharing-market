@@ -1,4 +1,4 @@
-package com.pmsjl.model.dto.user;
+package com.pmsjl.common;
 
 import com.pmsjl.constant.CommonConstant;
 import lombok.Data;
