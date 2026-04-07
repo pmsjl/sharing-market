@@ -1,5 +1,6 @@
 package com.pmsjl.model.dto.user;
 
+import com.pmsjl.common.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

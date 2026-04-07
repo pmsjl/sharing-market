@@ -1,10 +1,12 @@
 package com.pmsjl.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.annotation.AuthCheck;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.JwtKit;
 import com.pmsjl.common.JwtProperties;
 import com.pmsjl.common.Result;
+import com.pmsjl.constant.UserConstant;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.user.*;
 import com.pmsjl.model.entity.User;
@@ -44,6 +46,7 @@ public class UserController {
      */
     // TODO 添加用户，实际前端尚未添加此功能组件
     @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Long> addUser(@RequestBody UserAddRequest userAddRequest) {
         if (userAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -62,6 +65,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest) {
         Long id = deleteRequest.getId();
         if (id == null || id < 0) {
@@ -79,6 +83,8 @@ public class UserController {
      * @return
      */
     @GetMapping("/get")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+
     public Result<User> getUserById(@RequestParam("id") Long id) {
         if (id == null || id < 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -124,6 +130,7 @@ public class UserController {
      * 分页获取用户列表
      */
     @PostMapping("/list/page")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Page<User>> listUserByPage(@RequestBody UserQueryRequest userQueryRequest) {
         Page<User> userPage = userService.listUserByPage(userQueryRequest);
         return ResultUtils.success(userPage);
@@ -192,6 +199,7 @@ public class UserController {
      *
      */
     @PostMapping("/update")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest) {
         if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
