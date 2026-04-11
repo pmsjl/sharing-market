@@ -1,20 +1,18 @@
-package com.pmsjl.model.entity;
+package com.pmsjl.model.dto.commodity;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Date;
 
-@TableName(value ="commodity")
 @Data
-public class Commodity implements Serializable {
+public class CommodityEditRequest implements Serializable {
+
+
     /**
      * 商品 ID
      */
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -62,34 +60,7 @@ public class Commodity implements Serializable {
      */
     private BigDecimal price;
 
-    /**
-     * 商品浏览量
-     */
-    private Integer viewNum;
+//这里相较于管理员的更新删除了收藏量和浏览量的更新，因为不准备大改前端，所以尽可能在不变前端的基础上，直接不接受这两个变量
 
-    /**
-     * 商品收藏量
-     */
-    private Integer favourNum;
-
-    /**
-     * 创建时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
-    private Date createTime;
-
-    /**
-     * 更新时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
-    private Date updateTime;
-
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer isDelete;
-
-    @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

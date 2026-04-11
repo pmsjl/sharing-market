@@ -1,20 +1,19 @@
-package com.pmsjl.model.entity;
+package com.pmsjl.model.dto.commodity;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.pmsjl.common.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Date;
 
-@TableName(value ="commodity")
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class Commodity implements Serializable {
+public class CommodityQueryRequest extends PageRequest implements Serializable {
+
     /**
      * 商品 ID
      */
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -26,11 +25,6 @@ public class Commodity implements Serializable {
      * 商品简介
      */
     private String commodityDescription;
-
-    /**
-     * 商品封面图
-     */
-    private String commodityAvatar;
 
     /**
      * 商品新旧程度（例如 9成新）
@@ -72,24 +66,5 @@ public class Commodity implements Serializable {
      */
     private Integer favourNum;
 
-    /**
-     * 创建时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
-    private Date createTime;
-
-    /**
-     * 更新时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
-    private Date updateTime;
-
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer isDelete;
-
-    @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

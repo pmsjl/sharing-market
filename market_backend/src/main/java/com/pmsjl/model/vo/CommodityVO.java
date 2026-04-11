@@ -1,20 +1,20 @@
-package com.pmsjl.model.entity;
+package com.pmsjl.model.vo;
 
-import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.pmsjl.model.entity.Commodity;
 import lombok.Data;
+import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
-@TableName(value ="commodity")
 @Data
-public class Commodity implements Serializable {
+public class CommodityVO implements Serializable {
+
     /**
      * 商品 ID
      */
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -41,12 +41,19 @@ public class Commodity implements Serializable {
      * 商品分类 ID
      */
     private Long commodityTypeId;
+    /**
+     * 商品分类名称，TODO：这个是新加的原本的类是没有的
+     */
+    private String commodityTypeName;
 
     /**
      * 管理员 ID （某人创建该商品）
      */
     private Long adminId;
-
+    /**
+     * 管理员昵称,TODO：这个也是新加的
+     */
+    private String adminName;
     /**
      * 是否上架（默认0未上架，1已上架）
      */
@@ -84,12 +91,35 @@ public class Commodity implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
     private Date updateTime;
 
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer isDelete;
 
-    @TableField(exist = false)
     private static final long serialVersionUID = 1L;
+    /**
+     * 封装类转对象
+     *
+     * @param commodityVO
+     * @return
+     */
+    public static Commodity voToObj(CommodityVO commodityVO) {
+        if (commodityVO == null) {
+            return null;
+        }
+        Commodity commodity = new Commodity();
+        BeanUtils.copyProperties(commodityVO, commodity);
+        return commodity;
+    }
+
+    /**
+     * 对象转封装类
+     *
+     * @param commodity
+     * @return
+     */
+    public static CommodityVO objToVo(Commodity commodity) {
+        if (commodity == null) {
+            return null;
+        }
+        CommodityVO commodityVO = new CommodityVO();
+        BeanUtils.copyProperties(commodity, commodityVO);
+        return commodityVO;
+    }
 }
