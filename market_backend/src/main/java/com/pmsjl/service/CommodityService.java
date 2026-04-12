@@ -27,4 +27,8 @@ public interface CommodityService extends IService<Commodity> {
     CommodityVO getCommodityVOById(Long id);
 
     Page<Commodity> listCommodityByPage(CommodityQueryRequest commodityQueryRequest);
+
+    Page<CommodityVO> listCommodityVOByPage(CommodityQueryRequest commodityQueryRequest);
+
+    Page<CommodityVO> listMyCommodityVOByPage(CommodityQueryRequest commodityQueryRequest, HttpServletRequest request);
 }

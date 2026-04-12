@@ -21,6 +21,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.FormatFlagsConversionMismatchException;
+
 /**
  * <p>
  * 前端控制器
@@ -125,6 +127,20 @@ public class CommodityController {
         Page<Commodity> page = commodityService.listCommodityByPage(commodityQueryRequest);
         return ResultUtils.success(page);
     }
+
+    @PostMapping("/list/vo/page")
+    public Result<Page<CommodityVO>>listCommodityVOByPage(@RequestBody CommodityQueryRequest commodityQueryRequest){
+        Page<CommodityVO>page=commodityService.listCommodityVOByPage(commodityQueryRequest);
+        return ResultUtils.success(page);
+    }
+
+    @PostMapping("/list/my/vo/page")
+    public Result<Page<CommodityVO>>listMyCommodityVOByPage(@RequestBody CommodityQueryRequest commodityQueryRequest,HttpServletRequest request){
+        Page<CommodityVO>page=commodityService.listMyCommodityVOByPage(commodityQueryRequest,request);
+        return ResultUtils.success(page);
+    }
+
+
 
 
 
