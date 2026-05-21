@@ -52,8 +52,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setCreateTime(DateTime.now());
         user.setUpdateTime(DateTime.now());
         boolean result = save(user);
-
-        // mybatisplus发力了
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return user.getId();
     }
@@ -213,21 +211,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!userPassword.equals(checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入密码不一致，请重新输入");
         }
-        synchronized (userAccount.intern()) {
-            User user = new User();
-            Long count = lambdaQuery().eq(User::getUserAccount, userAccount).count();
-            if (count > 0) {
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前用户名重复，请更换名字重试");
-            }
-            String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
-            user.setUserPassword(encryptPassword);
-            user.setUserAccount(userAccount);
-            user.setUpdateTime(DateTime.now());
-            user.setCreateTime(DateTime.now());
-            boolean result = save(user);
-            ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR,"数据库操作失败，请重试");
-            return user.getId();
-        }
+        //原表user的account属性并没有做所谓的unique约束，仅通过synchronized的悲观锁进行约束
+        //遇到集群就完蛋，同时添加大量useraccount的字符串常量到jvm中
+        //修改：在表中加入unique约束，同时在这里直接采取mysql获取成功与否进行判断
+        User user = new User();
+        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+        user.setUserPassword(encryptPassword);
+        user.setUserAccount(userAccount);
+        user.setUpdateTime(DateTime.now());
+        user.setCreateTime(DateTime.now());
+        boolean result = save(user);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "数据库操作失败，请重试");
+        return user.getId();
+
 
 
     }
