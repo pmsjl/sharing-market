@@ -1,6 +1,6 @@
 package com.pmsjl.config;
 
-import com.pmsjl.aop.AuthInterceptorHandler;
+import com.pmsjl.interceptor.AuthInterceptorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;

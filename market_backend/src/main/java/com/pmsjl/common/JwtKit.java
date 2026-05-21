@@ -8,10 +8,14 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/***
+ * jwt令牌生成
+ */
 @Component
 public class JwtKit {
 
