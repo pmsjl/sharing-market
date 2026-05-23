@@ -1,10 +1,10 @@
 package com.pmsjl.controller;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.annotation.AuthCheck;
 import com.pmsjl.common.ErrorCode;
-import com.pmsjl.common.JwtKit;
-import com.pmsjl.common.JwtProperties;
 import com.pmsjl.common.Result;
 import com.pmsjl.constant.UserConstant;
 import com.pmsjl.exception.BusinessException;
@@ -18,10 +18,16 @@ import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
+
+import static com.pmsjl.constant.RedisConstants.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import java.util.UUID;
 
 /**
  * <p>
@@ -36,7 +42,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-    private final JwtProperties jwtProperties;
+    private final StringRedisTemplate stringRedisTemplate;
 
     /***
      * 添加用户
@@ -160,16 +166,21 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         //登录校验
-        LoginUserVO loginuserVO = userService.userLogin(userLoginRequest, request);
+        LoginUserVO loginUserVO = userService.userLogin(userLoginRequest, request);
         //登陆状态字段设置完成
         //获取token记录到哈希表返回
-        JwtKit jwtKit = new JwtKit(jwtProperties);
-        String token = jwtKit.generateToken(loginuserVO);
+        String token = UUID.randomUUID().toString();
+        Map<String, Object> userMap = BeanUtil.beanToMap(loginUserVO, new HashMap<>(),
+                CopyOptions.create()
+                        .setIgnoreNullValue(true)
+                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
+        stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY +token,userMap);
+        //修改处：不再采取jwt令牌进行token生成，
+        // 采取redis的token+user的存储形式，既可以获得user，又可以进行token删除，以进行拦截
         HashMap<String, Object> hashMap = new HashMap<>(0);
         hashMap.put("token", token);
-        //由于用户登录需要作各种校验功能所以需要自定义方法
         //这里调用第二种返回方式，包含hashmap
-        return ResultUtils.successDynamic(loginuserVO, hashMap);
+        return ResultUtils.successDynamic(loginUserVO, hashMap);
     }
 
     /***

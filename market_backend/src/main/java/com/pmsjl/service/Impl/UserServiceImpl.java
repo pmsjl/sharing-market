@@ -15,10 +15,11 @@ import com.pmsjl.model.vo.UserVO;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.boot.autoconfigure.security.SecurityProperties;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -26,7 +27,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static com.pmsjl.constant.UserConstant.USER_LOGIN_STATE;
-
+import static com.pmsjl.constant.RedisConstants.*;
 /**
  * <p>
  * 用户 服务实现类
@@ -37,9 +38,10 @@ import static com.pmsjl.constant.UserConstant.USER_LOGIN_STATE;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
     public static final String SALT = "pmsjl";
-
+    public final StringRedisTemplate stringRedisTemplate;
     @Override
     public Long addUser(UserAddRequest userAddRequest) {
         User user = new User();
@@ -69,6 +71,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User getLoginUser(HttpServletRequest request) {
+        
         User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
         if(user==null||user.getId()==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"登录用户不存在");
@@ -181,8 +184,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         // 在请求体记录用户的登录态。用于后续查询登录用户信息的判断使用
         //前者为字符串，后者为类封装成json后续提取
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
-        return getVOFromUser(user, new LoginUserVO());
+        return getVOFromUser(user,new LoginUserVO());
 
     }
 
