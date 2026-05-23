@@ -39,7 +39,7 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- MyBatis + MyBatis-Plus (Boot 3 版本) -->
+        <!-- MyBatis + MyBatis-Plus  -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
