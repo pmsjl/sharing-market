@@ -169,11 +169,15 @@ public class UserController {
         LoginUserVO loginUserVO = userService.userLogin(userLoginRequest, request);
         //登陆状态字段设置完成
         //获取token记录到哈希表返回
-        String token = UUID.randomUUID().toString();
+        String token = UUID.randomUUID().toString().replace("-","");
         Map<String, Object> userMap = BeanUtil.beanToMap(loginUserVO, new HashMap<>(),
                 CopyOptions.create()
                         .setIgnoreNullValue(true)
-                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
+                        // 使用 Hutool 提供的类型转换器，安全地将所有字段转为 String
+                        .setFieldValueEditor((fieldName, fieldValue) -> {
+                            if (fieldValue == null) return null;
+                            return fieldValue.toString();
+                        }));
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY +token,userMap);
         //修改处：不再采取jwt令牌进行token生成，
         // 采取redis的token+user的存储形式，既可以获得user，又可以进行token删除，以进行拦截

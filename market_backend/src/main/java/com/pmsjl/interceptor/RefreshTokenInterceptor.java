@@ -5,7 +5,10 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.pmsjl.common.JwtProperties;
 import com.pmsjl.constant.CommonConstant;
+import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.LoginUserVO;
+import com.pmsjl.service.UserService;
+import com.pmsjl.utils.TokenUtils;
 import com.pmsjl.utils.UserHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
+
 import static com.pmsjl.constant.RedisConstants.*;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -23,22 +28,23 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private JwtProperties jwtProperties;
+    @Autowired
+    private UserService userService;
 
 
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        UserHolder.removeUser();
+
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // 1.获取请求头中的token
-        String token = request.getHeader(jwtProperties.getTokenHeader());
+        String token = TokenUtils.getToken(request);
         // 无敌令牌命中，直接放行，仅测试使用
         if (CommonConstant.INVINCIBLE_TOKEN.equals(token)) {
             return true;
-        }
-        // 截取中间payload部分 +1是Bearer + 空格(1)
-        // 创建json对象
-        JSONObject jsonObject = new JSONObject();
-        if (token != null) {
-             token= token.substring(jwtProperties.getTokenHead().length() + 1);
         }
         if (StrUtil.isBlank(token)) {
             return true;
@@ -59,4 +65,5 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
         // 8.放行
         return true;
     }
+
 }
