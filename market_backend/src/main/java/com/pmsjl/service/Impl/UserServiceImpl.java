@@ -3,6 +3,7 @@ package com.pmsjl.service.Impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
+import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.common.ErrorCode;
@@ -14,6 +15,8 @@ import com.pmsjl.model.vo.LoginUserVO;
 import com.pmsjl.model.vo.UserVO;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
+import com.pmsjl.utils.TokenUtils;
+import com.pmsjl.utils.UserHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +28,6 @@ import org.springframework.util.DigestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
-
-import static com.pmsjl.constant.UserConstant.USER_LOGIN_STATE;
 import static com.pmsjl.constant.RedisConstants.*;
 /**
  * <p>
@@ -71,8 +72,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User getLoginUser(HttpServletRequest request) {
-        
-        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+        User user=new User();
+        BeanUtil.copyProperties(UserHolder.getUser(),user);
         if(user==null||user.getId()==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"登录用户不存在");
         }
@@ -190,9 +191,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public boolean userLogout(HttpServletRequest request) {
-        Object o = request.getSession().getAttribute(USER_LOGIN_STATE);
-        ThrowUtils.throwIf(o == null, ErrorCode.NOT_FOUND_ERROR);
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
+        User user=new User();
+        LoginUserVO loginUserVO = UserHolder.getUser();
+        ThrowUtils.throwIf(ObjectUtils.isNull(loginUserVO)||ObjectUtils.isEmpty(loginUserVO),ErrorCode.NOT_LOGIN_ERROR,"用户信息不存在");
+        BeanUtil.copyProperties(loginUserVO,user);
+        String token = TokenUtils.getToken(request);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
+        stringRedisTemplate.delete(LOGIN_USER_KEY+token);
         return true;
     }
 

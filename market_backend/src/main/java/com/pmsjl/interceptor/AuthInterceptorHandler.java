@@ -8,6 +8,7 @@ import com.pmsjl.common.JwtProperties;
 import com.pmsjl.constant.CommonConstant;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.vo.LoginUserVO;
+import com.pmsjl.utils.ThrowUtils;
 import com.pmsjl.utils.UserHolder;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,8 +31,10 @@ public class AuthInterceptorHandler implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         LoginUserVO loginUserVO = UserHolder.getUser();
         if(ObjectUtils.isNull(loginUserVO)||ObjectUtils.isEmpty(loginUserVO)){
-            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR,"无全局有效token");
+            response.setStatus(401);
+            return false;
         }
+        return true;
 
     }
 }
