@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.boot.autoconfigure.session.SessionAutoConfiguration;
 
-@SpringBootApplication(exclude = { RedisAutoConfiguration.class, SessionAutoConfiguration.class })
+@SpringBootApplication(exclude = { SessionAutoConfiguration.class })
 public class MarketBackendApplication {
 
     public static void main(String[] args) {

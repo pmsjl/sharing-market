@@ -1,5 +1,5 @@
 package com.pmsjl.controller;
-
+import static com.pmsjl.constant.RedisConstants.*;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.annotation.AuthCheck;
 import com.pmsjl.common.ErrorCode;
@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.FormatFlagsConversionMismatchException;
@@ -36,6 +37,8 @@ import java.util.FormatFlagsConversionMismatchException;
 public class CommodityController {
     @Autowired
     private CommodityService commodityService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     /***
      * 添加商品
@@ -63,6 +66,8 @@ public class CommodityController {
     public Result<Boolean> deleteCommodity(@RequestBody Long id) {
         ThrowUtils.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
         Boolean result = commodityService.deleteCommodity(id);
+        ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR);
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
         return ResultUtils.success(result);
 
     }
@@ -82,6 +87,9 @@ public class CommodityController {
         Commodity commodity = new Commodity();
         BeanUtils.copyProperties(commodityUpdateRequest, commodity);
         Boolean result = commodityService.updateCommodity(commodity);
+        ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR);
+        Long id = commodity.getId();
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
         return ResultUtils.success(result);
 
     }
@@ -100,6 +108,8 @@ public class CommodityController {
         Commodity commodity = new Commodity();
         BeanUtils.copyProperties(commodityEditRequest, commodity);
         Boolean result = commodityService.updateCommodity(commodity);
+        Long id = commodity.getId();
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
         return ResultUtils.success(result);
 
 
@@ -111,9 +121,9 @@ public class CommodityController {
      * @return
      */
     @GetMapping("/get/vo")
-    public Result<CommodityVO> getCommodityVOById(@RequestParam("id") Long id) {
+    public Result<CommodityVO> getCommodityVOById(@RequestParam("id") Long id,HttpServletRequest request) {
         ThrowUtils.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
-        CommodityVO commodityVO = commodityService.getCommodityVOById(id);
+        CommodityVO commodityVO = commodityService.getCommodityVOById(id,request);
         return ResultUtils.success(commodityVO);
     }
 

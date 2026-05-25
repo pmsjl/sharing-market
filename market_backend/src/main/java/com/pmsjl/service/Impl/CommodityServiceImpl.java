@@ -1,8 +1,12 @@
 package com.pmsjl.service.Impl;
 
+import static com.pmsjl.constant.RedisConstants.*;
+
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.commodity.CommodityQueryRequest;
@@ -11,15 +15,19 @@ import com.pmsjl.mapper.CommodityMapper;
 import com.pmsjl.model.entity.CommodityType;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityVO;
+import com.pmsjl.model.vo.LoginUserVO;
 import com.pmsjl.service.CommodityService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.service.CommodityTypeService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
+import com.pmsjl.utils.TokenUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +52,11 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     private UserService userService;
     @Autowired
     private CommodityTypeService commodityTypeService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    ObjectMapper objectMapper;
+
 
     @Override
     public Long addCommodity(Commodity commodity, HttpServletRequest request) {
@@ -52,22 +66,23 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         validCommodity(commodity);
         boolean result = this.save(commodity);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
-        return commodity.getId();
+        Long commodityId = commodity.getId();
+        return commodityId;
 
     }
 
     public void validCommodity(Commodity commodity) {
-        Long adminIdid = commodity.getAdminId();
+        Long adminId = commodity.getAdminId();
         String commodityName = commodity.getCommodityName();
         Integer commodityInventory = commodity.getCommodityInventory();
         BigDecimal price = commodity.getPrice();
-        if (adminIdid == null || adminIdid < 0) {
+        if (adminId == null || adminId < 0) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "操作用户异常");
         }
-        ThrowUtils.throwIf(!StringUtils.isNotBlank(commodityName), ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf((commodityInventory == null) || (commodityInventory <= 0), ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf((price == null) || (price.compareTo(BigDecimal.ZERO) <= 0), ErrorCode.PARAMS_ERROR);
-
+        ThrowUtils.throwIf(StringUtils.isBlank(commodityName), ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf((commodityInventory == null) || (commodityInventory <= 0), ErrorCode.PARAMS_ERROR, "商品数量不符合规则");
+        ThrowUtils.throwIf((price == null) || (price.compareTo(BigDecimal.ZERO) <= 0), ErrorCode.PARAMS_ERROR, "商品价格不符合规则");
+        ThrowUtils.throwIf(commodity.getCommodityTypeId() == null || commodity.getCommodityTypeId() <= 0, ErrorCode.PARAMS_ERROR, "商品分类不能为空");
     }
 
     @Override
@@ -90,24 +105,45 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         return result;
     }
 
+    @SneakyThrows
     @Override
-    public CommodityVO getCommodityVOById(Long id) {
-        Commodity commodity = getById(id);
-        ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
+    public CommodityVO getCommodityVOById(Long id, HttpServletRequest request) {
+        String commodityJson = stringRedisTemplate.opsForValue().get(CACHE_COMMODITY_KEY+id);
+        if (commodityJson != null && commodityJson.isEmpty()) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "商品不存在");
+        }
+        Commodity commodity = null;
+        if (commodityJson == null) {
+            commodity = getById(id);
+            if (commodity == null) {
+                stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY + id, "", 1, TimeUnit.MINUTES);
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "商品不存在");
+            }else{
+                String s = objectMapper.writeValueAsString(commodity);
+                //随机增加0-5分钟防止缓存雪崩
+                long ttl = 30L + cn.hutool.core.util.RandomUtil.randomInt(0, 5);
+                stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY+id,s,ttl,TimeUnit.MINUTES);
+            }
+        } else {
+            commodity = objectMapper.readValue(commodityJson, Commodity.class);
+        }
         CommodityVO commodityVO = CommodityVO.objToVo(commodity);
         //这里还有两个变量没有赋值需要获取后再赋值
         Long adminId = commodityVO.getAdminId();
         Long commodityTypeId = commodityVO.getCommodityTypeId();
         if (adminId != null) {
-            User user = userService.getById(adminId);
-            ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "操作用户不存在");
-            commodityVO.setAdminName(user.getUserName());
+            String token = TokenUtils.getToken(request);
+            Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(LOGIN_USER_KEY + token);
+            LoginUserVO loginUserVO = BeanUtil.fillBeanWithMap(userMap, new LoginUserVO(), false);
+            ThrowUtils.throwIf(loginUserVO == null, ErrorCode.NOT_FOUND_ERROR, "操作用户不存在");
+            commodityVO.setAdminName(loginUserVO.getUserName());
         }
         if (commodityTypeId != null) {
-            CommodityType commodityType = commodityTypeService.getById(commodityTypeId);
+            CommodityType commodityType = commodityTypeService.getCommodityTypeVOById(commodityTypeId);
             ThrowUtils.throwIf(commodityType == null, ErrorCode.NOT_FOUND_ERROR, "商品类型不存在");
             commodityVO.setCommodityTypeName(commodityType.getTypeName());
         }
+
         return commodityVO;
 
     }

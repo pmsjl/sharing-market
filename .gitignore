@@ -180,6 +180,9 @@ pnpm-debug.log*
 # TypeScript 增量构建缓存
 *.tsbuildinfo
 
+### Claude Code ###
+.claude/
+
 ### 操作系统 ###
 # macOS
 .DS_Store

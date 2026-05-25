@@ -17,11 +17,7 @@ public class JwtProperties {
      */
     @Value("${jwt.tokenHeader}")
     private String tokenHeader;
-    /**
-     * jwt加解密使用的密钥
-     */
-    @Value("${jwt.secret}")
-    private String secret;
+
     /**
      * JWT的超时时间
      */
@@ -39,7 +35,6 @@ public class JwtProperties {
 
     public JwtProperties(String tokenHeader, String secret, long expiration, String tokenHead) {
         this.tokenHeader = tokenHeader;
-        this.secret = secret;
         this.expiration = expiration;
         this.tokenHead = tokenHead;
     }
