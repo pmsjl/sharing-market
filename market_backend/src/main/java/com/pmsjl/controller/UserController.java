@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -178,7 +179,10 @@ public class UserController {
                             if (fieldValue == null) return null;
                             return fieldValue.toString();
                         }));
-        stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY +token,userMap);
+        String key = LOGIN_USER_KEY + token;
+
+        stringRedisTemplate.opsForHash().putAll(key, userMap);
+        stringRedisTemplate.expire(key, LOGIN_USER_TTL, TimeUnit.MINUTES);
         //修改处：不再采取jwt令牌进行token生成，
         // 采取redis的token+user的存储形式，既可以获得user，又可以进行token删除，以进行拦截
         HashMap<String, Object> hashMap = new HashMap<>(0);

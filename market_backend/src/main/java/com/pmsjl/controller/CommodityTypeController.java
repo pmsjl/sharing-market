@@ -49,6 +49,7 @@ public class CommodityTypeController {
      * @param commodityTypeDeleteRequest
      * @return
      */
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/delete")
     public Result<Boolean> deleteCommodityType(@RequestBody CommodityTypeDeleteRequest commodityTypeDeleteRequest) {
         if (commodityTypeDeleteRequest == null || commodityTypeDeleteRequest.getId() == null) {
@@ -69,11 +70,9 @@ public class CommodityTypeController {
         if (id == null || id < 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        // 查询数据库
-        CommodityType commodityType = commodityTypeService.getById(id);
-        ThrowUtils.throwIf(commodityType == null, ErrorCode.NOT_FOUND_ERROR);
-        // 获取封装类
+        CommodityType commodityType= commodityTypeService.getCommodityTypeVOById(id);
         return ResultUtils.success(commodityTypeService.getCommodityTypeVO(commodityType));
+
     }
 
     /***

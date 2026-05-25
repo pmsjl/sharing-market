@@ -30,4 +30,6 @@ public interface CommodityTypeService extends IService<CommodityType> {
     Page<CommodityTypeVO> listCommodityTypeVOByPage(CommodityTypeQueryRequest commodityTypeQueryRequest);
 
     Boolean updateCommodityType(CommodityTypeUpdateRequest commodityTypeUpdateRequest);
+
+    CommodityType getCommodityTypeVOById(Long id);
 }

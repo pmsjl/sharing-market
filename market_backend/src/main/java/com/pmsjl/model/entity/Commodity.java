@@ -43,7 +43,7 @@ public class Commodity implements Serializable {
     private Long commodityTypeId;
 
     /**
-     * 管理员 ID （某人创建该商品）
+     * 创建人 ID （某人创建该商品）
      */
     private Long adminId;
 

@@ -2,12 +2,8 @@ package com.pmsjl.interceptor;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
-import com.alibaba.fastjson.JSONObject;
-import com.pmsjl.common.JwtProperties;
 import com.pmsjl.constant.CommonConstant;
-import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.LoginUserVO;
-import com.pmsjl.service.UserService;
 import com.pmsjl.utils.TokenUtils;
 import com.pmsjl.utils.UserHolder;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
-
 import static com.pmsjl.constant.RedisConstants.*;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -26,10 +20,7 @@ import java.util.concurrent.TimeUnit;
 public class RefreshTokenInterceptor implements HandlerInterceptor {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
-    @Autowired
-    private JwtProperties jwtProperties;
-    @Autowired
-    private UserService userService;
+
 
 
     @Override
@@ -40,6 +31,10 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        if ((CommonConstant.OPTIONS).equals(request.getMethod())) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            return true;
+        }
         // 1.获取请求头中的token
         String token = TokenUtils.getToken(request);
         // 无敌令牌命中，直接放行，仅测试使用

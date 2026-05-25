@@ -196,7 +196,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ThrowUtils.throwIf(ObjectUtils.isNull(loginUserVO)||ObjectUtils.isEmpty(loginUserVO),ErrorCode.NOT_LOGIN_ERROR,"用户信息不存在");
         BeanUtil.copyProperties(loginUserVO,user);
         String token = TokenUtils.getToken(request);
-        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
         stringRedisTemplate.delete(LOGIN_USER_KEY+token);
         return true;
     }
