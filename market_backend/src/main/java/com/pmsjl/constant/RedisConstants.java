@@ -5,4 +5,6 @@ public class RedisConstants {
     public static final Long LOGIN_USER_TTL=36000L;
     public static final String COMMODITY_TYPE_KEY = "commodity:type:";
     public static final String CACHE_COMMODITY_KEY ="cache:commodity:";
+    public static final String COMMODITY_VIEW_NUM_KEY ="commodity:view:num:";
+
 }

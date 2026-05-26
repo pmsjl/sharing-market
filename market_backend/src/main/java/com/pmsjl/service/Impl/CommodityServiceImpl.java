@@ -4,6 +4,7 @@ import static com.pmsjl.constant.RedisConstants.*;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,11 +60,28 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     ObjectMapper objectMapper;
 
 
+    //TODO:这里原本接口只有管理员可以调用，前端就是个半成品，
+    // 实际上应该时普通和管理员全都能调用，但是普通用户有些值无法设置（已通过前端实现）
+    // 因此下方做了null判断手动赋值，进行兜底
+
     @Override
     public Long addCommodity(Commodity commodity, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         Long id = loginUser.getId();
         commodity.setAdminId(id);
+        if (commodity.getIsListed() == null) {
+            commodity.setIsListed(0);
+        }
+
+        if (commodity.getViewNum() == null) {
+            commodity.setViewNum(0);
+        }
+
+        if (commodity.getFavourNum() == null) {
+            commodity.setFavourNum(0);
+        }
+        commodity.setCreateTime(DateTime.now());
+        commodity.setUpdateTime(DateTime.now());
         validCommodity(commodity);
         boolean result = this.save(commodity);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
@@ -92,6 +111,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         boolean result = removeById(id);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
         stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
+        stringRedisTemplate.delete(COMMODITY_VIEW_NUM_KEY + id);
         return result;
     }
 
@@ -108,6 +128,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     }
 
     @SneakyThrows
+    //这个注解是用来实现自动抛出异常的，主要是jackson本身的objectmapper转换json过程会抛出异常
     @Override
     public CommodityVO getCommodityVOById(Long id, HttpServletRequest request) {
         String commodityJson = stringRedisTemplate.opsForValue().get(CACHE_COMMODITY_KEY+id);
@@ -129,6 +150,15 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         } else {
             commodity = objectMapper.readValue(commodityJson, Commodity.class);
         }
+
+        //上方已通过redis获取商品信息，接下来要对浏览量进行单独处理
+        //TODO: 原本代码没有对viewnum做处理，这里采取redis存储新增浏览量 + commodity的方式进行存储，定时同步到mysql
+        // 这样既能利用redis的缓存也会同步mysql，如果采取简单粗暴的更新mysql浏览量，然后删除缓存，那redis就没用了
+        String viewNumKey=COMMODITY_VIEW_NUM_KEY+commodity.getId();
+        Long redisViewNum = stringRedisTemplate.opsForValue().increment(viewNumKey);
+        int baseViewNum=commodity.getViewNum()==null?0:commodity.getViewNum();
+        int addViewNum=(int) (redisViewNum==null?0:redisViewNum);
+        commodity.setViewNum(baseViewNum+addViewNum);
         CommodityVO commodityVO = CommodityVO.objToVo(commodity);
         //这里还有两个变量没有赋值需要获取后再赋值
         Long adminId = commodityVO.getAdminId();
@@ -143,6 +173,8 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             ThrowUtils.throwIf(commodityType == null, ErrorCode.NOT_FOUND_ERROR, "商品类型不存在");
             commodityVO.setCommodityTypeName(commodityType.getTypeName());
         }
+
+
 
         return commodityVO;
 
