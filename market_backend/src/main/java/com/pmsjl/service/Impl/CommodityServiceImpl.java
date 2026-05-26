@@ -91,6 +91,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = removeById(id);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
         return result;
     }
 
@@ -102,6 +103,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         ThrowUtils.throwIf(oldCommodity == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = updateById(commodity);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
         return result;
     }
 
@@ -119,10 +121,10 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY + id, "", 1, TimeUnit.MINUTES);
                 throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "商品不存在");
             }else{
-                String s = objectMapper.writeValueAsString(commodity);
+                String commodityStr = objectMapper.writeValueAsString(commodity);
                 //随机增加0-5分钟防止缓存雪崩
                 long ttl = 30L + cn.hutool.core.util.RandomUtil.randomInt(0, 5);
-                stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY+id,s,ttl,TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY+id,commodityStr,ttl,TimeUnit.MINUTES);
             }
         } else {
             commodity = objectMapper.readValue(commodityJson, Commodity.class);
@@ -132,11 +134,9 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         Long adminId = commodityVO.getAdminId();
         Long commodityTypeId = commodityVO.getCommodityTypeId();
         if (adminId != null) {
-            String token = TokenUtils.getToken(request);
-            Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(LOGIN_USER_KEY + token);
-            LoginUserVO loginUserVO = BeanUtil.fillBeanWithMap(userMap, new LoginUserVO(), false);
-            ThrowUtils.throwIf(loginUserVO == null, ErrorCode.NOT_FOUND_ERROR, "操作用户不存在");
-            commodityVO.setAdminName(loginUserVO.getUserName());
+            User user = userService.getById(adminId);
+            ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "操作用户不存在");
+            commodityVO.setAdminName(user.getUserName());
         }
         if (commodityTypeId != null) {
             CommodityType commodityType = commodityTypeService.getCommodityTypeVOById(commodityTypeId);

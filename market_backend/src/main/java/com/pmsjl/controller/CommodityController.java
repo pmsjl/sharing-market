@@ -2,6 +2,7 @@ package com.pmsjl.controller;
 import static com.pmsjl.constant.RedisConstants.*;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.annotation.AuthCheck;
+import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
 import com.pmsjl.constant.UserConstant;
@@ -58,16 +59,17 @@ public class CommodityController {
     /***
      * //TODO 这里原本采取了自定义isAdmin方法，为什么不用注解我不理解
      * 删除商品,仅管理员可删除
-     * @param id
+     * @param deleteRequest
      * @return
      */
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/delete")
-    public Result<Boolean> deleteCommodity(@RequestBody Long id) {
+    public Result<Boolean> deleteCommodity(@RequestBody DeleteRequest deleteRequest) {
+        Long id = deleteRequest.getId();
         ThrowUtils.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
         Boolean result = commodityService.deleteCommodity(id);
         ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR);
-        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
+
         return ResultUtils.success(result);
 
     }
@@ -108,8 +110,7 @@ public class CommodityController {
         Commodity commodity = new Commodity();
         BeanUtils.copyProperties(commodityEditRequest, commodity);
         Boolean result = commodityService.updateCommodity(commodity);
-        Long id = commodity.getId();
-        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
+
         return ResultUtils.success(result);
 
 
