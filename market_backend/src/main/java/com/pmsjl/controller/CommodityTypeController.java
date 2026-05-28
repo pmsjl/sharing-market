@@ -97,18 +97,18 @@ public class CommodityTypeController {
         Page<CommodityTypeVO> page = commodityTypeService.listCommodityTypeVOByPage(commodityTypeQueryRequest);
         return ResultUtils.success(page);
     }
-
-    /***
-     * 分页查询我的商品类别信息
-     * @param commodityTypeQueryRequest
-     * @return
-     */
-    @PostMapping("/my/list/page/vo")
-    //TODO 这里就是胡写八道，他和上面的查询商品类型完全一样，实际前端也未实现，实现不了，因为表没有存储对应的userid，所以没法获取
-    public Result<Page<CommodityTypeVO>>listMyCommodityTypeVOByPage(@RequestBody CommodityTypeQueryRequest commodityTypeQueryRequest){
-        Page<CommodityTypeVO>page=commodityTypeService.listCommodityTypeVOByPage(commodityTypeQueryRequest);
-        return ResultUtils.success(page);
-    }
+//
+//    /***
+//     * 分页查询我的商品类别信息
+//     * @param commodityTypeQueryRequest
+//     * @return
+//     */
+//    @PostMapping("/my/list/page/vo")
+//    //TODO 这里就是胡写八道，他和上面的查询商品类型完全一样，实际前端也未实现，实现不了，因为表没有存储对应的userid，所以没法获取
+//    public Result<Page<CommodityTypeVO>>listMyCommodityTypeVOByPage(@RequestBody CommodityTypeQueryRequest commodityTypeQueryRequest){
+//        Page<CommodityTypeVO>page=commodityTypeService.listCommodityTypeVOByPage(commodityTypeQueryRequest);
+//        return ResultUtils.success(page);
+//    }
 
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)

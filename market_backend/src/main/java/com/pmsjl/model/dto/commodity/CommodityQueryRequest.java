@@ -56,15 +56,7 @@ public class CommodityQueryRequest extends PageRequest implements Serializable {
      */
     private BigDecimal price;
 
-    /**
-     * 商品浏览量
-     */
-    private Integer viewNum;
 
-    /**
-     * 商品收藏量
-     */
-    private Integer favourNum;
 
     private static final long serialVersionUID = 1L;
 }

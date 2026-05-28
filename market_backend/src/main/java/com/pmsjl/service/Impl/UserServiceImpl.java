@@ -222,8 +222,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //修改：在表中加入unique约束，同时在这里直接采取mysql获取成功与否进行判断
         User user = new User();
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+        String username=userAccount;
         user.setUserPassword(encryptPassword);
         user.setUserAccount(userAccount);
+        user.setUserName(username);
+        //这里我自己加上了username，因为后续都要用到，先默认和account一致
         user.setUpdateTime(DateTime.now());
         user.setCreateTime(DateTime.now());
         boolean result = save(user);
