@@ -129,23 +129,24 @@ public class CommodityController {
     }
 
     /***
-     * 分页查询商品
+     * 管理员分页查询商品
      * @param commodityQueryRequest
      * @return
      */
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/list/page")
     public Result<Page<Commodity>> listCommodityByPage(@RequestBody CommodityQueryRequest commodityQueryRequest) {
         Page<Commodity> page = commodityService.listCommodityByPage(commodityQueryRequest);
         return ResultUtils.success(page);
     }
 
-    @PostMapping("/list/vo/page")
+    @PostMapping("/list/page/vo")
     public Result<Page<CommodityVO>>listCommodityVOByPage(@RequestBody CommodityQueryRequest commodityQueryRequest){
         Page<CommodityVO>page=commodityService.listCommodityVOByPage(commodityQueryRequest);
         return ResultUtils.success(page);
     }
 
-    @PostMapping("/list/my/vo/page")
+    @PostMapping("my/list/page/vo")
     public Result<Page<CommodityVO>>listMyCommodityVOByPage(@RequestBody CommodityQueryRequest commodityQueryRequest,HttpServletRequest request){
         Page<CommodityVO>page=commodityService.listMyCommodityVOByPage(commodityQueryRequest,request);
         return ResultUtils.success(page);
