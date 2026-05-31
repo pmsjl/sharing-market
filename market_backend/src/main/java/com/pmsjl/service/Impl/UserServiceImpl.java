@@ -11,6 +11,7 @@ import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.UserMapper;
 import com.pmsjl.model.dto.user.*;
 import com.pmsjl.model.entity.User;
+import com.pmsjl.model.enums.UserRoleEnum;
 import com.pmsjl.model.vo.LoginUserVO;
 import com.pmsjl.model.vo.UserVO;
 import com.pmsjl.service.UserService;
@@ -43,6 +44,25 @@ import static com.pmsjl.constant.RedisConstants.*;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
     public static final String SALT = "pmsjl";
     public final StringRedisTemplate stringRedisTemplate;
+
+
+    /**
+     * 是否为管理员
+     *那你就问了，已经有admin注解加上aop了，为什么还要单独再实现一边逻辑
+     * 因为可能出现除了admin还有其他用户也能访问的情况，这时候就不能只通过注解去限制了
+     * 而是在类的内部进行条件判断
+     * @param request
+     * @return
+     */
+    @Override
+    public boolean isAdmin(HttpServletRequest request) {
+        // 仅管理员可查询
+        User user = getLoginUser(request);
+        return UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
+    }
+
+
+
     @Override
     public Long addUser(UserAddRequest userAddRequest) {
         User user = new User();
@@ -77,8 +97,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if(user==null||user.getId()==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"登录用户不存在");
         }
-        User get_user = getById(user.getId());
-        ThrowUtils.throwIf(get_user==null,ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(user==null,ErrorCode.NOT_FOUND_ERROR);
         return user;
     }
 
