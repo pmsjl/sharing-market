@@ -1,26 +1,24 @@
 package com.pmsjl.controller;
 
 import cn.hutool.core.bean.BeanUtil;
-import com.baomidou.mybatisplus.core.toolkit.BeanUtils;
-import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.annotation.AuthCheck;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
-import com.pmsjl.model.dto.commodity.CommodityAddRequest;
+import com.pmsjl.constant.UserConstant;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderAddRequest;
+import com.pmsjl.model.dto.commodityOrder.CommodityOrderQueryRequest;
+import com.pmsjl.model.dto.commodityOrder.CommodityOrderUpdateRequest;
 import com.pmsjl.model.entity.CommodityOrder;
+import com.pmsjl.model.vo.CommodityOrderVO;
 import com.pmsjl.service.CommodityOrderService;
 import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.net.http.HttpRequest;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * <p>
@@ -55,4 +53,30 @@ public class CommodityOrderController {
         return ResultUtils.success(result);
     }
 
+
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @PostMapping("/update")
+    public Result<Boolean>updateCommodityOrder(@RequestBody CommodityOrderUpdateRequest commodityOrderUpdateRequest,HttpServletRequest request){
+        ThrowUtils.throwIf(commodityOrderUpdateRequest==null,ErrorCode.PARAMS_ERROR);
+        CommodityOrder commodityOrder=new CommodityOrder();
+        BeanUtil.copyProperties(commodityOrderUpdateRequest,commodityOrder);
+        Boolean result=commodityOrderService.updateCommodityOrder(commodityOrder);
+        return ResultUtils.success(result);
+    }
+
+    @GetMapping("/get/vo")
+    public Result<CommodityOrderVO>getCommodityOrderVOById(Long id,HttpServletRequest request){
+        ThrowUtils.throwIf(id==null||id<=0,ErrorCode.PARAMS_ERROR);
+        CommodityOrderVO commodityOrderVO=commodityOrderService.getCommodityOrderVOById(id,request);
+        return ResultUtils.success(commodityOrderVO);
+    }
+
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @PostMapping("/list/page")
+    public Result<Page<CommodityOrder>>listCommodityOrderByPage(@RequestBody CommodityOrderQueryRequest commodityOrderQueryRequest,HttpServletRequest request){
+        ThrowUtils.throwIf(commodityOrderQueryRequest==null,ErrorCode.PARAMS_ERROR);
+        Page<CommodityOrder>page=commodityOrderService.listCommodityOrderByPage(commodityOrderQueryRequest,request);
+        return ResultUtils.success(page);
+
+    }
 }
