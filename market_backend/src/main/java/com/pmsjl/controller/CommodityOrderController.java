@@ -12,8 +12,10 @@ import com.pmsjl.model.dto.commodityOrder.CommodityOrderEditRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderQueryRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderUpdateRequest;
 import com.pmsjl.model.entity.CommodityOrder;
+import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityOrderVO;
 import com.pmsjl.service.CommodityOrderService;
+import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,9 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +40,8 @@ import java.util.Map;
 public class CommodityOrderController {
     @Autowired
     CommodityOrderService commodityOrderService;
+    @Autowired
+    UserService userService;
 
 
     @PostMapping("/add")
@@ -119,11 +120,13 @@ public class CommodityOrderController {
 
     @GetMapping("/getCommodityOrderHeatmapData")
     public Result<List<Map<String, Object>>> getCommodityOrderHeatmapData(
-            @RequestParam Long userId,
-            @RequestParam Integer payStatus) {
+            @RequestParam Integer payStatus,
+            HttpServletRequest request) {
+        //这里在原有基础上删除了userid，前后端都进行了修改，防止直接访问传入别人的id
+        User loginUser = userService.getLoginUser(request);
         // 构建查询条件
         CommodityOrderQueryRequest queryRequest = new CommodityOrderQueryRequest();
-        queryRequest.setUserId(userId);
+        queryRequest.setUserId(loginUser.getId());
         queryRequest.setPayStatus(payStatus);
 
         // 查询符合条件的订单
