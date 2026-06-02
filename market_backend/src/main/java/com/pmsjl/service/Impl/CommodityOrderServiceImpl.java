@@ -260,6 +260,9 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         // 统计每个日期的订单数量
         Map<String, Integer> dateCountMap = new HashMap<>();
         for (CommodityOrder order : orderList) {
+            if (order.getCreateTime() == null) {
+                continue;
+            }
             String dateStr = dateFormat.format(order.getCreateTime());
             dateCountMap.put(dateStr, dateCountMap.getOrDefault(dateStr, 0) + 1);
         }
