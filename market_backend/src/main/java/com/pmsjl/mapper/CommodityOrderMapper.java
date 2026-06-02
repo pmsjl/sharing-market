@@ -2,6 +2,7 @@ package com.pmsjl.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.pmsjl.model.entity.CommodityOrder;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * <p>
@@ -11,6 +12,7 @@ import com.pmsjl.model.entity.CommodityOrder;
  * @author pmsjl
  * @since 2026-05-31
  */
+@Mapper
 public interface CommodityOrderMapper extends BaseMapper<CommodityOrder> {
 
 }
