@@ -43,7 +43,16 @@ public class CommodityOrderController {
     @Autowired
     UserService userService;
 
-
+    /***
+     *注意这里我在原基础上加上了管理员权限校验
+     * 这里的添加订单并不是普通用户的路径
+     * 普通用户的订单创建走的是commodity/buy接口
+     * 这里是只有管理员才有的创建接口
+     * @param commodityOrderAddRequest
+     * @param request
+     * @return
+     */
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/add")
     public Result<Long> addCommodityOrder(@RequestBody CommodityOrderAddRequest commodityOrderAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(commodityOrderAddRequest == null, ErrorCode.PARAMS_ERROR);
