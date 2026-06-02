@@ -29,6 +29,8 @@ import org.springframework.util.DigestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import static com.pmsjl.constant.RedisConstants.*;
 /**
  * <p>
@@ -109,6 +111,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setId(loginUser.getId());
         boolean b = updateById(user);
         ThrowUtils.throwIf(b==false,ErrorCode.OPERATION_ERROR);
+        // 同步 Redis 登录态，避免 getLoginUser/UserHolder 仍是旧信息
+        //虽然说我们的redis的用户缓存主要用于拦截校验和提取id和userRole，但是顺手更新肯定不是坏事
+        String token = TokenUtils.getToken(request);
+        if (StringUtils.isNotBlank(token)) {
+            String key = LOGIN_USER_KEY + token;
+
+            if (userUpdateRequest.getUserName() != null) {
+                stringRedisTemplate.opsForHash().put(key, "userName", userUpdateRequest.getUserName());
+            }
+            if (userUpdateRequest.getUserAvatar() != null) {
+                stringRedisTemplate.opsForHash().put(key, "userAvatar", userUpdateRequest.getUserAvatar());
+            }
+            if (userUpdateRequest.getUserProfile() != null) {
+                stringRedisTemplate.opsForHash().put(key, "userProfile", userUpdateRequest.getUserProfile());
+            }
+
+            stringRedisTemplate.expire(key, LOGIN_USER_TTL, TimeUnit.MINUTES);
+        }
         return b;
 
 

@@ -69,7 +69,8 @@ public class FileController {
         File file = null;
         try {
             // 上传文件
-            file = File.createTempFile(filepath, null);
+            String fileSuffix = FileUtil.getSuffix(filename);
+            file = File.createTempFile(uuid, "." + fileSuffix);
             multipartFile.transferTo(file);
             cosManager.putObject(filepath, file);
             // 返回可访问地址
@@ -100,12 +101,21 @@ public class FileController {
         // 文件后缀
         String fileSuffix = FileUtil.getSuffix(multipartFile.getOriginalFilename());
         final long ONE_M = 1024 * 1024L;
+        final long FIVE_M = 5 * ONE_M;
         if (FileUploadBizEnum.USER_AVATAR.equals(fileUploadBizEnum)) {
             if (fileSize > ONE_M) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过 1M");
             }
             if (!Arrays.asList("jpeg", "jpg", "svg", "png", "webp").contains(fileSuffix)) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件类型错误");
+            }
+        }
+        if (FileUploadBizEnum.COMMODITY_AVATAR.equals(fileUploadBizEnum)) {
+            if (fileSize > FIVE_M) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "file size cannot exceed 5M");
+            }
+            if (!Arrays.asList("jpeg", "jpg", "svg", "png", "webp").contains(fileSuffix)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "file type error");
             }
         }
     }
