@@ -1,56 +1,47 @@
 package com.pmsjl.config;
 
-import com.qcloud.cos.COSClient;
-import com.qcloud.cos.ClientConfig;
-import com.qcloud.cos.auth.BasicCOSCredentials;
-import com.qcloud.cos.auth.COSCredentials;
-import com.qcloud.cos.region.Region;
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.OSSClientBuilder;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * 腾讯云对象存储客户端
- *
- * @author 程序员小白条
- * @from <a href="https://luoye6.github.io/"> 个人博客
+ * Aliyun OSS client configuration.
  */
 @Configuration
-@ConfigurationProperties(prefix = "cos.client")
-//通过该注解传递application关于桶的配置数据
+@ConfigurationProperties(prefix = "oss.client")
 @Data
 public class CosClientConfig {
 
     /**
-     * accessKey
+     * Aliyun AccessKey ID.
      */
     private String accessKey;
 
     /**
-     * secretKey
+     * Aliyun AccessKey Secret.
      */
     private String secretKey;
 
     /**
-     * 区域
+     * OSS endpoint, for example https://oss-cn-shenzhen.aliyuncs.com.
      */
-    private String region;
+    private String endpoint;
 
     /**
-     * 桶名
+     * Bucket name.
      */
     private String bucket;
 
+    /**
+     * Public URL prefix used to access uploaded files.
+     */
+    private String host;
+
     @Bean
-    //再通过bean类注解将它放到ioc容器中，便于后续使用
-    public COSClient cosClient() {
-        // 初始化用户身份信息(secretId, secretKey)
-        COSCredentials cred = new BasicCOSCredentials(accessKey, secretKey);
-        // 设置bucket的区域, COS地域的简称请参照 https://www.qcloud.com/document/product/436/6224
-        ClientConfig clientConfig = new ClientConfig(new Region(region));
-        // 生成cos客户端
-        return new COSClient(cred, clientConfig);
+    public OSS ossClient() {
+        return new OSSClientBuilder().build(endpoint, accessKey, secretKey);
     }
-    //这里就是模板化的代码
 }
