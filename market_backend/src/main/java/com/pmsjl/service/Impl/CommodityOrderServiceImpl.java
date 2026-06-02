@@ -49,10 +49,6 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
     @Override
     public Long addCommodityOrder(CommodityOrder commodityOrder, HttpServletRequest request) {
         validCommodityOrder(commodityOrder);
-        User loginUser = userService.getLoginUser(request);
-        commodityOrder.setUserId(loginUser.getId());
-//        commodityOrder.setCreateTime(LocalDateTime.now());
-//        commodityOrder.setUpdateTime(LocalDateTime.now());
         //这里无需手动设置时间，在表格中已经默认设置为当前时间戳，无需再手动赋值
         boolean result = this.save(commodityOrder);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);

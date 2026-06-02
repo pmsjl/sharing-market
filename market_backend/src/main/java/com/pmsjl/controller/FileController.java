@@ -29,7 +29,9 @@ import java.util.Arrays;
 
 /**
  * 文件接口
- *
+ *这里进行了修改，原本前端代码非常糟糕，他是手动输入url，而且不能是本地，最后通过前端直接显示，这并不合理
+ * 因为这里的filecontroller接口从始至终没用到过
+ * 因此我修改了前端，并同时采取这里的阿里云桶配置，进行上传
  * @author 程序员小白条
  * @from <a href="https://luoye6.github.io/"> 个人博客
  */
