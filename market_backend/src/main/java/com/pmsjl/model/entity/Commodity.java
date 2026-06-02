@@ -8,6 +8,10 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/**
+ * 
+ * @TableName commodity
+ */
 @TableName(value ="commodity")
 @Data
 public class Commodity implements Serializable {
@@ -43,7 +47,7 @@ public class Commodity implements Serializable {
     private Long commodityTypeId;
 
     /**
-     * 创建人 ID （某人创建该商品）
+     * 管理员 ID （某人创建该商品）
      */
     private Long adminId;
 

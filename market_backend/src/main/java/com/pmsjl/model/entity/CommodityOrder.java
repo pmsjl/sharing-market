@@ -1,88 +1,74 @@
 package com.pmsjl.model.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Data;
+
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import java.util.Date;
 
 /**
- * <p>
  * 
- * </p>
- *
- * @author pmsjl
- * @since 2026-05-31
+ * @TableName commodity_order
  */
+@TableName(value ="commodity_order")
 @Data
-@TableName("commodity_order")
 public class CommodityOrder implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
     /**
      * 订单 ID
      */
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
      * 用户 ID
      */
-    @TableField("userId")
     private Long userId;
 
     /**
      * 商品 ID
      */
-    @TableField("commodityId")
     private Long commodityId;
 
     /**
      * 订单备注
      */
-    @TableField("remark")
     private String remark;
 
     /**
      * 购买数量
      */
-    @TableField("buyNumber")
     private Integer buyNumber;
 
     /**
      * 订单总支付金额
      */
-    @TableField("paymentAmount")
     private BigDecimal paymentAmount;
 
     /**
      * 0-未支付 1-已支付
      */
-    @TableField("payStatus")
-    private Byte payStatus;
+    private Integer payStatus;
 
     /**
      * 创建时间
      */
-    @TableField("createTime")
-    private LocalDateTime createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
+    private Date createTime;
 
     /**
      * 更新时间
      */
-    @TableField("updateTime")
-    private LocalDateTime updateTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
+    private Date updateTime;
 
     /**
      * 是否删除
      */
-    @TableField("isDelete")
-    private Byte isDelete;
+    @TableLogic
+    private Integer isDelete;
+
+    @TableField(exist = false)
+    private static final long serialVersionUID = 1L;
 }

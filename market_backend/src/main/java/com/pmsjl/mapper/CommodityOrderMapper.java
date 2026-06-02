@@ -1,7 +1,7 @@
 package com.pmsjl.mapper;
 
-import com.pmsjl.model.entity.CommodityOrder;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.pmsjl.model.entity.CommodityOrder;
 
 /**
  * <p>

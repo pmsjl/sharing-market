@@ -22,10 +22,7 @@ public class CommodityOrderEditRequest implements Serializable {
      */
     private String remark;
 
-    /**
-     * 0-未支付 1-已支付
-     */
-    private Integer payStatus;
+//这里删除了paystatus，用户修改界面的前端实际没有支付状态的修改，实际也不应该有
 
     private static final long serialVersionUID = 1L;
 }

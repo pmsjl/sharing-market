@@ -1,15 +1,17 @@
 package com.pmsjl.service.Impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.model.dto.commodityOrder.CommodityOrderEditRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderQueryRequest;
 import com.pmsjl.model.entity.Commodity;
-import com.pmsjl.model.entity.CommodityOrder;
 import com.pmsjl.mapper.CommodityOrderMapper;
+import com.pmsjl.model.entity.CommodityOrder;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityOrderVO;
 
@@ -21,9 +23,14 @@ import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.jcajce.provider.asymmetric.RSA;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -160,5 +167,110 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         return commodityOrderPage;
 
 
+    }
+
+    @Override
+    public Page<CommodityOrderVO> listCommodityOrderVOByPage(CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
+        Page<CommodityOrder> commodityOrderPage = this.listCommodityOrderByPage(commodityOrderQueryRequest, request);
+        List<CommodityOrder> records = commodityOrderPage.getRecords();
+
+        long current = commodityOrderPage.getCurrent();
+        long pageSize = commodityOrderPage.getSize();
+        long total = commodityOrderPage.getTotal();
+        Page<CommodityOrderVO>page=new Page<>(current,pageSize,total);
+        if (records == null || records.isEmpty()) {
+            page.setRecords(List.of());
+            return page;
+        }
+        List<CommodityOrderVO> commodityOrderVOList = records.stream().map(CommodityOrderVO::objToVo).toList();
+        // 关联查询用户信息
+        Set<Long> userIdSet = commodityOrderVOList.stream()
+                .map(CommodityOrderVO::getUserId)
+                .collect(Collectors.toSet());
+        // 关联查询商品信息
+        Set<Long> commodityIdSet = commodityOrderVOList.stream()
+                .map(CommodityOrderVO::getCommodityId)
+                .collect(Collectors.toSet());
+        // 批量查询用户信息
+        Map<Long, User> userIdUserMap = userService.listByIds(userIdSet).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        // 批量查询商品信息
+        Map<Long, String> commodityIdMap = commodityService.listByIds(commodityIdSet).stream()
+                .collect(Collectors.toMap(Commodity::getId, Commodity::getCommodityName));
+        // 填充用户信息到 VO 对象
+        commodityOrderVOList.forEach(commodityOrderVO -> {
+            User user = userIdUserMap.get(commodityOrderVO.getUserId());
+            if (user != null) {
+                commodityOrderVO.setUserName(user.getUserName());
+                commodityOrderVO.setUserPhone(user.getUserPhone());
+            }
+        });
+        // 填充商品信息到 VO 对象
+        commodityOrderVOList.forEach(commodityOrderVO -> {
+            String commodityName = commodityIdMap.get(commodityOrderVO.getCommodityId());
+            if (commodityName != null) {
+                commodityOrderVO.setCommodityName(commodityName);
+            }
+        });
+        page.setRecords(commodityOrderVOList);
+        return page;
+
+
+    }
+
+    @Override
+    public Page<CommodityOrderVO> listMyCommodityOrderVOByPage(CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        commodityOrderQueryRequest.setUserId(loginUser.getId());
+        Page<CommodityOrderVO> commodityOrderVOPage = this.listCommodityOrderVOByPage(commodityOrderQueryRequest, request);
+        return commodityOrderVOPage;
+
+
+    }
+
+    @Override
+    public Boolean editCommodityOrder(CommodityOrderEditRequest commodityOrderEditRequest, HttpServletRequest request) {
+        Long id = commodityOrderEditRequest.getId();
+        CommodityOrder oldCommodityOrder = getById(id);
+        User loginUser = userService.getLoginUser(request);
+        if (!ObjectUtil.equals(loginUser.getId(), oldCommodityOrder.getUserId()) && !userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        //这里在原有基础上加上了权限校验，就是理论上只用前端根本不会有问题，但是怕的是有人直接通过接口访问，那么如果id不一致就不能修改了
+        if(oldCommodityOrder==null){
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        CommodityOrder commodityOrder=new CommodityOrder();
+        BeanUtil.copyProperties(commodityOrderEditRequest,commodityOrder);
+        boolean result = updateById(commodityOrder);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return result;
+
+    }
+
+    @Override
+    public List<Map<String, Object>> getCommodityOrderHeatmapData(CommodityOrderQueryRequest queryRequest) {
+        List<CommodityOrder> orderList = lambdaQuery().eq(queryRequest.getUserId() != null, CommodityOrder::getUserId, queryRequest.getUserId()).
+                eq(queryRequest.getPayStatus() != null, CommodityOrder::getPayStatus, queryRequest.getPayStatus()).list();
+
+        // 处理查询结果，生成日期和订单数量的列表
+        List<Map<String, Object>> result = new ArrayList<>();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+        // 统计每个日期的订单数量
+        Map<String, Integer> dateCountMap = new HashMap<>();
+        for (CommodityOrder order : orderList) {
+            String dateStr = dateFormat.format(order.getCreateTime());
+            dateCountMap.put(dateStr, dateCountMap.getOrDefault(dateStr, 0) + 1);
+        }
+
+        // 将统计结果转换为前端需要的格式
+        for (Map.Entry<String, Integer> entry : dateCountMap.entrySet()) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("date", entry.getKey());
+            item.put("value", entry.getValue());
+            result.add(item);
+        }
+        return result;
     }
 }
