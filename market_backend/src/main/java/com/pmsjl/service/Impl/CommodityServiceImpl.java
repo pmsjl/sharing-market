@@ -181,6 +181,10 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         User loginUser = userService.getLoginUser(request);
 
         CommodityOrder order = commodityOrderService.getByIdWithLock(orderId);
+        //设置锁一般来说要么根据写锁判断多线程问题，要么正常读加乐观锁进行判断，要么全局悲观锁
+        //这里采取的是在普通的查询语句基础上加上了 FOR UPDATE他的作用不是说是什么更新
+        //而是设置写锁的标志，相当于设置悲观锁，在整个方法事务提交之前始终都有写锁！！！
+
         ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
 
         if (!order.getUserId().equals(loginUser.getId()) && !userService.isAdmin(request)) {
@@ -213,11 +217,13 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             stringRedisTemplate.delete(CACHE_COMMODITY_KEY + order.getCommodityId());
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "订单已过期，请重新购买");
         }
+        //因为一分钟才检查一次，所以可能在实际过期但未被释放时被支付
 
         Commodity commodity = getById(order.getCommodityId());
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR, "订单商品不存在");
 
         User user = userService.getByIdWithLock(loginUser.getId());
+        //这里也是一样设置悲观锁，防止余额出问题
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
 
         BigDecimal balance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
@@ -236,7 +242,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 .eq(CommodityOrder::getIsDelete, 0)
                 .update();
         ThrowUtils.throwIf(!orderUpdated, ErrorCode.OPERATION_ERROR, "订单状态更新失败");
-
+//两个悲观锁，一个防止订单重复支付，一个防止用户同时支付多个订单出现负数余额
         return true;
     }
     public void validCommodity(Commodity commodity) {
