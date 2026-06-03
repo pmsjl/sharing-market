@@ -47,7 +47,7 @@ public class CommodityOrder implements Serializable {
     private BigDecimal paymentAmount;
 
     /**
-     * 0-未支付 1-已支付
+     * 0-未支付 1-已支付 2-已过期
      */
     private Integer payStatus;
 
@@ -68,6 +68,8 @@ public class CommodityOrder implements Serializable {
      */
     @TableLogic
     private Integer isDelete;
+    //加上这个@TableLogic之后它之后的mybatisplus查询语句都会自动带上isDelete=0，无需手动添加，
+    // 但是自定义sql语句还是需要手动添加的
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

@@ -23,14 +23,7 @@ public class BuyCommodityRequest implements Serializable {
      * 购买商品的数量
      */
     private Integer buyNumber;
-    /**
-     * 支付金额
-     */
-    private BigDecimal paymentAmount;
-    /**
-     * 支付状态（1已支付，0未支付）默认0
-     */
-    private Integer payStatus;
+
 
     /**
      * 订单备注

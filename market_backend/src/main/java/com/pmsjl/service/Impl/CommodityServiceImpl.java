@@ -10,13 +10,17 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.model.dto.commodity.BuyCommodityRequest;
 import com.pmsjl.model.dto.commodity.CommodityQueryRequest;
+import com.pmsjl.model.dto.commodityOrder.PayCommodityOrderRequest;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.mapper.CommodityMapper;
+import com.pmsjl.model.entity.CommodityOrder;
 import com.pmsjl.model.entity.CommodityType;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityVO;
 import com.pmsjl.model.vo.LoginUserVO;
+import com.pmsjl.service.CommodityOrderService;
 import com.pmsjl.service.CommodityService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.service.CommodityTypeService;
@@ -30,12 +34,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -50,14 +56,20 @@ import java.util.stream.Collectors;
  */
 @Service
 public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity> implements CommodityService {
+    private static final long ORDER_PAY_EXPIRE_MILLIS = TimeUnit.MINUTES.toMillis(15);
+
     @Autowired
     private UserService userService;
+    @Autowired
+    private CommodityOrderService commodityOrderService;
     @Autowired
     private CommodityTypeService commodityTypeService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     ObjectMapper objectMapper;
+    @Autowired
+    private CommodityService commodityService;
 
 
     //TODO:这里原本接口只有管理员可以调用，前端就是个半成品，
@@ -90,6 +102,143 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> buyCommodity(BuyCommodityRequest buyCommodityRequest, HttpServletRequest request) {
+        Long commodityId = buyCommodityRequest.getCommodityId();
+        Integer buyNumber = buyCommodityRequest.getBuyNumber();
+        ThrowUtils.throwIf(commodityId == null || commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品id非法");
+        ThrowUtils.throwIf(buyNumber == null || buyNumber <= 0, ErrorCode.PARAMS_ERROR, "购买数量非法");
+
+        User loginUser = userService.getLoginUser(request);
+        User user = userService.getById(loginUser.getId());
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        Commodity commodity = getById(commodityId);
+        ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR, "商品不存在");
+        ThrowUtils.throwIf(!Objects.equals(commodity.getIsListed(), 1), ErrorCode.OPERATION_ERROR, "商品未上架");
+        ThrowUtils.throwIf(commodity.getPrice() == null || commodity.getPrice().compareTo(BigDecimal.ZERO) <= 0,
+                ErrorCode.OPERATION_ERROR, "商品价格异常");
+
+        BigDecimal totalAmount = commodity.getPrice().multiply(BigDecimal.valueOf(buyNumber));
+        BigDecimal balance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        boolean balanceEnough = balance.compareTo(totalAmount) >= 0;
+
+        boolean inventoryReserved = lambdaUpdate()
+                .setSql("commodityInventory = commodityInventory - " + buyNumber)
+                .eq(Commodity::getId, commodityId)
+                .eq(Commodity::getIsListed, 1)
+                .eq(Commodity::getIsDelete, 0)
+                .ge(Commodity::getCommodityInventory, buyNumber)
+                .update();
+        //注意这里采取了不管余额如何变化都扣除库存的操作，之后会补上，超时未支付重新释放库存的操作
+        ThrowUtils.throwIf(!inventoryReserved, ErrorCode.OPERATION_ERROR, "库存不足或商品状态已变化");
+
+        CommodityOrder order = new CommodityOrder();
+        order.setUserId(user.getId());
+        order.setCommodityId(commodityId);
+        order.setBuyNumber(buyNumber);
+        order.setPaymentAmount(totalAmount);
+        order.setRemark(buyCommodityRequest.getRemark());
+        order.setPayStatus(balanceEnough ? 1 : 0);
+        boolean orderSaved = commodityOrderService.save(order);
+        ThrowUtils.throwIf(!orderSaved, ErrorCode.OPERATION_ERROR, "订单创建失败");
+
+        if (balanceEnough) {
+            boolean balanceDeducted = userService.lambdaUpdate()
+                    .setSql("balance = balance - " + totalAmount.toPlainString())
+                    .eq(User::getId, user.getId())
+                    .eq(User::getIsDelete, 0)
+                    .ge(User::getBalance, totalAmount)
+                    .update();
+            ThrowUtils.throwIf(!balanceDeducted, ErrorCode.OPERATION_ERROR, "余额扣减失败");
+        }
+        //这里对余额进行扣除，为什么需要再次判断，因为多线程会导致可能上面的余额是够的，然后paystatus为已支付
+        //但是到这里余额又不够了，所以要判断，扣除失败就全部回滚
+
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY + commodityId);
+        //库存已经变化，所以删除redis缓存
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("orderId", order.getId());
+        result.put("payStatus", order.getPayStatus());
+        result.put("needPay", !balanceEnough);
+        //这里乍一看paystatus和needpay作用是一样的
+        //但是如果我后续继续添加其他的paystatus状态，（释放库存需要有过期状态之类的）
+        //那两者就不等价了
+        //前端读取needPay弹出是否支付成功的信息
+        //然后再利用paystatus选择订单展示的情况（有无倒计时）
+        //这里的我们在原有基础上添加了paystatus=2的过期状态
+        //因此需要定时任务去扫描是否有过期订单
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean payCommodity(PayCommodityOrderRequest payRequest, HttpServletRequest request) {
+        Long orderId = payRequest.getCommodityOrderId();
+        ThrowUtils.throwIf(orderId == null || orderId <= 0, ErrorCode.PARAMS_ERROR, "订单id非法");
+
+        User loginUser = userService.getLoginUser(request);
+
+        CommodityOrder order = commodityOrderService.getByIdWithLock(orderId);
+        ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
+
+        if (!order.getUserId().equals(loginUser.getId()) && !userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无法操作他人订单");
+        }
+
+        if (!Objects.equals(order.getPayStatus(), 0)) {
+            String message = Objects.equals(order.getPayStatus(), 1)
+                    ? "订单已支付，无需重复支付"
+                    : "订单已过期，请重新购买";
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, message);
+        }
+
+        ThrowUtils.throwIf(order.getCreateTime() == null, ErrorCode.OPERATION_ERROR, "订单创建时间异常");
+        if (System.currentTimeMillis() > order.getCreateTime().getTime() + ORDER_PAY_EXPIRE_MILLIS) {
+            boolean orderExpired = commodityOrderService.lambdaUpdate()
+                    .set(CommodityOrder::getPayStatus, 2)
+                    .eq(CommodityOrder::getId, order.getId())
+                    .eq(CommodityOrder::getPayStatus, 0)
+                    .eq(CommodityOrder::getIsDelete, 0)
+                    .update();
+            ThrowUtils.throwIf(!orderExpired, ErrorCode.OPERATION_ERROR, "订单状态更新失败");
+
+            boolean inventoryReleased = lambdaUpdate()
+                    .setSql("commodityInventory = IFNULL(commodityInventory, 0) + " + order.getBuyNumber())
+                    .eq(Commodity::getId, order.getCommodityId())
+                    .eq(Commodity::getIsDelete, 0)
+                    .update();
+            ThrowUtils.throwIf(!inventoryReleased, ErrorCode.OPERATION_ERROR, "库存释放失败");
+            stringRedisTemplate.delete(CACHE_COMMODITY_KEY + order.getCommodityId());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "订单已过期，请重新购买");
+        }
+
+        Commodity commodity = getById(order.getCommodityId());
+        ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR, "订单商品不存在");
+
+        User user = userService.getByIdWithLock(loginUser.getId());
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+
+        BigDecimal balance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        if (balance.compareTo(order.getPaymentAmount()) < 0) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "余额不足");
+        }
+
+        user.setBalance(balance.subtract(order.getPaymentAmount()));
+        boolean userUpdated = userService.updateById(user);
+        ThrowUtils.throwIf(!userUpdated, ErrorCode.OPERATION_ERROR, "余额扣减失败");
+
+        boolean orderUpdated = commodityOrderService.lambdaUpdate()
+                .set(CommodityOrder::getPayStatus, 1)
+                .eq(CommodityOrder::getId, order.getId())
+                .eq(CommodityOrder::getPayStatus, 0)
+                .eq(CommodityOrder::getIsDelete, 0)
+                .update();
+        ThrowUtils.throwIf(!orderUpdated, ErrorCode.OPERATION_ERROR, "订单状态更新失败");
+
+        return true;
+    }
     public void validCommodity(Commodity commodity) {
         Long adminId = commodity.getAdminId();
         String commodityName = commodity.getCommodityName();
@@ -110,7 +259,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = removeById(id);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
-        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY + id);
         stringRedisTemplate.delete(COMMODITY_VIEW_NUM_KEY + id);
         return result;
     }
@@ -123,7 +272,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         ThrowUtils.throwIf(oldCommodity == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = updateById(commodity);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
-        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
+        stringRedisTemplate.delete(CACHE_COMMODITY_KEY + id);
         return result;
     }
 
@@ -131,7 +280,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     //这个注解是用来实现自动抛出异常的，主要是jackson本身的objectmapper转换json过程会抛出异常
     @Override
     public CommodityVO getCommodityVOById(Long id, HttpServletRequest request) {
-        String commodityJson = stringRedisTemplate.opsForValue().get(CACHE_COMMODITY_KEY+id);
+        String commodityJson = stringRedisTemplate.opsForValue().get(CACHE_COMMODITY_KEY + id);
         if (commodityJson != null && commodityJson.isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "商品不存在");
         }
@@ -141,11 +290,11 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             if (commodity == null) {
                 stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY + id, "", 1, TimeUnit.MINUTES);
                 throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "商品不存在");
-            }else{
+            } else {
                 String commodityStr = objectMapper.writeValueAsString(commodity);
                 //随机增加0-5分钟防止缓存雪崩
                 long ttl = 30L + cn.hutool.core.util.RandomUtil.randomInt(0, 5);
-                stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY+id,commodityStr,ttl,TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY + id, commodityStr, ttl, TimeUnit.MINUTES);
             }
         } else {
             commodity = objectMapper.readValue(commodityJson, Commodity.class);
@@ -154,11 +303,11 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         //上方已通过redis获取商品信息，接下来要对浏览量进行单独处理
         //TODO: 原本代码没有对viewnum做处理，这里采取redis存储新增浏览量 + commodity的方式进行存储，定时同步到mysql
         // 这样既能利用redis的缓存也会同步mysql，如果采取简单粗暴的更新mysql浏览量，然后删除缓存，那redis就没用了
-        String viewNumKey=COMMODITY_VIEW_NUM_KEY+commodity.getId();
+        String viewNumKey = COMMODITY_VIEW_NUM_KEY + commodity.getId();
         Long redisViewNum = stringRedisTemplate.opsForValue().increment(viewNumKey);
-        int baseViewNum=commodity.getViewNum()==null?0:commodity.getViewNum();
-        int addViewNum=(int) (redisViewNum==null?0:redisViewNum);
-        commodity.setViewNum(baseViewNum+addViewNum);
+        int baseViewNum = commodity.getViewNum() == null ? 0 : commodity.getViewNum();
+        int addViewNum = (int) (redisViewNum == null ? 0 : redisViewNum);
+        commodity.setViewNum(baseViewNum + addViewNum);
         CommodityVO commodityVO = CommodityVO.objToVo(commodity);
         //这里还有两个变量没有赋值需要获取后再赋值
         Long adminId = commodityVO.getAdminId();
@@ -173,7 +322,6 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             ThrowUtils.throwIf(commodityType == null, ErrorCode.NOT_FOUND_ERROR, "商品类型不存在");
             commodityVO.setCommodityTypeName(commodityType.getTypeName());
         }
-
 
 
         return commodityVO;
@@ -283,6 +431,8 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         Page<CommodityVO> commodityVOPage = listCommodityVOByPage(commodityQueryRequest);
         return commodityVOPage;
     }
+
+
 
     //TODO 关于推荐算法和购买商品还有三个接口尚未实现
 }

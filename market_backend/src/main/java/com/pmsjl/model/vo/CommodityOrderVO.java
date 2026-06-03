@@ -64,7 +64,7 @@ public class CommodityOrderVO implements Serializable {
     private BigDecimal paymentAmount;
 
     /**
-     * 0-未支付 1-已支付
+     * 0-未支付 1-已支付 2-已过期
      */
     private Integer payStatus;
 

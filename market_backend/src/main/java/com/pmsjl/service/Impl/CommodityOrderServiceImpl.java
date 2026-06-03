@@ -56,7 +56,6 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
 
 
     }
-
     private static void validCommodityOrder(CommodityOrder commodityOrder) {
         Long commodityId = commodityOrder.getCommodityId();
         Integer buyNumber = commodityOrder.getBuyNumber();
@@ -270,5 +269,13 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
             result.add(item);
         }
         return result;
+    }
+
+    @Override
+    public CommodityOrder getByIdWithLock(Long orderId) {
+        return lambdaQuery()
+                .eq(CommodityOrder::getId, orderId)
+                .last("FOR UPDATE")
+                .one();
     }
 }

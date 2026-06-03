@@ -1,11 +1,15 @@
 package com.pmsjl.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.model.dto.commodity.BuyCommodityRequest;
 import com.pmsjl.model.dto.commodity.CommodityQueryRequest;
+import com.pmsjl.model.dto.commodityOrder.PayCommodityOrderRequest;
 import com.pmsjl.model.entity.Commodity;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pmsjl.model.vo.CommodityVO;
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.Map;
 
 /**
  * <p>
@@ -18,6 +22,9 @@ import jakarta.servlet.http.HttpServletRequest;
 public interface CommodityService extends IService<Commodity> {
 
     Long addCommodity(Commodity commodity, HttpServletRequest request);
+
+    Map<String, Object> buyCommodity(BuyCommodityRequest buyCommodityRequest, HttpServletRequest request);
+
     void validCommodity(Commodity commodity);
 
     Boolean deleteCommodity(Long id);
@@ -31,4 +38,6 @@ public interface CommodityService extends IService<Commodity> {
     Page<CommodityVO> listCommodityVOByPage(CommodityQueryRequest commodityQueryRequest);
 
     Page<CommodityVO> listMyCommodityVOByPage(CommodityQueryRequest commodityQueryRequest, HttpServletRequest request);
+
+    Boolean payCommodity(PayCommodityOrderRequest payRequest, HttpServletRequest request);
 }
