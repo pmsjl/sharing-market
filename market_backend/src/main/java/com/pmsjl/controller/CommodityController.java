@@ -7,10 +7,12 @@ import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
 import com.pmsjl.constant.UserConstant;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.model.dto.commodity.BuyCommodityRequest;
 import com.pmsjl.model.dto.commodity.CommodityAddRequest;
 import com.pmsjl.model.dto.commodity.CommodityEditRequest;
 import com.pmsjl.model.dto.commodity.CommodityQueryRequest;
 import com.pmsjl.model.dto.commodity.CommodityUpdateRequest;
+import com.pmsjl.model.dto.commodityOrder.PayCommodityOrderRequest;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.vo.CommodityVO;
 import com.pmsjl.service.CommodityService;
@@ -23,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.FormatFlagsConversionMismatchException;
+import java.util.Map;
 
 /**
  * <p>
@@ -56,6 +58,27 @@ public class CommodityController {
         return ResultUtils.success(id);
     }
 
+
+    /***
+     * 这里就是普通用户购买商品进行订单创建的接口
+     * @param buyCommodityRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/buy")
+    public Result<Map<String, Object>> buyCommodity(@RequestBody BuyCommodityRequest buyCommodityRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(buyCommodityRequest == null, ErrorCode.PARAMS_ERROR, "购买参数不能为空");
+        Map<String, Object> result = commodityService.buyCommodity(buyCommodityRequest, request);
+        return ResultUtils.success(result);
+    }
+
+
+    @PostMapping("/pay")
+    public Result<Boolean>payCommodity(@RequestBody PayCommodityOrderRequest payRequest, HttpServletRequest request){
+        ThrowUtils.throwIf(payRequest == null, ErrorCode.PARAMS_ERROR, "购买参数不能为空");
+        Boolean result=commodityService.payCommodity(payRequest,request);
+        return ResultUtils.success(result);
+    }
     /***
      * //TODO 这里原本采取了自定义isAdmin方法，为什么不用注解我不理解
      * 删除商品,仅管理员可删除

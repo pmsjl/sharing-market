@@ -102,7 +102,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ThrowUtils.throwIf(user==null,ErrorCode.NOT_FOUND_ERROR);
         return user;
     }
-
     @Override
     public boolean updateMyUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
         User loginUser = getLoginUser(request);
@@ -274,6 +273,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
 
 
+    }
+
+    @Override
+    public User getByIdWithLock(Long id) {
+        return lambdaQuery()
+                .eq(User::getId, id)
+                .last("FOR UPDATE")
+                .one();
     }
 
 

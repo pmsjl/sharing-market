@@ -40,4 +40,5 @@ public interface CommodityOrderService extends IService<CommodityOrder> {
 
     List<Map<String, Object>> getCommodityOrderHeatmapData(CommodityOrderQueryRequest queryRequest);
 
+    CommodityOrder getByIdWithLock(Long orderId);
 }

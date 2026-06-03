@@ -43,4 +43,5 @@ public interface UserService extends IService<User> {
     boolean isAdmin(HttpServletRequest request);
 
 
-    }
+    User getByIdWithLock(Long id);
+}
