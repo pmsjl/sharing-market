@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.mapper.CommodityMapper;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderEditRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderQueryRequest;
 import com.pmsjl.model.entity.Commodity;
@@ -17,7 +18,6 @@ import com.pmsjl.model.vo.CommodityOrderVO;
 
 import com.pmsjl.service.CommodityOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.pmsjl.service.CommodityService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,7 +44,9 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
     @Autowired
     UserService userService;
     @Autowired
-    CommodityService commodityService;
+    CommodityMapper commodityMapper;
+    //这里之所以不使用commodityService的原因是为了不引入循环依赖，不然会出现bean容器初始化失败，因为
+    //引入mapper同样可以调用方法
 
     @Override
     public Long addCommodityOrder(CommodityOrder commodityOrder, HttpServletRequest request) {
@@ -114,7 +116,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         Long commodityId = commodityOrderVO.getCommodityId();
         User user = userService.getById(commodityOrderVO.getUserId());
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "订单创建者不存在，出现异常");
-        Commodity commodity = commodityService.getById(commodityId);
+        Commodity commodity = commodityMapper.selectById(commodityId);
         //这里本来想用那个getvo但是他会同步增加浏览量，只是查询订单就没必要了，所以这里还是采取mysql
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR, "订单中商品不存在，出现异常");
         commodityOrderVO.setUserName(user.getUserName());
@@ -189,7 +191,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         Map<Long, User> userIdUserMap = userService.listByIds(userIdSet).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
         // 批量查询商品信息
-        Map<Long, String> commodityIdMap = commodityService.listByIds(commodityIdSet).stream()
+        Map<Long, String> commodityIdMap = commodityMapper.selectBatchIds(commodityIdSet).stream()
                 .collect(Collectors.toMap(Commodity::getId, Commodity::getCommodityName));
         // 填充用户信息到 VO 对象
         commodityOrderVOList.forEach(commodityOrderVO -> {
@@ -275,6 +277,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
     public CommodityOrder getByIdWithLock(Long orderId) {
         return lambdaQuery()
                 .eq(CommodityOrder::getId, orderId)
+                .eq(CommodityOrder::getIsDelete,0)
                 .last("FOR UPDATE")
                 .one();
     }

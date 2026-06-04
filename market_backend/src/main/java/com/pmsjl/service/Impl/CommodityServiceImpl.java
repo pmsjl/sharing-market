@@ -68,8 +68,6 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     ObjectMapper objectMapper;
-    @Autowired
-    private CommodityService commodityService;
 
 
     //TODO:这里原本接口只有管理员可以调用，前端就是个半成品，
@@ -215,7 +213,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                     .update();
             ThrowUtils.throwIf(!inventoryReleased, ErrorCode.OPERATION_ERROR, "库存释放失败");
             stringRedisTemplate.delete(CACHE_COMMODITY_KEY + order.getCommodityId());
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "订单已过期，请重新购买");
+            return false;
         }
         //因为一分钟才检查一次，所以可能在实际过期但未被释放时被支付
 
