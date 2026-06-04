@@ -1,0 +1,197 @@
+package com.pmsjl.service.Impl;
+
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.ObjectUtil;
+import com.baomidou.mybatisplus.core.metadata.OrderItem;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.model.entity.CommodityScore;
+import com.pmsjl.mapper.CommodityScoreMapper;
+import com.pmsjl.common.DeleteRequest;
+import com.pmsjl.common.ErrorCode;
+import com.pmsjl.exception.BusinessException;
+import com.pmsjl.model.dto.commodityScore.CommodityScoreEditRequest;
+import com.pmsjl.model.dto.commodityScore.CommodityScoreQueryRequest;
+import com.pmsjl.model.entity.User;
+import com.pmsjl.model.vo.CommodityScoreVO;
+import com.pmsjl.model.vo.UserVO;
+import com.pmsjl.service.CommodityScoreService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pmsjl.service.UserService;
+import com.pmsjl.utils.ThrowUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * <p>
+ *  服务实现类
+ * </p>
+ *
+ * @author pmsjl
+ * @since 2026-06-04
+ */
+@Service
+public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper, CommodityScore> implements CommodityScoreService {
+
+    @Autowired
+    private UserService userService;
+
+    @Override
+    public Long addCommodityScore(CommodityScore commodityScore, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        commodityScore.setUserId(loginUser.getId());
+        validCommodityScore(commodityScore, true);
+        boolean result = save(commodityScore);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return commodityScore.getId();
+    }
+
+    @Override
+    @Transactional
+    public Boolean deleteCommodityScore(DeleteRequest deleteRequest, HttpServletRequest request) {
+        Long id = deleteRequest.getId();
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        CommodityScore oldCommodityScore = getById(id);
+        ThrowUtils.throwIf(oldCommodityScore == null, ErrorCode.NOT_FOUND_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        if (!ObjectUtil.equals(loginUser.getId(), oldCommodityScore.getUserId()) && !userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        boolean result = removeById(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return result;
+    }
+
+    @Override
+    public Boolean updateCommodityScore(CommodityScore commodityScore) {
+        validCommodityScore(commodityScore, false);
+        Long id = commodityScore.getId();
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        CommodityScore oldCommodityScore = getById(id);
+        ThrowUtils.throwIf(oldCommodityScore == null, ErrorCode.NOT_FOUND_ERROR);
+        boolean result = updateById(commodityScore);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return result;
+    }
+
+    @Override
+    public CommodityScoreVO getCommodityScoreVOById(Long id, HttpServletRequest request) {
+        CommodityScore commodityScore = getById(id);
+        ThrowUtils.throwIf(commodityScore == null, ErrorCode.NOT_FOUND_ERROR);
+        return getCommodityScoreVO(commodityScore);
+    }
+
+    @Override
+    public Page<CommodityScore> listCommodityScoreByPage(CommodityScoreQueryRequest commodityScoreQueryRequest) {
+        int current = commodityScoreQueryRequest.getCurrent();
+        int pageSize = commodityScoreQueryRequest.getPageSize();
+        Long id = commodityScoreQueryRequest.getId();
+        Long commodityId = commodityScoreQueryRequest.getCommodityId();
+        Long userId = commodityScoreQueryRequest.getUserId();
+        Integer score = commodityScoreQueryRequest.getScore();
+        String sortField = commodityScoreQueryRequest.getSortField();
+        String sortOrder = commodityScoreQueryRequest.getSortOrder();
+
+        if (current <= 0) current = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        Page<CommodityScore> page = new Page<>(current, pageSize);
+        if (sortField != null && !sortField.trim().isEmpty()) {
+            if ("asc".equalsIgnoreCase(sortOrder)) {
+                page.addOrder(OrderItem.asc(sortField));
+            } else {
+                page.addOrder(OrderItem.desc(sortField));
+            }
+        } else {
+            page.addOrder(OrderItem.desc("updateTime"));
+        }
+        return lambdaQuery()
+                .eq(ObjectUtils.isNotEmpty(id), CommodityScore::getId, id)
+                .eq(ObjectUtils.isNotEmpty(commodityId), CommodityScore::getCommodityId, commodityId)
+                .eq(ObjectUtils.isNotEmpty(userId), CommodityScore::getUserId, userId)
+                .eq(ObjectUtils.isNotEmpty(score), CommodityScore::getScore, score)
+                .page(page);
+    }
+
+    @Override
+    public Page<CommodityScoreVO> listCommodityScoreVOByPage(CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request) {
+        Page<CommodityScore> commodityScorePage = listCommodityScoreByPage(commodityScoreQueryRequest);
+        List<CommodityScore> records = commodityScorePage.getRecords();
+        Page<CommodityScoreVO> page = new Page<>(commodityScorePage.getCurrent(), commodityScorePage.getSize(), commodityScorePage.getTotal());
+        if (records == null || records.isEmpty()) {
+            page.setRecords(List.of());
+            return page;
+        }
+        List<CommodityScoreVO> commodityScoreVOList = records.stream().map(this::getCommodityScoreVO).toList();
+        Set<Long> userIdSet = commodityScoreVOList.stream()
+                .map(CommodityScoreVO::getUserId)
+                .filter(ObjectUtils::isNotEmpty)
+                .collect(Collectors.toSet());
+        if (!userIdSet.isEmpty()) {
+            Map<Long, User> userIdUserMap = userService.listByIds(userIdSet).stream()
+                    .collect(Collectors.toMap(User::getId, user -> user));
+            commodityScoreVOList.forEach(commodityScoreVO -> {
+                User user = userIdUserMap.get(commodityScoreVO.getUserId());
+                if (user != null) {
+                    UserVO userVO = new UserVO();
+                    BeanUtil.copyProperties(user, userVO);
+                    commodityScoreVO.setUserVO(userVO);
+                }
+            });
+        }
+        page.setRecords(commodityScoreVOList);
+        return page;
+    }
+
+    @Override
+    public Page<CommodityScoreVO> listMyCommodityScoreVOByPage(CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        commodityScoreQueryRequest.setUserId(loginUser.getId());
+        return listCommodityScoreVOByPage(commodityScoreQueryRequest, request);
+    }
+
+    @Override
+    public Boolean editCommodityScore(CommodityScoreEditRequest commodityScoreEditRequest, HttpServletRequest request) {
+        Long id = commodityScoreEditRequest.getId();
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        CommodityScore oldCommodityScore = getById(id);
+        ThrowUtils.throwIf(oldCommodityScore == null, ErrorCode.NOT_FOUND_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        if (!ObjectUtil.equals(loginUser.getId(), oldCommodityScore.getUserId()) && !userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        CommodityScore commodityScore = new CommodityScore();
+        BeanUtil.copyProperties(commodityScoreEditRequest, commodityScore);
+        commodityScore.setUserId(oldCommodityScore.getUserId());
+        validCommodityScore(commodityScore, false);
+        boolean result = updateById(commodityScore);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return result;
+    }
+
+    @Override
+    public void validCommodityScore(CommodityScore commodityScore, boolean add) {
+        ThrowUtils.throwIf(commodityScore == null, ErrorCode.PARAMS_ERROR);
+        Long commodityId = commodityScore.getCommodityId();
+        Long userId = commodityScore.getUserId();
+        Integer score = commodityScore.getScore();
+        if (add) {
+            ThrowUtils.throwIf(commodityId == null, ErrorCode.PARAMS_ERROR, "商品id不能为空");
+            ThrowUtils.throwIf(userId==null,ErrorCode.PARAMS_ERROR,"评价者id不能为空");
+        }
+        ThrowUtils.throwIf(score == null, ErrorCode.PARAMS_ERROR, "评分不能为空");
+        ThrowUtils.throwIf((score < 1 || score > 5), ErrorCode.PARAMS_ERROR, "评分范围应为1到5");
+        ThrowUtils.throwIf(commodityId != null && commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品id非法");
+        ThrowUtils.throwIf(userId != null && userId <= 0, ErrorCode.PARAMS_ERROR, "用户id非法");
+
+    }
+    private CommodityScoreVO getCommodityScoreVO(CommodityScore commodityScore) {
+        return CommodityScoreVO.objToVo(commodityScore);
+    }
+}
