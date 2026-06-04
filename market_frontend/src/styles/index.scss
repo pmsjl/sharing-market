@@ -1,0 +1,409 @@
+@import "./reset.scss";
+@import "./variable.scss";
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  color: var(--market-ink);
+  font-family: var(--market-font);
+  background: var(--market-body-bg);
+}
+
+button,
+a,
+.el-button,
+.el-menu-item,
+.el-sub-menu__title {
+  touch-action: manipulation;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--market-orange);
+  outline-offset: 3px;
+}
+
+.market-page {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.market-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.market-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid rgba(217, 108, 44, 0.24);
+  border-radius: 999px;
+  color: var(--market-orange);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--market-soft-bg);
+}
+
+.market-title {
+  margin: 8px 0 0;
+  color: var(--market-ink);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.22;
+}
+
+.market-subtitle {
+  max-width: 680px;
+  margin-top: 8px;
+  color: var(--market-muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.market-board,
+.market-panel,
+.market-note {
+  position: relative;
+  border: 1px solid var(--market-line);
+  border-radius: var(--market-radius);
+  background: var(--market-card-bg);
+  box-shadow: var(--market-shadow-soft);
+}
+
+.market-board::before,
+.market-note::before {
+  position: absolute;
+  top: -7px;
+  left: 22px;
+  width: 42px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(244, 201, 93, 0.82);
+  box-shadow: 0 3px 8px rgba(62, 45, 24, 0.1);
+  content: "";
+  transform: rotate(-2deg);
+}
+
+.market-filter-card,
+.market-data-card {
+  margin-bottom: 18px;
+}
+
+.market-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.market-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.market-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.ai-message-admin,
+.commodity-admin,
+.commodity-order-admin,
+.commodity-type-admin,
+.post-admin,
+.search_container,
+.admin-page,
+.el-card + .el-table {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.ai-message-admin > .el-card:first-child,
+.commodity-admin > .el-card:first-child,
+.commodity-order-admin > .el-card:first-child,
+.commodity-type-admin > .el-card:first-child,
+.post-admin > .el-card:first-child,
+.search_container > .el-card:first-child {
+  margin-bottom: 18px !important;
+}
+
+.ai-message-admin .el-row,
+.commodity-admin .el-row,
+.commodity-order-admin .el-row,
+.commodity-type-admin .el-row,
+.post-admin .el-row,
+.search_container .el-row {
+  row-gap: 12px;
+}
+
+.ai-message-admin .el-card,
+.commodity-admin .el-card,
+.commodity-order-admin .el-card,
+.commodity-type-admin .el-card,
+.post-admin .el-card,
+.search_container .el-card {
+  overflow: hidden;
+}
+
+.ai-message-admin .el-table,
+.commodity-admin .el-table,
+.commodity-order-admin .el-table,
+.commodity-type-admin .el-table,
+.post-admin .el-table,
+.search_container .el-table {
+  font-size: 14px;
+}
+
+.ai-message-admin .el-image,
+.commodity-admin .el-image,
+.commodity-order-admin .el-image,
+.commodity-type-admin .el-image,
+.post-admin .el-image,
+.search_container .el-image {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.chat-container,
+.big,
+.notice-container,
+.post-browse,
+.calendar-chart-shell,
+.comments-page,
+.my-comments-container,
+.chat-room,
+.score-list-container,
+.rating-component {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.chat-container,
+.big,
+.notice-container,
+.post-browse {
+  border-radius: var(--market-radius);
+}
+
+.post-browse .search-bar,
+.notice-container .banner,
+.big .card-container,
+.chat-container,
+.chat-room,
+.rating-component,
+.score-list-container,
+.calendar-chart-shell {
+  border: 1px solid var(--market-line);
+  border-radius: var(--market-radius);
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
+}
+
+.post-browse .post-item,
+.post-browse .post-card,
+.comments-card,
+.comment-view,
+.comment-card {
+  border-color: var(--market-line);
+  border-radius: var(--market-radius);
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
+}
+
+.el-card {
+  border-color: var(--market-line);
+  border-radius: var(--market-radius);
+  color: var(--market-ink);
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
+}
+
+.el-card__header {
+  border-bottom-color: var(--market-line);
+  background: var(--market-header-bg);
+}
+
+.el-button {
+  min-height: 40px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.el-button.is-circle {
+  min-width: 40px;
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(35, 49, 63, 0.12) inset;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus,
+.el-select__wrapper.is-focused {
+  box-shadow: var(--market-focus), 0 0 0 1px var(--market-orange) inset;
+}
+
+.el-form-item__label {
+  color: var(--market-ink);
+  font-weight: 700;
+}
+
+.el-tag {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.el-table {
+  --el-table-border-color: var(--market-line);
+  --el-table-header-bg-color: var(--market-soft-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+  color: var(--market-ink);
+  font-weight: 800;
+}
+
+.el-dialog {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--market-surface);
+}
+
+.el-dialog__header {
+  margin-right: 0;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--market-line);
+  background: var(--market-header-bg);
+}
+
+.el-dialog__body {
+  padding: 22px;
+}
+
+.el-dialog__footer {
+  padding: 14px 22px 22px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 8px;
+  background-color: var(--market-paper-deep);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--market-paper-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--market-paper-deep);
+  border-radius: 999px;
+  background: #b88f5f;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--market-orange);
+}
+
+html.dark .market-board::before,
+html.dark .market-note::before {
+  background: rgba(242, 163, 94, 0.86);
+}
+
+html.dark .el-button:not(.el-button--primary):not(.is-link) {
+  border-color: var(--market-line);
+  color: var(--market-ink);
+  background: #27343a;
+}
+
+html.dark .el-input__wrapper,
+html.dark .el-textarea__inner,
+html.dark .el-select__wrapper {
+  background: #1a2328;
+  box-shadow: 0 0 0 1px var(--market-line) inset;
+}
+
+html.dark .el-table tr,
+html.dark .el-table td.el-table__cell {
+  background: var(--market-surface);
+  color: var(--market-ink);
+}
+
+html.dark .el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+  background: #27343a;
+}
+
+html.dark .el-popper,
+html.dark .el-dropdown__popper,
+html.dark .el-popover.el-popper {
+  border-color: var(--market-line);
+  color: var(--market-ink);
+  background: #27343a;
+}
+
+@media (max-width: 1100px) {
+  .market-form-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .market-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .market-title {
+    font-size: 24px;
+  }
+
+  .market-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .market-form-actions,
+  .market-pagination {
+    justify-content: stretch;
+  }
+
+  .market-form-actions .el-button,
+  .market-pagination .el-pagination {
+    width: 100%;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 24px) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
