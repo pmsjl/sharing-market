@@ -1,0 +1,148 @@
+// Campus bulletin-board design tokens.
+$base-menu-width: 248px;
+$base-menu-min-width: 72px;
+$base-menu-logo-height: 72px;
+$base-tabbar-height: 64px;
+$base-logo-title-fontSize: 18px;
+
+$market-ink: #23313f;
+$market-muted: #667085;
+$market-paper: #fffaf0;
+$market-paper-deep: #f7ecd8;
+$market-surface: #fffdf8;
+$market-board: #d7b98c;
+$market-green: #2f7d5c;
+$market-green-dark: #1f5f46;
+$market-blue: #26547c;
+$market-orange: #d96c2c;
+$market-yellow: #f4c95d;
+$market-red: #c64545;
+$market-line: rgba(35, 49, 63, 0.12);
+$market-shadow: 0 16px 38px rgba(62, 45, 24, 0.12);
+$market-shadow-soft: 0 10px 24px rgba(62, 45, 24, 0.08);
+
+$base-menu-background: #fff7e8;
+
+:root {
+  --market-ink: #{$market-ink};
+  --market-muted: #{$market-muted};
+  --market-paper: #{$market-paper};
+  --market-paper-deep: #{$market-paper-deep};
+  --market-surface: #{$market-surface};
+  --market-board: #{$market-board};
+  --market-green: #{$market-green};
+  --market-green-dark: #{$market-green-dark};
+  --market-blue: #{$market-blue};
+  --market-orange: #{$market-orange};
+  --market-yellow: #{$market-yellow};
+  --market-red: #{$market-red};
+  --market-line: #{$market-line};
+  --market-shadow: #{$market-shadow};
+  --market-shadow-soft: #{$market-shadow-soft};
+  --market-body-bg:
+    linear-gradient(rgba(255, 250, 240, 0.9), rgba(255, 250, 240, 0.9)),
+    radial-gradient(circle at 12% 18%, rgba(244, 201, 93, 0.28), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgba(47, 125, 92, 0.16), transparent 26%),
+    #f8edd9;
+  --market-card-bg:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 250, 240, 0.94)),
+    var(--market-surface);
+  --market-header-bg: linear-gradient(90deg, rgba(255, 247, 232, 0.9), rgba(255, 253, 248, 0.94));
+  --market-sidebar-bg:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(247, 236, 216, 0.96)),
+    repeating-linear-gradient(
+      45deg,
+      rgba(215, 185, 140, 0.1),
+      rgba(215, 185, 140, 0.1) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+  --market-soft-bg: #fff7e8;
+  --market-note-green-bg: #e9f4ee;
+  --market-note-yellow-bg: #fff0bd;
+  --market-board-overlay: rgba(215, 185, 140, 0.34);
+  --market-pin-border: rgba(255, 255, 255, 0.72);
+  --market-menu-hover-bg: rgba(244, 201, 93, 0.24);
+  --market-menu-active-bg: rgba(47, 125, 92, 0.13);
+  --market-topbar-bg: rgba(255, 253, 248, 0.86);
+  --market-radius: 8px;
+  --market-radius-lg: 14px;
+  --market-focus: 0 0 0 3px rgba(217, 108, 44, 0.22);
+  --market-font: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+
+  --el-color-primary: #{$market-green};
+  --el-color-primary-light-3: #4f9978;
+  --el-color-primary-light-5: #76b196;
+  --el-color-primary-light-7: #acd1bd;
+  --el-color-primary-light-9: #e9f4ee;
+  --el-color-primary-dark-2: #{$market-green-dark};
+  --el-color-success: #{$market-green};
+  --el-color-warning: #{$market-orange};
+  --el-color-danger: #{$market-red};
+  --el-border-radius-base: 8px;
+  --el-font-family: var(--market-font);
+}
+
+html.dark,
+html[data-theme="night"] {
+  --market-ink: #f3eadb;
+  --market-muted: #c7bda9;
+  --market-paper: #161d22;
+  --market-paper-deep: #1f2b31;
+  --market-surface: #202a2f;
+  --market-board: #6f5636;
+  --market-green: #74c69d;
+  --market-green-dark: #a3d9b8;
+  --market-blue: #8fb7dd;
+  --market-orange: #f2a35e;
+  --market-yellow: #f6d879;
+  --market-red: #ff8a8a;
+  --market-line: rgba(243, 234, 219, 0.16);
+  --market-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+  --market-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.28);
+  --market-body-bg:
+    linear-gradient(rgba(22, 29, 34, 0.92), rgba(22, 29, 34, 0.96)),
+    radial-gradient(circle at 18% 14%, rgba(242, 163, 94, 0.18), transparent 28%),
+    radial-gradient(circle at 86% 10%, rgba(116, 198, 157, 0.14), transparent 30%),
+    #11181d;
+  --market-card-bg:
+    linear-gradient(135deg, rgba(43, 55, 60, 0.94), rgba(32, 42, 47, 0.96)),
+    var(--market-surface);
+  --market-header-bg: linear-gradient(90deg, rgba(46, 58, 62, 0.96), rgba(31, 43, 49, 0.96));
+  --market-sidebar-bg:
+    linear-gradient(180deg, rgba(31, 43, 49, 0.98), rgba(22, 29, 34, 0.98)),
+    repeating-linear-gradient(
+      45deg,
+      rgba(242, 163, 94, 0.08),
+      rgba(242, 163, 94, 0.08) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+  --market-soft-bg: #27343a;
+  --market-note-green-bg: #27473a;
+  --market-note-yellow-bg: #4a3f24;
+  --market-board-overlay: rgba(111, 86, 54, 0.46);
+  --market-pin-border: rgba(243, 234, 219, 0.56);
+  --market-menu-hover-bg: rgba(242, 163, 94, 0.16);
+  --market-menu-active-bg: rgba(116, 198, 157, 0.18);
+  --market-topbar-bg: rgba(32, 42, 47, 0.88);
+  --market-focus: 0 0 0 3px rgba(242, 163, 94, 0.34);
+
+  --el-bg-color: var(--market-surface);
+  --el-bg-color-overlay: #27343a;
+  --el-text-color-primary: var(--market-ink);
+  --el-text-color-regular: var(--market-muted);
+  --el-border-color: var(--market-line);
+  --el-border-color-light: rgba(243, 234, 219, 0.12);
+  --el-fill-color-blank: #202a2f;
+  --el-fill-color-light: #27343a;
+  --el-color-primary: var(--market-green);
+  --el-color-primary-light-3: #8fd5b0;
+  --el-color-primary-light-5: #559a78;
+  --el-color-primary-light-7: #355f4d;
+  --el-color-primary-light-9: #233c34;
+  --el-color-primary-dark-2: #a3d9b8;
+  --el-color-success: var(--market-green);
+  --el-color-warning: var(--market-orange);
+  --el-color-danger: var(--market-red);
+}
