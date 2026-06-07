@@ -23,8 +23,6 @@ public interface CommodityScoreService extends IService<CommodityScore> {
 
     Boolean deleteCommodityScore(DeleteRequest deleteRequest, HttpServletRequest request);
 
-    Boolean updateCommodityScore(CommodityScore commodityScore);
-
     CommodityScoreVO getCommodityScoreVOById(Long id, HttpServletRequest request);
 
     Page<CommodityScore> listCommodityScoreByPage(CommodityScoreQueryRequest commodityScoreQueryRequest);
@@ -33,7 +31,7 @@ public interface CommodityScoreService extends IService<CommodityScore> {
 
     Page<CommodityScoreVO> listMyCommodityScoreVOByPage(CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request);
 
-    Boolean editCommodityScore(CommodityScoreEditRequest commodityScoreEditRequest, HttpServletRequest request);
-
     void validCommodityScore(CommodityScore commodityScore, boolean add);
+
+    Double getAverageScoreById(Long commodityId);
 }

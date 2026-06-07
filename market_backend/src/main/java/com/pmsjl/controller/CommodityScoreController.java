@@ -7,12 +7,14 @@ import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
 import com.pmsjl.constant.UserConstant;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreAddRequest;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreEditRequest;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreQueryRequest;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreUpdateRequest;
 import com.pmsjl.model.entity.CommodityScore;
 import com.pmsjl.model.vo.CommodityScoreVO;
+import com.pmsjl.service.CommodityOrderService;
 import com.pmsjl.service.CommodityScoreService;
 import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
@@ -56,16 +58,6 @@ public class CommodityScoreController {
         return ResultUtils.success(result);
     }
 
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    @PostMapping("/update")
-    public Result<Boolean> updateCommodityScore(@RequestBody CommodityScoreUpdateRequest commodityScoreUpdateRequest) {
-        ThrowUtils.throwIf(commodityScoreUpdateRequest == null || commodityScoreUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        CommodityScore commodityScore = new CommodityScore();
-        BeanUtil.copyProperties(commodityScoreUpdateRequest, commodityScore);
-        Boolean result = commodityScoreService.updateCommodityScore(commodityScore);
-        return ResultUtils.success(result);
-    }
-
     @GetMapping("/get/vo")
     public Result<CommodityScoreVO> getCommodityScoreVOById(@RequestParam("id") Long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
@@ -95,10 +87,19 @@ public class CommodityScoreController {
         return ResultUtils.success(page);
     }
 
-    @PostMapping("/edit")
-    public Result<Boolean> editCommodityScore(@RequestBody CommodityScoreEditRequest commodityScoreEditRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityScoreEditRequest == null || commodityScoreEditRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        Boolean result = commodityScoreService.editCommodityScore(commodityScoreEditRequest, request);
-        return ResultUtils.success(result);
+
+    @GetMapping("/averageScore")
+    public Result getAverageScore(@RequestParam Long commodityId) {
+        ThrowUtils.throwIf(commodityId==null||commodityId<=0,ErrorCode.PARAMS_ERROR);
+        Double score=commodityScoreService.getAverageScoreById(commodityId);
+        if(score==null){
+            return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"还没有人评价，欢迎成为第一个评分的人");
+        }
+        if(score<0){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        //这里没有放在service层的原因就是controller才是统一负责响应result的层
+        //不应该返回不同result类型的层放到service层
+        return ResultUtils.success(score);
     }
 }
