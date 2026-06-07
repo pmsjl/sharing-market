@@ -2,4 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pmsjl.mapper.CommodityScoreMapper">
 
+    <select id="getAverageScoreById" resultType="java.lang.Double">
+        select avg(score) as AverageScore from commodity_score where commodityId=#{commodityId}
+    </select>
 </mapper>

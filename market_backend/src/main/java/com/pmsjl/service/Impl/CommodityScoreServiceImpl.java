@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityScore;
 import com.pmsjl.mapper.CommodityScoreMapper;
 import com.pmsjl.common.DeleteRequest;
@@ -16,7 +17,9 @@ import com.pmsjl.model.vo.CommodityScoreVO;
 import com.pmsjl.model.vo.UserVO;
 import com.pmsjl.service.CommodityScoreService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pmsjl.service.CommodityService;
 import com.pmsjl.service.UserService;
+import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
@@ -42,12 +45,39 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private CommodityScoreMapper commodityScoreMapper;
+    @Autowired
+    private CommodityService commodityService;
 
     @Override
     public Long addCommodityScore(CommodityScore commodityScore, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         commodityScore.setUserId(loginUser.getId());
         validCommodityScore(commodityScore, true);
+        // 3. 校验商品是否存在
+        Long commodityId = commodityScore.getCommodityId();
+        Commodity commodity = commodityService.getById(commodityId);
+        ThrowUtils.throwIf(
+                commodity == null || commodity.getIsDelete() == 1,
+                ErrorCode.NOT_FOUND_ERROR,
+                "商品不存在"
+        );
+        // 4. 校验商品是否上架
+        ThrowUtils.throwIf(
+                commodity.getIsListed() != 1,
+                ErrorCode.PARAMS_ERROR,
+                "商品未上架，不能评价"
+        );
+
+        // 5. 不允许评价自己的商品
+        ThrowUtils.throwIf(
+                ObjectUtil.equals(commodity.getAdminId(), loginUser.getId()),
+                ErrorCode.PARAMS_ERROR,
+                "不能评价自己的商品"
+        );
+        //同时注意表建立了联合约束，建立了索引都是限制了(commodityId,userId)这一组不会重复
+
         boolean result = save(commodityScore);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return commodityScore.getId();
@@ -69,17 +99,6 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         return result;
     }
 
-    @Override
-    public Boolean updateCommodityScore(CommodityScore commodityScore) {
-        validCommodityScore(commodityScore, false);
-        Long id = commodityScore.getId();
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
-        CommodityScore oldCommodityScore = getById(id);
-        ThrowUtils.throwIf(oldCommodityScore == null, ErrorCode.NOT_FOUND_ERROR);
-        boolean result = updateById(commodityScore);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return result;
-    }
 
     @Override
     public CommodityScoreVO getCommodityScoreVOById(Long id, HttpServletRequest request) {
@@ -156,24 +175,6 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         return listCommodityScoreVOByPage(commodityScoreQueryRequest, request);
     }
 
-    @Override
-    public Boolean editCommodityScore(CommodityScoreEditRequest commodityScoreEditRequest, HttpServletRequest request) {
-        Long id = commodityScoreEditRequest.getId();
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
-        CommodityScore oldCommodityScore = getById(id);
-        ThrowUtils.throwIf(oldCommodityScore == null, ErrorCode.NOT_FOUND_ERROR);
-        User loginUser = userService.getLoginUser(request);
-        if (!ObjectUtil.equals(loginUser.getId(), oldCommodityScore.getUserId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
-        CommodityScore commodityScore = new CommodityScore();
-        BeanUtil.copyProperties(commodityScoreEditRequest, commodityScore);
-        commodityScore.setUserId(oldCommodityScore.getUserId());
-        validCommodityScore(commodityScore, false);
-        boolean result = updateById(commodityScore);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return result;
-    }
 
     @Override
     public void validCommodityScore(CommodityScore commodityScore, boolean add) {
@@ -191,6 +192,12 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         ThrowUtils.throwIf(userId != null && userId <= 0, ErrorCode.PARAMS_ERROR, "用户id非法");
 
     }
+
+    @Override
+    public Double getAverageScoreById(Long commodityId) {
+        return commodityScoreMapper.getAverageScoreById(commodityId);
+    }
+
     private CommodityScoreVO getCommodityScoreVO(CommodityScore commodityScore) {
         return CommodityScoreVO.objToVo(commodityScore);
     }
