@@ -143,7 +143,6 @@ import { ElMessage } from "element-plus";
 import { Share, Star, StarFilled, View } from "@element-plus/icons-vue";
 import QRCodeVue3 from "qrcode-vue3";
 import {
-  editCommodityUsingPost,
   getCommodityVoByIdUsingGet,
   buyCommodityUsingPost
 } from "@/api/commodityController";
@@ -224,20 +223,10 @@ const updatePaymentAmount = () => {
   buyForm.value.paymentAmount = buyForm.value.buyNumber * commodity.value.price;
 };
 
-const updateViewCount = async () => {
-  try {
-    const res = await editCommodityUsingPost({
-      id: commodityId,
-      viewNum: (commodity.value.viewNum || 0) + 1
-    });
-    if (res.code === 200) {
-      viewCount.value = (commodity.value.viewNum || 0) + 1;
-    } else {
-      ElMessage.error("更新浏览量失败");
-    }
-  } catch (error) {
-    ElMessage.error("更新浏览量失败");
-  }
+const syncFavourCount = (delta: number) => {
+  const nextFavourCount = Math.max((favourCount.value || 0) + delta, 0);
+  favourCount.value = nextFavourCount;
+  commodity.value.favourNum = nextFavourCount;
 };
 
 const fetchInitFavour = async () => {
@@ -263,6 +252,8 @@ const fetchInitFavour = async () => {
 };
 
 const handleCollect = async () => {
+  const hadRecord = alreadyRecord.value === 1;
+  const previousStatus = initStatus.value;
   if (alreadyRecord.value === 0) {
     const res2 = await addUserCommodityFavoritesUsingPost({
       commodityId: commodityId
@@ -293,18 +284,7 @@ const handleCollect = async () => {
       message: `${initStatus.value === 1 ? "取消" : "添加"}收藏成功`
     });
   }
-  const res4 = await editCommodityUsingPost({
-    id: commodityId,
-    favourNum:
-      initStatus.value === 0 ? favourCount.value + 1 : favourCount.value - 1
-  });
-  if (res4.code !== 200) {
-    return ElMessage.error({
-      duration: 1000,
-      message: "更新该商品收藏信息失败"
-    });
-  }
-  await fetchCommodityDetail();
+  syncFavourCount(!hadRecord || previousStatus !== 1 ? 1 : -1);
   await fetchInitFavour();
 };
 
@@ -359,7 +339,6 @@ const copyLink = async () => {
 
 onMounted(async () => {
   await fetchCommodityDetail();
-  await updateViewCount();
   await fetchInitFavour();
   animateIn(
     pageRef.value?.querySelectorAll(".detail-hero, .detail-tabs") || []

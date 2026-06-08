@@ -311,13 +311,6 @@ declare namespace API {
     message?: string;
   };
 
-  type BaseResponsePageUserCommodityFavorites_ = {
-    code?: number;
-    data?: PageUserCommodityFavorites_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
   type BaseResponsePageUserCommodityFavoritesVO_ = {
     code?: number;
     data?: PageUserCommodityFavoritesVO_;
@@ -370,13 +363,6 @@ declare namespace API {
   type BaseResponseUserAiMessageVO_ = {
     code?: number;
     data?: UserAiMessageVO;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponseUserCommodityFavoritesVO_ = {
-    code?: number;
-    data?: UserCommodityFavoritesVO;
     hashMap?: Record<string, any>;
     message?: string;
   };
@@ -797,11 +783,6 @@ declare namespace API {
     id?: number;
   };
 
-  type getUserCommodityFavoritesVOByIdUsingGETParams = {
-    /** id */
-    id?: number;
-  };
-
   type getUserVOByIdUsingGETParams = {
     /** id */
     id?: number;
@@ -1151,19 +1132,6 @@ declare namespace API {
     total?: number;
   };
 
-  type PageUserCommodityFavorites_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: UserCommodityFavorites[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
-  };
-
   type PageUserCommodityFavoritesVO_ = {
     countId?: string;
     current?: number;
@@ -1434,30 +1402,13 @@ declare namespace API {
     userInputText?: string;
   };
 
-  type UserCommodityFavorites = {
-    commodityId?: number;
-    createTime?: string;
-    id?: number;
-    isDelete?: number;
-    remark?: string;
-    status?: number;
-    updateTime?: string;
-    userId?: number;
-  };
-
   type UserCommodityFavoritesAddRequest = {
     commodityId?: number;
-    remark?: string;
-    status?: number;
-    userId?: number;
   };
 
   type UserCommodityFavoritesEditRequest = {
-    commodityId?: number;
     id?: number;
-    remark?: string;
     status?: number;
-    userId?: number;
   };
 
   type UserCommodityFavoritesQueryRequest = {
@@ -1468,14 +1419,6 @@ declare namespace API {
     remark?: string;
     sortField?: string;
     sortOrder?: string;
-    status?: number;
-    userId?: number;
-  };
-
-  type UserCommodityFavoritesUpdateRequest = {
-    commodityId?: number;
-    id?: number;
-    remark?: string;
     status?: number;
     userId?: number;
   };

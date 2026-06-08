@@ -164,7 +164,7 @@ import {
 } from "@/api/commodityOrderController";
 import { payCommodityOrderUsingPost } from "@/api/commodityController";
 import { uploadFileUsingPost } from "@/api/fileController";
-import { listUserCommodityFavoritesVoByPageUsingPost } from "@/api/userCommodityFavoritesController";
+import { listMyUserCommodityFavoritesVoByPageUsingPost } from "@/api/userCommodityFavoritesController";
 import { animateIn } from "@/utils/motion";
 
 const pageRef = ref<HTMLElement | null>(null);
@@ -196,7 +196,6 @@ const queryParams = ref({
 const favoritesQueryParams = ref({
   current: 1,
   pageSize: 10,
-  userId: GET_ID(),
   status: 1
 });
 
@@ -215,7 +214,7 @@ const fetchTravelData = async (payStatus = 1) => {
 
 const loadCommodityFavoritesList = async () => {
   try {
-    const res = await listUserCommodityFavoritesVoByPageUsingPost(
+    const res = await listMyUserCommodityFavoritesVoByPageUsingPost(
       favoritesQueryParams.value
     );
 

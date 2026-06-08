@@ -436,6 +436,15 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         return commodityVOPage;
     }
 
+    public void validateCommodityExists(Long commodityId) {
+        Commodity commodity = getById(commodityId);
+        ThrowUtils.throwIf(commodity == null ||
+                        Objects.equals(commodity.getIsDelete(), 1)||
+                        Objects.equals(commodity.getIsListed(),0),
+                ErrorCode.NOT_FOUND_ERROR,
+                "商品不存在");
+    }
+
 
 
     //TODO 关于推荐算法和购买商品还有三个接口尚未实现
