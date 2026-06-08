@@ -40,4 +40,7 @@ public interface CommodityService extends IService<Commodity> {
     Page<CommodityVO> listMyCommodityVOByPage(CommodityQueryRequest commodityQueryRequest, HttpServletRequest request);
 
     Boolean payCommodity(PayCommodityOrderRequest payRequest, HttpServletRequest request);
-}
+
+    void validateCommodityExists(Long commodityId);
+
+    }

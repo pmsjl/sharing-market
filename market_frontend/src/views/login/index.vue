@@ -91,7 +91,7 @@ import { getSafeRedirectPath } from "@/utils/roleHome";
 
 const authPage = ref<HTMLElement | null>(null);
 const loginForm = reactive({
-  userAccount: "xiaobaitiao",
+  userAccount: "jjjj",
   userPassword: "12345678"
 });
 const loginForms = ref();
@@ -112,6 +112,7 @@ const login = async () => {
       loading.value = true;
       try {
         await userStore.userLogin(loginForm);
+        await userStore.userInfo();
         const redirect: any = $route.query.redirect;
         $router.push({
           path: getSafeRedirectPath(redirect, userStore.userRole)

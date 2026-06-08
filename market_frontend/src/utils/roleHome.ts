@@ -36,7 +36,8 @@ export const getSafeRedirectPath = (
   role?: string | null
 ) => {
   const path = typeof redirect === "string" ? redirect : "";
-  if (path && isPathAllowedForRole(path, role)) {
+  const authPagePathSet = new Set(["/login", "/register", "/404"]);
+  if (path && !authPagePathSet.has(path) && isPathAllowedForRole(path, role)) {
     return path;
   }
   return getRoleHomePath(role);

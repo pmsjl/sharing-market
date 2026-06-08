@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pmsjl.mapper.UserCommodityFavoritesMapper">
+
+    <select id="selectMyFavoritesVOPage" resultType="com.pmsjl.model.vo.UserCommodityFavoritesVO">
+        SELECT
+            f.id,
+            f.userId,
+            f.commodityId,
+            f.status,
+            f.remark,
+            f.createTime,
+            f.updateTime,
+            c.commodityName,
+            c.commodityDescription,
+            c.commodityAvatar,
+            c.degree,
+            c.commodityTypeId,
+            c.adminId,
+            c.isListed,
+            c.commodityInventory,
+            c.price,
+            c.viewNum,
+            c.favourNum
+        FROM user_commodity_favorites f
+        INNER JOIN commodity c ON f.commodityId = c.id
+        WHERE f.isDelete = 0
+          AND c.isDelete = 0
+        <if test="queryRequest.id != null">
+            AND f.id = #{queryRequest.id}
+        </if>
+        <if test="queryRequest.userId != null">
+            AND f.userId = #{queryRequest.userId}
+        </if>
+        <if test="queryRequest.commodityId != null">
+            AND f.commodityId = #{queryRequest.commodityId}
+        </if>
+        <if test="queryRequest.status != null">
+            AND f.status = #{queryRequest.status}
+        </if>
+        <if test="queryRequest.remark != null and queryRequest.remark != ''">
+            AND f.remark LIKE CONCAT('%', #{queryRequest.remark}, '%')
+        </if>
+        <choose>
+            <when test="queryRequest.sortField == 'createTime'">
+                ORDER BY f.createTime
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="queryRequest.sortField == 'updateTime'">
+                ORDER BY f.updateTime
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="queryRequest.sortField == 'price'">
+                ORDER BY c.price
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <otherwise>
+                ORDER BY f.updateTime DESC
+            </otherwise>
+        </choose>
+    </select>
+</mapper>

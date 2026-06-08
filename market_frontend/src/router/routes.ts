@@ -76,6 +76,7 @@ export const constantRoute = [
 export const asnycAdminRoute = [
   {
     path: "/admin",
+    redirect: "/admin/userManagement",
     component: () => import("@/layout/index.vue"),
     name: "admin",
     meta: {
@@ -179,6 +180,7 @@ export const asnycAdminRoute = [
 export const asnycUserRoute = [
   {
     path: "/user",
+    redirect: "/user/home",
     component: () => import("@/layout/index.vue"),
     name: "user",
     meta: {
