@@ -42,6 +42,9 @@ import java.util.stream.Collectors;
  */
 @Service
 public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper, CommodityScore> implements CommodityScoreService {
+    private static final Set<String> ALLOWED_COMMODITY_SCORE_SORT_FIELDS = Set.of(
+            "id", "commodityId", "userId", "score", "createTime", "updateTime"
+    );
 
     @Autowired
     private UserService userService;
@@ -121,7 +124,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         if (current <= 0) current = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 10;
         Page<CommodityScore> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty()) {
+        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_SCORE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {

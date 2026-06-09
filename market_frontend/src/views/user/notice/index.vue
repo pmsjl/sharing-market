@@ -17,7 +17,16 @@
       >
         <div class="banner-main-item" v-for="item in noticeList" :key="item.id">
           <div class="banner-main-item-header">
-            <p>{{ item.noticeTitle }} {{ item.createTime }}</p>
+            <div class="notice-heading">
+              <p>{{ item.noticeTitle }}</p>
+              <span>{{ item.createTime }}</span>
+            </div>
+            <div class="notice-publisher">
+              <el-avatar :size="26" :src="getNoticePublisherAvatar(item)">
+                {{ getNoticePublisherInitial(item) }}
+              </el-avatar>
+              <span>{{ getNoticePublisherName(item) }}</span>
+            </div>
           </div>
           <div class="banner-main-item-main">
             <p>{{ item.noticeContent }}</p>
@@ -34,12 +43,22 @@ import { listNoticeVoByPageUsingPost } from "@/api/noticeController";
 import { ElMessage } from "element-plus";
 
 // 初始化数据
-const text = ref(
-  "智能 AI 校园二手交易平台公告栏,记得查收公告呀!小项目请勿恶意攻击,谢谢"
-);
+const text = ref("智能 AI 校园二手交易平台公告栏,记得查收公告呀!谢谢");
 const noticeList = ref([]);
 const loading = ref(true);
 // 获取公告数据
+const getNoticePublisherName = (item) => {
+  return (
+    item?.user?.userName ||
+    (item?.noticeAdminId ? `管理员 ${item.noticeAdminId}` : "管理员")
+  );
+};
+const getNoticePublisherAvatar = (item) => {
+  return item?.user?.userAvatar || "";
+};
+const getNoticePublisherInitial = (item) => {
+  return getNoticePublisherName(item).slice(0, 1);
+};
 const getNoticeList = async () => {
   loading.value = true;
   try {
@@ -140,33 +159,80 @@ onMounted(() => {
 
 .banner-main-item {
   width: 80%;
-  height: 120px;
+  min-height: 132px;
+  overflow: hidden;
+  border: 1px solid rgba(94, 160, 181, 0.35);
+  border-radius: 8px;
+  box-sizing: border-box;
+  box-shadow: 0 10px 28px rgba(35, 49, 63, 0.08);
 
   .banner-main-item-header {
     width: 100%;
-    height: 50px;
-    border: 1px solid skyblue;
+    min-height: 58px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(94, 160, 181, 0.35);
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
 
     p {
+      margin: 0;
       color: rgb(175, 129, 143);
-      text-align: center;
-      line-height: 50px;
       font-size: 16px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    span {
+      color: rgba(35, 49, 63, 0.62);
+      font-size: 13px;
+      line-height: 1.4;
     }
   }
 
   .banner-main-item-main {
     width: 100%;
-    height: 70px;
+    min-height: 74px;
+    padding: 14px 18px;
     background-color: white;
-    border: 1px solid skyblue;
     box-sizing: border-box;
-    text-align: center;
+    text-align: left;
 
     p {
-      line-height: 70px;
+      margin: 0;
+      color: rgba(35, 49, 63, 0.82);
+      line-height: 1.7;
+      word-break: break-word;
     }
+  }
+}
+
+.notice-heading {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.notice-publisher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  color: rgba(35, 49, 63, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .banner-main-item {
+    width: 94%;
+  }
+
+  .banner-main-item .banner-main-item-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

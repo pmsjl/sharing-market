@@ -23,6 +23,16 @@
         <el-table-column prop="id" label="ID"></el-table-column>
         <el-table-column prop="noticeTitle" label="标题"></el-table-column>
         <el-table-column prop="noticeContent" label="公告"></el-table-column>
+        <el-table-column label="发布人" width="160">
+          <template #default="{ row }">
+            <div class="notice-admin-cell">
+              <el-avatar :size="28" :src="getNoticePublisherAvatar(row)">
+                {{ getNoticePublisherInitial(row) }}
+              </el-avatar>
+              <span>{{ getNoticePublisherName(row) }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="发布日期"></el-table-column>
         <el-table-column label="操作">
           <template #default="{ row }">
@@ -137,10 +147,9 @@ import {
   addNoticeUsingPost,
   deleteNoticeUsingPost,
   getNoticeVoByIdUsingGet,
-  listNoticeByPageUsingPost,
+  listNoticeVoByPageUsingPost,
   updateNoticeUsingPost
 } from "@/api/noticeController";
-import { GET_ID } from "@/utils/token";
 
 const tableData = ref([]);
 const editDialogVisible = ref(false);
@@ -152,8 +161,7 @@ const editForm = ref({
 });
 const addForm = ref({
   noticeTitle: "",
-  noticeContent: "",
-  noticeAdminId: 0
+  noticeContent: ""
 });
 const pagination = ref({
   currentPage: 1,
@@ -163,10 +171,22 @@ const pagination = ref({
 const editFormRef = ref<FormInstance>();
 const total = ref(0);
 const loading = ref(true);
+const getNoticePublisherName = (notice: API.NoticeVO) => {
+  return (
+    notice?.user?.userName ||
+    (notice?.noticeAdminId ? `管理员 ${notice.noticeAdminId}` : "管理员")
+  );
+};
+const getNoticePublisherAvatar = (notice: API.NoticeVO) => {
+  return notice?.user?.userAvatar || "";
+};
+const getNoticePublisherInitial = (notice: API.NoticeVO) => {
+  return getNoticePublisherName(notice).slice(0, 1);
+};
 const editFormRules = {
   noticeTitle: [
     { required: true, message: "请输入公告标题", trigger: "blur" },
-    { min: 6, max: 30, message: "长度在6到30个字符", trigger: "blur" }
+    { min: 4, max: 30, message: "长度在4到30个字符", trigger: "blur" }
   ],
   noticeContent: [
     { required: true, message: "请输入公告内容", trigger: "blur" }
@@ -175,7 +195,7 @@ const editFormRules = {
 const addFormRules = {
   noticeTitle: [
     { required: true, message: "请输入公告标题", trigger: "blur" },
-    { min: 6, max: 30, message: "长度在6到30个字符", trigger: "blur" }
+    { min: 4, max: 30, message: "长度在4到30个字符", trigger: "blur" }
   ],
   noticeContent: [
     { required: true, message: "请输入公告内容", trigger: "blur" }
@@ -186,7 +206,7 @@ const addFormRules = {
 const getNoticeList = async () => {
   loading.value = true;
   try {
-    const res = await listNoticeByPageUsingPost({
+    const res = await listNoticeVoByPageUsingPost({
       current: pagination.value.currentPage,
       pageSize: pagination.value.pageSize
     });
@@ -245,8 +265,7 @@ const editNoticeById = async () => {
     const res = await updateNoticeUsingPost({
       id: editForm.value.id,
       noticeContent: editForm.value.noticeContent,
-      noticeTitle: editForm.value.noticeTitle,
-      noticeAdminId: parseInt(GET_ID() as string)
+      noticeTitle: editForm.value.noticeTitle
     });
     if (res.code !== 200) {
       ElMessage.error({
@@ -291,13 +310,12 @@ const showAddDialog = () => {
 
 // 关闭添加对话框
 const addDialogClosed = () => {
-  addForm.value = { noticeTitle: "", noticeContent: "", noticeAdminId: 0 };
+  addForm.value = { noticeTitle: "", noticeContent: "" };
 };
 
 // 添加公告
 const addNotice = async () => {
   try {
-    addForm.value.noticeAdminId = parseInt(GET_ID() as string);
     const res = await addNoticeUsingPost({ ...addForm.value });
     if (res.code !== 200) {
       return ElMessage.error({
@@ -341,5 +359,18 @@ onMounted(() => {
 <style scoped>
 .search_container {
   padding: 20px;
+}
+
+.notice-admin-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.notice-admin-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -6,5 +6,7 @@ public class RedisConstants {
     public static final String COMMODITY_TYPE_KEY = "commodity:type:";
     public static final String CACHE_COMMODITY_KEY ="cache:commodity:";
     public static final String COMMODITY_VIEW_NUM_KEY ="commodity:view:num:";
+    public static final String CACHE_NOTICE_VO_KEY="cache:notice:vo:";
+    public static final String CACHE_NOTICE_LIST_VO_PAGE_KEY ="cache:notice:list:vo:current:1:pageSize:15";
 
 }
