@@ -41,6 +41,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper, CommodityOrder> implements CommodityOrderService {
+    private static final Set<String> ALLOWED_COMMODITY_ORDER_SORT_FIELDS = Set.of(
+            "id", "userId", "commodityId", "buyNumber", "paymentAmount", "payStatus", "createTime", "updateTime"
+    );
+
     @Autowired
     UserService userService;
     @Autowired
@@ -143,7 +147,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         if (current <= 0) current = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 10;
         Page<CommodityOrder> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty()) {
+        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_ORDER_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {

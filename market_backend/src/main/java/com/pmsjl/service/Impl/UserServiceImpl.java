@@ -29,6 +29,7 @@ import org.springframework.util.DigestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static com.pmsjl.constant.RedisConstants.*;
@@ -45,6 +46,9 @@ import static com.pmsjl.constant.RedisConstants.*;
 @RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
     public static final String SALT = "pmsjl";
+    private static final Set<String> ALLOWED_USER_SORT_FIELDS = Set.of(
+            "id", "userName", "userRole", "balance", "aiRemainNumber", "editTime", "createTime", "updateTime"
+    );
     public final StringRedisTemplate stringRedisTemplate;
 
 
@@ -145,7 +149,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (current <= 0) current = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 10;
         Page<User> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty()) {
+        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_USER_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {

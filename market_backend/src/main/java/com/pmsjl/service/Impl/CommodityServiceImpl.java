@@ -57,6 +57,10 @@ import java.util.stream.Collectors;
 @Service
 public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity> implements CommodityService {
     private static final long ORDER_PAY_EXPIRE_MILLIS = TimeUnit.MINUTES.toMillis(15);
+    private static final Set<String> ALLOWED_COMMODITY_SORT_FIELDS = Set.of(
+            "id", "commodityName", "commodityTypeId", "adminId", "isListed",
+            "commodityInventory", "price", "viewNum", "favourNum", "createTime", "updateTime"
+    );
 
     @Autowired
     private UserService userService;
@@ -352,7 +356,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         if (current <= 0) current = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 10;
         Page<Commodity> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty()) {
+        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {
