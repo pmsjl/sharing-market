@@ -91,8 +91,7 @@ public class CommodityTypeServiceImpl extends ServiceImpl<CommodityTypeMapper, C
         return CommodityTypeVO.objToVo(commodityType);
     }
 
-    @Override
-    public Page<CommodityType> listCommodityTypeByPage(CommodityTypeQueryRequest commodityTypeQueryRequest) {
+    private Page<CommodityType> listCommodityTypeByPage(CommodityTypeQueryRequest commodityTypeQueryRequest) {
         if (commodityTypeQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }

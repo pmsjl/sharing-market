@@ -9,7 +9,6 @@ import com.pmsjl.constant.UserConstant;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.commodity.BuyCommodityRequest;
 import com.pmsjl.model.dto.commodity.CommodityAddRequest;
-import com.pmsjl.model.dto.commodity.CommodityEditRequest;
 import com.pmsjl.model.dto.commodity.CommodityQueryRequest;
 import com.pmsjl.model.dto.commodity.CommodityUpdateRequest;
 import com.pmsjl.model.dto.commodityOrder.PayCommodityOrderRequest;
@@ -85,12 +84,11 @@ public class CommodityController {
      * @param deleteRequest
      * @return
      */
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/delete")
-    public Result<Boolean> deleteCommodity(@RequestBody DeleteRequest deleteRequest) {
+    public Result<Boolean> deleteCommodity(@RequestBody DeleteRequest deleteRequest,HttpServletRequest request) {
         Long id = deleteRequest.getId();
         ThrowUtils.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
-        Boolean result = commodityService.deleteCommodity(id);
+        Boolean result = commodityService.deleteCommodity(id,request);
         ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR);
 
         return ResultUtils.success(result);
@@ -125,20 +123,6 @@ public class CommodityController {
      * @param commodityEditRequest
      * @return
      */
-    @PostMapping("/edit")
-    public Result<Boolean> editCommodity(@RequestBody CommodityEditRequest commodityEditRequest) {
-        if (ObjectUtils.anyNull(commodityEditRequest, commodityEditRequest.getId()) || commodityEditRequest.getId() < 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        Commodity commodity = new Commodity();
-        BeanUtils.copyProperties(commodityEditRequest, commodity);
-        Boolean result = commodityService.updateCommodity(commodity);
-
-        return ResultUtils.success(result);
-
-
-    }
-
     /***
      * 根据id查询商品
      * @param id
@@ -156,13 +140,6 @@ public class CommodityController {
      * @param commodityQueryRequest
      * @return
      */
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    @PostMapping("/list/page")
-    public Result<Page<Commodity>> listCommodityByPage(@RequestBody CommodityQueryRequest commodityQueryRequest) {
-        Page<Commodity> page = commodityService.listCommodityByPage(commodityQueryRequest);
-        return ResultUtils.success(page);
-    }
-
     @PostMapping("/list/page/vo")
     public Result<Page<CommodityVO>>listCommodityVOByPage(@RequestBody CommodityQueryRequest commodityQueryRequest){
         Page<CommodityVO>page=commodityService.listCommodityVOByPage(commodityQueryRequest);

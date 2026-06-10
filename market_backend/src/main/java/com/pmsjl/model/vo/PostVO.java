@@ -1,0 +1,121 @@
+package com.pmsjl.model.vo;
+
+import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.pmsjl.model.entity.Post;
+import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * 帖子视图
+ *
+ * @author 程序员小白条
+ * @from <a href="https://luoye6.github.io/"> 个人博客
+ */
+@Data
+public class PostVO implements Serializable {
+
+    /**
+     * id
+     */
+    private Long id;
+
+    /**
+     * 标题
+     */
+    private String title;
+
+    /**
+     * 内容
+     */
+    private String content;
+
+    /**
+     * 点赞数
+     */
+    private Integer thumbNum;
+
+    /**
+     * 收藏数
+     */
+    private Integer favourNum;
+
+    /**
+     * 创建用户 id
+     */
+    private Long userId;
+
+    /**
+     * 创建时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
+    private Date createTime;
+
+    /**
+     * 更新时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
+    private Date updateTime;
+
+    /**
+     * 标签列表
+     */
+    private List<String> tagList;
+
+    /**
+     * 创建人信息
+     */
+    private UserVO user;
+
+    /**
+     * 是否已点赞
+     */
+    private Boolean hasThumb;
+
+    /**
+     * 是否已收藏
+     */
+    private Boolean hasFavour;
+
+    /**
+     * 包装类转对象
+     *
+     * @param postVO
+     * @return
+     */
+    public static Post voToObj(PostVO postVO) {
+        if (postVO == null) {
+            return null;
+        }
+        Post post = new Post();
+        BeanUtils.copyProperties(postVO, post);
+        List<String> tagList = postVO.getTagList();
+        post.setTags(JSONUtil.toJsonStr(tagList));
+        return post;
+    }
+
+    /**
+     * 对象转包装类
+     *
+     * @param post
+     * @return
+     */
+    public static PostVO objToVo(Post post) {
+        if (post == null) {
+            return null;
+        }
+        PostVO postVO = new PostVO();
+        BeanUtils.copyProperties(post, postVO);
+        if (StringUtils.isBlank(post.getTags())) {
+            postVO.setTagList(List.of());
+        } else {
+            postVO.setTagList(JSONUtil.toList(post.getTags(), String.class));
+        }
+        return postVO;
+    }
+}

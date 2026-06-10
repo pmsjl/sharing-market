@@ -8,7 +8,6 @@ import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
 import com.pmsjl.constant.UserConstant;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderAddRequest;
-import com.pmsjl.model.dto.commodityOrder.CommodityOrderEditRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderQueryRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderUpdateRequest;
 import com.pmsjl.model.entity.CommodityOrder;
@@ -89,15 +88,6 @@ public class CommodityOrderController {
     }
 
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    @PostMapping("/list/page")
-    public Result<Page<CommodityOrder>> listCommodityOrderByPage(@RequestBody CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityOrderQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        Page<CommodityOrder> page = commodityOrderService.listCommodityOrderByPage(commodityOrderQueryRequest, request);
-        return ResultUtils.success(page);
-
-    }
-
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/list/page/vo")
     public Result<Page<CommodityOrderVO>> listCommodityOrderVOByPage(@RequestBody CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(commodityOrderQueryRequest == null, ErrorCode.PARAMS_ERROR);
@@ -118,14 +108,6 @@ public class CommodityOrderController {
         return ResultUtils.success(page);
 
     }
-
-    @PostMapping("/edit")
-    public Result<Boolean>editCommodityOrder(@RequestBody CommodityOrderEditRequest commodityOrderEditRequest,HttpServletRequest request){
-        ThrowUtils.throwIf(commodityOrderEditRequest==null,ErrorCode.PARAMS_ERROR);
-        Boolean result=commodityOrderService.editCommodityOrder(commodityOrderEditRequest,request);
-        return ResultUtils.success(result);
-    }
-
 
     @GetMapping("/getCommodityOrderHeatmapData")
     public Result<List<Map<String, Object>>> getCommodityOrderHeatmapData(

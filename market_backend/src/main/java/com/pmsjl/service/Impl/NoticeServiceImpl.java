@@ -144,8 +144,7 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
         }
     }
 
-    @Override
-    public Page<Notice> listNoticeByPage(NoticeQueryRequest noticeQueryRequest) {
+    private Page<Notice> listNoticeByPage(NoticeQueryRequest noticeQueryRequest) {
         ThrowUtils.throwIf(noticeQueryRequest == null, ErrorCode.PARAMS_ERROR);
         int current = noticeQueryRequest.getCurrent();
         int pageSize = noticeQueryRequest.getPageSize();
@@ -232,10 +231,6 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
 
     }
 
-    @Override
-    public Page<NoticeVO> listMyNoticeVOByPage(NoticeQueryRequest noticeQueryRequest, HttpServletRequest request) {
-        return listNoticeVOByPage(noticeQueryRequest,request);
-    }
 
     private NoticeVO getNoticeVO(Notice notice) {
         ThrowUtils.throwIf(notice == null, ErrorCode.PARAMS_ERROR);

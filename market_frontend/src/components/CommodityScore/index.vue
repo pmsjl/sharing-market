@@ -36,11 +36,10 @@ import { ElMessage } from "element-plus";
 import {
   addCommodityScoreUsingPost,
   getAverageScoreUsingGet,
-  listCommodityScoreVoByPageUsingPost
+  listMyCommodityScoreVoByPageUsingPost
 } from "@/api/commodityScoreController"; // 根据实际路径导入接口
 import { useRoute } from "vue-router";
-import { GET_ID } from "@/utils/token";
-import eventBus from "@/utils/eventBus"; // 假设 GET_ID 是获取当前用户 ID 的工具函数
+import eventBus from "@/utils/eventBus";
 
 // 使用路由获取当前商品 ID
 const route = useRoute();
@@ -54,9 +53,6 @@ const hoverRating = ref(0);
 const averageRating = ref(0);
 // 用户是否已评分
 const hasRated = ref(false);
-
-// 获取当前用户 ID
-const userId = GET_ID();
 
 // 获取平均评分
 const fetchAverageScore = async () => {
@@ -75,9 +71,8 @@ const fetchAverageScore = async () => {
 // 检查用户是否已评分
 const checkUserRating = async () => {
   try {
-    const res = await listCommodityScoreVoByPageUsingPost({
+    const res = await listMyCommodityScoreVoByPageUsingPost({
       commodityId: commodityId,
-      userId: userId,
       pageSize: 1,
       current: 1
     });

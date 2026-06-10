@@ -9,11 +9,8 @@ import com.pmsjl.constant.UserConstant;
 import com.pmsjl.model.dto.notice.NoticeAddRequest;
 import com.pmsjl.model.dto.notice.NoticeQueryRequest;
 import com.pmsjl.model.dto.notice.NoticeUpdateRequest;
-import com.pmsjl.model.entity.Notice;
-import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.NoticeVO;
 import com.pmsjl.service.NoticeService;
-import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,8 +30,6 @@ import org.springframework.web.bind.annotation.*;
 public class NoticeController {
     @Autowired
     NoticeService noticeService;
-    @Autowired
-    UserService userService;
 
     @PostMapping("/add")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
@@ -69,30 +64,11 @@ public class NoticeController {
     }
 
 
-    @PostMapping("/list/page")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public Result<Page<Notice>> listNoticeByPage(@RequestBody NoticeQueryRequest noticeQueryRequest) {
-        ThrowUtils.throwIf(noticeQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        Page<Notice> page = noticeService.listNoticeByPage(noticeQueryRequest);
-        return ResultUtils.success(page);
-    }
-
     @PostMapping("list/page/vo")
     public Result<Page<NoticeVO>> listNoticeVOByPage(@RequestBody NoticeQueryRequest noticeQueryRequest,
                                                            HttpServletRequest request) {
         ThrowUtils.throwIf(noticeQueryRequest==null,ErrorCode.PARAMS_ERROR);
         Page<NoticeVO>page=noticeService.listNoticeVOByPage(noticeQueryRequest,request);
-        return ResultUtils.success(page);
-    }
-
-    @PostMapping("/my/list/page/vo")
-    public Result<Page<NoticeVO>> listMyNoticeVOByPage(@RequestBody NoticeQueryRequest noticeQueryRequest,
-                                                             HttpServletRequest request) {
-        ThrowUtils.throwIf(noticeQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        // 补充查询条件，只查询当前登录用户的数据
-        User loginUser = userService.getLoginUser(request);
-        noticeQueryRequest.setNoticeAdminId(loginUser.getId());
-        Page<NoticeVO>page=noticeService.listMyNoticeVOByPage(noticeQueryRequest,request);
         return ResultUtils.success(page);
     }
 

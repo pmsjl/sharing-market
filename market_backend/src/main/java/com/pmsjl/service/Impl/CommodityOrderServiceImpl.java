@@ -8,7 +8,6 @@ import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.CommodityMapper;
-import com.pmsjl.model.dto.commodityOrder.CommodityOrderEditRequest;
 import com.pmsjl.model.dto.commodityOrder.CommodityOrderQueryRequest;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.mapper.CommodityOrderMapper;
@@ -130,8 +129,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
 
     }
 
-    @Override
-    public Page<CommodityOrder> listCommodityOrderByPage(CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
+    private Page<CommodityOrder> listCommodityOrderByPage(CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
         int current = commodityOrderQueryRequest.getCurrent();
         int pageSize = commodityOrderQueryRequest.getPageSize();
         Long id = commodityOrderQueryRequest.getId();
@@ -225,26 +223,6 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         Page<CommodityOrderVO> commodityOrderVOPage = this.listCommodityOrderVOByPage(commodityOrderQueryRequest, request);
         return commodityOrderVOPage;
 
-
-    }
-
-    @Override
-    public Boolean editCommodityOrder(CommodityOrderEditRequest commodityOrderEditRequest, HttpServletRequest request) {
-        Long id = commodityOrderEditRequest.getId();
-        CommodityOrder oldCommodityOrder = getById(id);
-        User loginUser = userService.getLoginUser(request);
-        if (!ObjectUtil.equals(loginUser.getId(), oldCommodityOrder.getUserId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
-        //这里在原有基础上加上了权限校验，就是理论上只用前端根本不会有问题，但是怕的是有人直接通过接口访问，那么如果id不一致就不能修改了
-        if(oldCommodityOrder==null){
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
-        CommodityOrder commodityOrder=new CommodityOrder();
-        BeanUtil.copyProperties(commodityOrderEditRequest,commodityOrder);
-        boolean result = updateById(commodityOrder);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return result;
 
     }
 

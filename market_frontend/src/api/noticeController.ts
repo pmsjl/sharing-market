@@ -47,42 +47,12 @@ export async function getNoticeVoByIdUsingGet(
   });
 }
 
-/** listNoticeByPage POST /api/notice/list/page */
-export async function listNoticeByPageUsingPost(
-  body: API.NoticeQueryRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponsePageNotice_>("/api/notice/list/page", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    data: body,
-    ...(options || {})
-  });
-}
-
 /** listNoticeVOByPage POST /api/notice/list/page/vo */
 export async function listNoticeVoByPageUsingPost(
   body: API.NoticeQueryRequest,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponsePageNoticeVO_>("/api/notice/list/page/vo", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    data: body,
-    ...(options || {})
-  });
-}
-
-/** listMyNoticeVOByPage POST /api/notice/my/list/page/vo */
-export async function listMyNoticeVoByPageUsingPost(
-  body: API.NoticeQueryRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponsePageNoticeVO_>("/api/notice/my/list/page/vo", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

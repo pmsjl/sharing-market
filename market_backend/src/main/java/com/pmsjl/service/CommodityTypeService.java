@@ -2,7 +2,6 @@ package com.pmsjl.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pmsjl.model.dto.commodityType.CommodityTypeEditRequest;
 import com.pmsjl.model.dto.commodityType.CommodityTypeQueryRequest;
 import com.pmsjl.model.dto.commodityType.CommodityTypeUpdateRequest;
 import com.pmsjl.model.entity.CommodityType;
@@ -24,8 +23,6 @@ public interface CommodityTypeService extends IService<CommodityType> {
 
 
     CommodityTypeVO getCommodityTypeVO(CommodityType commodityType);
-
-    Page<CommodityType> listCommodityTypeByPage(CommodityTypeQueryRequest commodityTypeQueryRequest);
 
     Page<CommodityTypeVO> listCommodityTypeVOByPage(CommodityTypeQueryRequest commodityTypeQueryRequest);
 

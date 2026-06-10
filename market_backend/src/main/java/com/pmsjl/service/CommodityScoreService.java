@@ -3,8 +3,6 @@ package com.pmsjl.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.model.entity.CommodityScore;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pmsjl.common.DeleteRequest;
-import com.pmsjl.model.dto.commodityScore.CommodityScoreEditRequest;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreQueryRequest;
 import com.pmsjl.model.vo.CommodityScoreVO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,12 +18,6 @@ import jakarta.servlet.http.HttpServletRequest;
 public interface CommodityScoreService extends IService<CommodityScore> {
 
     Long addCommodityScore(CommodityScore commodityScore, HttpServletRequest request);
-
-    Boolean deleteCommodityScore(DeleteRequest deleteRequest, HttpServletRequest request);
-
-    CommodityScoreVO getCommodityScoreVOById(Long id, HttpServletRequest request);
-
-    Page<CommodityScore> listCommodityScoreByPage(CommodityScoreQueryRequest commodityScoreQueryRequest);
 
     Page<CommodityScoreVO> listCommodityScoreVOByPage(CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request);
 

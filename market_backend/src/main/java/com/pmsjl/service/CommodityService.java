@@ -27,13 +27,11 @@ public interface CommodityService extends IService<Commodity> {
 
     void validCommodity(Commodity commodity);
 
-    Boolean deleteCommodity(Long id);
+    Boolean deleteCommodity(Long id, HttpServletRequest request);
 
     Boolean updateCommodity(Commodity commodity);
 
     CommodityVO getCommodityVOById(Long id, HttpServletRequest request);
-
-    Page<Commodity> listCommodityByPage(CommodityQueryRequest commodityQueryRequest);
 
     Page<CommodityVO> listCommodityVOByPage(CommodityQueryRequest commodityQueryRequest);
 
