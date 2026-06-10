@@ -65,24 +65,6 @@ export async function getCommodityTypeVoByIdUsingGet(
   );
 }
 
-/** listCommodityTypeByPage POST /api/commodityType/list/page */
-export async function listCommodityTypeByPageUsingPost(
-  body: API.CommodityTypeQueryRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponsePageCommodityType_>(
-    "/api/commodityType/list/page",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      data: body,
-      ...(options || {})
-    }
-  );
-}
-
 /** listCommodityTypeVOByPage POST /api/commodityType/list/page/vo */
 export async function listCommodityTypeVoByPageUsingPost(
   body: API.CommodityTypeQueryRequest,

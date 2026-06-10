@@ -2,7 +2,6 @@ package com.pmsjl.service.Impl;
 
 import static com.pmsjl.constant.RedisConstants.*;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
@@ -19,14 +18,12 @@ import com.pmsjl.model.entity.CommodityOrder;
 import com.pmsjl.model.entity.CommodityType;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityVO;
-import com.pmsjl.model.vo.LoginUserVO;
 import com.pmsjl.service.CommodityOrderService;
 import com.pmsjl.service.CommodityService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.service.CommodityTypeService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
-import com.pmsjl.utils.TokenUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.ObjectUtils;
@@ -247,6 +244,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 //两个悲观锁，一个防止订单重复支付，一个防止用户同时支付多个订单出现负数余额
         return true;
     }
+
     public void validCommodity(Commodity commodity) {
         Long adminId = commodity.getAdminId();
         String commodityName = commodity.getCommodityName();
@@ -261,10 +259,15 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         ThrowUtils.throwIf(commodity.getCommodityTypeId() == null || commodity.getCommodityTypeId() <= 0, ErrorCode.PARAMS_ERROR, "商品分类不能为空");
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
-    public Boolean deleteCommodity(Long id) {
+    public Boolean deleteCommodity(Long id, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
         Commodity commodity = getById(id);
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
+        if (!userService.isAdmin(request) &&commodity.getAdminId()!=loginUser.getId()){
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
         boolean result = removeById(id);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
         stringRedisTemplate.delete(CACHE_COMMODITY_KEY + id);
@@ -336,8 +339,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
     }
 
-    @Override
-    public Page<Commodity> listCommodityByPage(CommodityQueryRequest commodityQueryRequest) {
+    private Page<Commodity> listCommodityByPage(CommodityQueryRequest commodityQueryRequest) {
         ThrowUtils.throwIf(commodityQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = commodityQueryRequest.getId();
         String commodityName = commodityQueryRequest.getCommodityName();
@@ -443,12 +445,11 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     public void validateCommodityExists(Long commodityId) {
         Commodity commodity = getById(commodityId);
         ThrowUtils.throwIf(commodity == null ||
-                        Objects.equals(commodity.getIsDelete(), 1)||
-                        Objects.equals(commodity.getIsListed(),0),
+                        Objects.equals(commodity.getIsDelete(), 1) ||
+                        Objects.equals(commodity.getIsListed(), 0),
                 ErrorCode.NOT_FOUND_ERROR,
                 "商品不存在");
     }
-
 
 
     //TODO 关于推荐算法和购买商品还有三个接口尚未实现

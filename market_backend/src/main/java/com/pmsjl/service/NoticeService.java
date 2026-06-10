@@ -30,9 +30,6 @@ public interface NoticeService extends IService<Notice> {
 
     NoticeVO getNoticeVO(long id, HttpServletRequest request);
 
-    Page<Notice> listNoticeByPage(NoticeQueryRequest noticeQueryRequest);
-
     Page<NoticeVO> listNoticeVOByPage(NoticeQueryRequest noticeQueryRequest, HttpServletRequest request);
 
-    Page<NoticeVO> listMyNoticeVOByPage(NoticeQueryRequest noticeQueryRequest, HttpServletRequest request);
 }

@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityScore;
 import com.pmsjl.mapper.CommodityScoreMapper;
-import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
-import com.pmsjl.model.dto.commodityScore.CommodityScoreEditRequest;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreQueryRequest;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityScoreVO;
@@ -19,13 +17,11 @@ import com.pmsjl.service.CommodityScoreService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.service.CommodityService;
 import com.pmsjl.service.UserService;
-import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -86,32 +82,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         return commodityScore.getId();
     }
 
-    @Override
-    @Transactional
-    public Boolean deleteCommodityScore(DeleteRequest deleteRequest, HttpServletRequest request) {
-        Long id = deleteRequest.getId();
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
-        CommodityScore oldCommodityScore = getById(id);
-        ThrowUtils.throwIf(oldCommodityScore == null, ErrorCode.NOT_FOUND_ERROR);
-        User loginUser = userService.getLoginUser(request);
-        if (!ObjectUtil.equals(loginUser.getId(), oldCommodityScore.getUserId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
-        boolean result = removeById(id);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return result;
-    }
-
-
-    @Override
-    public CommodityScoreVO getCommodityScoreVOById(Long id, HttpServletRequest request) {
-        CommodityScore commodityScore = getById(id);
-        ThrowUtils.throwIf(commodityScore == null, ErrorCode.NOT_FOUND_ERROR);
-        return getCommodityScoreVO(commodityScore);
-    }
-
-    @Override
-    public Page<CommodityScore> listCommodityScoreByPage(CommodityScoreQueryRequest commodityScoreQueryRequest) {
+    private Page<CommodityScore> listCommodityScoreByPage(CommodityScoreQueryRequest commodityScoreQueryRequest) {
         int current = commodityScoreQueryRequest.getCurrent();
         int pageSize = commodityScoreQueryRequest.getPageSize();
         Long id = commodityScoreQueryRequest.getId();

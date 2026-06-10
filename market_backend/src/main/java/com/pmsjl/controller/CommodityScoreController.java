@@ -2,19 +2,13 @@ package com.pmsjl.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pmsjl.annotation.AuthCheck;
-import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
-import com.pmsjl.constant.UserConstant;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreAddRequest;
-import com.pmsjl.model.dto.commodityScore.CommodityScoreEditRequest;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreQueryRequest;
-import com.pmsjl.model.dto.commodityScore.CommodityScoreUpdateRequest;
 import com.pmsjl.model.entity.CommodityScore;
 import com.pmsjl.model.vo.CommodityScoreVO;
-import com.pmsjl.service.CommodityOrderService;
 import com.pmsjl.service.CommodityScoreService;
 import com.pmsjl.utils.ResultUtils;
 import com.pmsjl.utils.ThrowUtils;
@@ -49,28 +43,6 @@ public class CommodityScoreController {
         BeanUtil.copyProperties(commodityScoreAddRequest, commodityScore);
         Long id = commodityScoreService.addCommodityScore(commodityScore, request);
         return ResultUtils.success(id);
-    }
-
-    @PostMapping("/delete")
-    public Result<Boolean> deleteCommodityScore(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(deleteRequest == null, ErrorCode.PARAMS_ERROR);
-        Boolean result = commodityScoreService.deleteCommodityScore(deleteRequest, request);
-        return ResultUtils.success(result);
-    }
-
-    @GetMapping("/get/vo")
-    public Result<CommodityScoreVO> getCommodityScoreVOById(@RequestParam("id") Long id, HttpServletRequest request) {
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
-        CommodityScoreVO commodityScoreVO = commodityScoreService.getCommodityScoreVOById(id, request);
-        return ResultUtils.success(commodityScoreVO);
-    }
-
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    @PostMapping("/list/page")
-    public Result<Page<CommodityScore>> listCommodityScoreByPage(@RequestBody CommodityScoreQueryRequest commodityScoreQueryRequest) {
-        ThrowUtils.throwIf(commodityScoreQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        Page<CommodityScore> page = commodityScoreService.listCommodityScoreByPage(commodityScoreQueryRequest);
-        return ResultUtils.success(page);
     }
 
     @PostMapping("/list/page/vo")
