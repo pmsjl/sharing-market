@@ -1,23 +1,23 @@
 package com.pmsjl.service.Impl;
 
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.mapper.PostMapper;
 import com.pmsjl.model.dto.post.PostAddRequest;
 import com.pmsjl.model.dto.post.PostEditRequest;
 import com.pmsjl.model.dto.post.PostQueryRequest;
 import com.pmsjl.model.dto.post.PostUpdateRequest;
 import com.pmsjl.model.entity.Post;
-import com.pmsjl.mapper.PostMapper;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.PostVO;
 import com.pmsjl.model.vo.UserVO;
 import com.pmsjl.service.PostService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 
 /**
  * <p>
- * 帖子 服务实现类
+ * 帖子服务实现类
  * </p>
  *
  * @author pmsjl
@@ -45,7 +45,9 @@ import java.util.stream.Collectors;
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements PostService {
 
-    private static final Set<String> ALLOWED_POST_SORT_FIELDS = Set.of("id", "createTime", "updateTime", "thumbNum", "favourNum");
+    private static final Set<String> ALLOWED_POST_SORT_FIELDS = Set.of(
+            "id", "createTime", "updateTime", "thumbNum", "favourNum"
+    );
 
     @Autowired
     private UserService userService;
@@ -66,6 +68,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean deletePost(DeleteRequest deleteRequest, HttpServletRequest request) {
         Long id = deleteRequest.getId();
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
@@ -150,18 +153,95 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Override
     public Page<Post> listPostByPage(PostQueryRequest postQueryRequest) {
-        int current = normalizeCurrent(postQueryRequest.getCurrent());
-        int pageSize = normalizePageSize(postQueryRequest.getPageSize(), 100);
+        int current = postQueryRequest.getCurrent();
+        int pageSize = postQueryRequest.getPageSize();
+        Long id = postQueryRequest.getId();
+        Long notId = postQueryRequest.getNotId();
+        String searchText = postQueryRequest.getSearchText();
+        String title = postQueryRequest.getTitle();
+        String content = postQueryRequest.getContent();
+        List<String> tags = postQueryRequest.getTags();
+        List<String> orTags = postQueryRequest.getOrTags();
+        Long userId = postQueryRequest.getUserId();
+        String sortField = postQueryRequest.getSortField();
+        String sortOrder = postQueryRequest.getSortOrder();
+
+        if (current <= 0) current = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
         Page<Post> page = new Page<>(current, pageSize);
-        applyPostOrder(page, postQueryRequest);
-        return page(page, getQueryWrapper(postQueryRequest));
+        if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
+            if ("asc".equalsIgnoreCase(sortOrder)) {
+                page.addOrder(OrderItem.asc(sortField));
+            } else {
+                page.addOrder(OrderItem.desc(sortField));
+            }
+        } else {
+            page.addOrder(OrderItem.desc("createTime"));
+        }
+
+        LambdaQueryChainWrapper<Post> query = lambdaQuery()
+                .eq(ObjectUtils.isNotEmpty(id), Post::getId, id)
+                .ne(ObjectUtils.isNotEmpty(notId), Post::getId, notId)
+                .like(StringUtils.isNotBlank(title), Post::getTitle, title)
+                .like(StringUtils.isNotBlank(content), Post::getContent, content)
+                .eq(ObjectUtils.isNotEmpty(userId), Post::getUserId, userId);
+        if (StringUtils.isNotBlank(searchText)) {
+            query.and(wrapper -> wrapper.like(Post::getTitle, searchText).or().like(Post::getContent, searchText));
+        }
+        // tags 在 post 表中是 JSON 字符串，按带引号的标签片段匹配，避免 tag 子串误命中。
+        if (tags != null && !tags.isEmpty()) {
+            tags.stream()
+                    .filter(StringUtils::isNotBlank)
+                    .forEach(tag -> query.like(Post::getTags, "\"" + tag + "\""));
+        }
+        if (orTags != null && !orTags.isEmpty()) {
+            List<String> validOrTags = orTags.stream().filter(StringUtils::isNotBlank).toList();
+            if (!validOrTags.isEmpty()) {
+                query.and(wrapper -> {
+                    for (int i = 0; i < validOrTags.size(); i++) {
+                        if (i == 0) {
+                            wrapper.like(Post::getTags, "\"" + validOrTags.get(i) + "\"");
+                        } else {
+                            wrapper.or().like(Post::getTags, "\"" + validOrTags.get(i) + "\"");
+                        }
+                    }
+                });
+            }
+        }
+
+        return query.page(page);
     }
 
     @Override
     public Page<PostVO> listPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        limitPublicPageSize(postQueryRequest);
+        // 用户侧列表保持原项目的防爬限制，避免一次拉取过多帖子 VO。
+        ThrowUtils.throwIf(postQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
         Page<Post> postPage = listPostByPage(postQueryRequest);
-        return getPostVOPage(postPage, request);
+        List<Post> records = postPage.getRecords();
+        Page<PostVO> page = new Page<>(postPage.getCurrent(), postPage.getSize(), postPage.getTotal());
+        if (records == null || records.isEmpty()) {
+            page.setRecords(List.of());
+            return page;
+        }
+        List<PostVO> postVOList = records.stream().map(this::getPostVO).toList();
+        Set<Long> userIdSet = records.stream()
+                .map(Post::getUserId)
+                .filter(ObjectUtils::isNotEmpty)
+                .collect(Collectors.toSet());
+        if (!userIdSet.isEmpty()) {
+            Map<Long, User> userMap = userService.listByIds(userIdSet).stream()
+                    .collect(Collectors.toMap(User::getId, user -> user, (a, b) -> a));
+            postVOList.forEach(postVO -> {
+                User user = userMap.get(postVO.getUserId());
+                if (user != null) {
+                    UserVO userVO = new UserVO();
+                    BeanUtils.copyProperties(user, userVO);
+                    postVO.setUser(userVO);
+                }
+            });
+        }
+        page.setRecords(postVOList);
+        return page;
     }
 
     @Override
@@ -173,134 +253,33 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Override
     public Page<PostVO> searchPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
+        //TODO: v1.0 暂时没有接 ES，这里先复用 MySQL 查询，保留后续替换为全文搜索的接口位置。
         return listPostVOByPage(postQueryRequest, request);
     }
 
-    private QueryWrapper<Post> getQueryWrapper(PostQueryRequest postQueryRequest) {
-        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
-        if (postQueryRequest == null) {
-            return queryWrapper;
-        }
-        String searchText = postQueryRequest.getSearchText();
-        Long id = postQueryRequest.getId();
-        Long notId = postQueryRequest.getNotId();
-        String title = postQueryRequest.getTitle();
-        String content = postQueryRequest.getContent();
-        List<String> tags = postQueryRequest.getTags();
-        List<String> orTags = postQueryRequest.getOrTags();
-        Long userId = postQueryRequest.getUserId();
-
-        if (StringUtils.isNotBlank(searchText)) {
-            queryWrapper.and(wrapper -> wrapper.like("title", searchText).or().like("content", searchText));
-        }
-        queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
-        queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
-        queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
-        queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
-        if (tags != null && !tags.isEmpty()) {
-            tags.stream()
-                    .filter(StringUtils::isNotBlank)
-                    .forEach(tag -> queryWrapper.like("tags", "\"" + tag + "\""));
-        }
-        if (orTags != null && !orTags.isEmpty()) {
-            List<String> validOrTags = orTags.stream().filter(StringUtils::isNotBlank).toList();
-            if (!validOrTags.isEmpty()) {
-                queryWrapper.and(wrapper -> {
-                    for (int i = 0; i < validOrTags.size(); i++) {
-                        if (i == 0) {
-                            wrapper.like("tags", "\"" + validOrTags.get(i) + "\"");
-                        } else {
-                            wrapper.or().like("tags", "\"" + validOrTags.get(i) + "\"");
-                        }
-                    }
-                });
-            }
-        }
-        queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
-        return queryWrapper;
-    }
-
     private PostVO getPostVO(Post post, HttpServletRequest request) {
-        PostVO postVO = PostVO.objToVo(post);
+        PostVO postVO = getPostVO(post);
         User user = userService.getById(post.getUserId());
         if (user != null) {
             UserVO userVO = new UserVO();
             BeanUtils.copyProperties(user, userVO);
             postVO.setUser(userVO);
         }
-        postVO.setHasThumb(false);
-        postVO.setHasFavour(false);
         return postVO;
     }
 
-    private Page<PostVO> getPostVOPage(Page<Post> postPage, HttpServletRequest request) {
-        List<Post> records = postPage.getRecords();
-        Page<PostVO> page = new Page<>(postPage.getCurrent(), postPage.getSize(), postPage.getTotal());
-        if (records == null || records.isEmpty()) {
-            page.setRecords(List.of());
-            return page;
-        }
-        List<PostVO> postVOList = records.stream().map(PostVO::objToVo).toList();
-        Set<Long> userIds = records.stream()
-                .map(Post::getUserId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        if (!userIds.isEmpty()) {
-            Map<Long, User> userMap = userService.listByIds(userIds).stream()
-                    .collect(Collectors.toMap(User::getId, user -> user, (a, b) -> a));
-            postVOList.forEach(postVO -> {
-                User user = userMap.get(postVO.getUserId());
-                if (user != null) {
-                    UserVO userVO = new UserVO();
-                    BeanUtils.copyProperties(user, userVO);
-                    postVO.setUser(userVO);
-                }
-                postVO.setHasThumb(false);
-                postVO.setHasFavour(false);
-            });
-        } else {
-            postVOList.forEach(postVO -> {
-                postVO.setHasThumb(false);
-                postVO.setHasFavour(false);
-            });
-        }
-        page.setRecords(postVOList);
-        return page;
+    private PostVO getPostVO(Post post) {
+        PostVO postVO = PostVO.objToVo(post);
+        // PostThumb/PostFavour 后端模块还没有复现，这两个用户态字段先给前端稳定的 false。
+        postVO.setHasThumb(false);
+        postVO.setHasFavour(false);
+        return postVO;
     }
 
     private void checkOwnerOrAdmin(Post post, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         if (!Objects.equals(loginUser.getId(), post.getUserId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
-    }
-
-    private int normalizeCurrent(int current) {
-        return current <= 0 ? 1 : current;
-    }
-
-    private int normalizePageSize(int pageSize, int maxPageSize) {
-        if (pageSize <= 0) {
-            return 10;
-        }
-        return Math.min(pageSize, maxPageSize);
-    }
-
-    private void limitPublicPageSize(PostQueryRequest postQueryRequest) {
-        ThrowUtils.throwIf(postQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
-    }
-
-    private void applyPostOrder(Page<Post> page, PostQueryRequest postQueryRequest) {
-        String sortField = postQueryRequest.getSortField();
-        String sortOrder = postQueryRequest.getSortOrder();
-        if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
-            if ("asc".equalsIgnoreCase(sortOrder)) {
-                page.addOrder(OrderItem.asc(sortField));
-            } else {
-                page.addOrder(OrderItem.desc(sortField));
-            }
-        } else {
-            page.addOrder(OrderItem.desc("createTime"));
         }
     }
 }
