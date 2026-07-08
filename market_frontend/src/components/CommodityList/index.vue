@@ -47,6 +47,9 @@
               {{ item.favourNum || 0 }}
             </span>
           </div>
+          <div class="seller-row" v-if="item.adminName">
+            <span>卖家 {{ item.adminName || "同学" }}</span>
+          </div>
         </div>
       </article>
     </div>
@@ -192,5 +195,16 @@ const goCommodityDetail = (id?: string) => {
     align-items: center;
     gap: 5px;
   }
+}
+
+.seller-row {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--market-line);
+  color: var(--market-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 </style>

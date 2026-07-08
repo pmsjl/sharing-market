@@ -140,16 +140,26 @@
         </section>
       </el-tab-pane>
 
-      <el-tab-pane label="聊天室" name="seventh">
-        <section class="tab-panel market-panel"><PrivateMessage /></section>
+      <el-tab-pane
+        v-if="showPrivateMessageTab"
+        :label="chatTabLabel"
+        name="seventh"
+      >
+        <section class="tab-panel market-panel">
+          <PrivateMessage
+            :initial-contact="routeChatContact"
+            :allow-directory-contacts="isAdmin"
+          />
+        </section>
       </el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
+import { useRoute } from "vue-router";
 import { GET_ID } from "@/utils/token";
 import useUserStore from "@/store/modules/user";
 import PrivateMessage from "@/components/PrivateMessage/index.vue";
@@ -174,6 +184,7 @@ import { animateIn } from "@/utils/motion";
 
 const pageRef = ref<HTMLElement | null>(null);
 const activeName = ref("first");
+const route = useRoute();
 const userStore = useUserStore();
 const newUserAvatar = ref("");
 const newUserName = ref("");
@@ -184,14 +195,22 @@ const total = ref(0);
 const commodityOrderList = ref<API.CommodityOrderVO[]>([]);
 const commodityList = ref<any[]>([]);
 const favoritesTotal = ref(0);
+const routeChatContact = ref<API.UserVO | undefined>();
+const currentUserId = String(GET_ID() || "");
 
 const user = ref({
-  id: 0,
+  id: "",
   userAvatar: "",
   userName: "",
   userProfile: "",
   userRole: ""
 });
+
+const isAdmin = computed(() => user.value.userRole === "admin");
+const showPrivateMessageTab = computed(
+  () => isAdmin.value || Boolean(routeChatContact.value?.id)
+);
+const chatTabLabel = computed(() => (isAdmin.value ? "聊天室" : "私聊"));
 
 const queryParams = ref({
   current: 1,
@@ -326,13 +345,55 @@ const getUserInformationById = async () => {
   });
   if (result.code === 200 && result.data) {
     user.value = {
-      id: result.data.id || 0,
+      id: result.data.id || "",
       userAvatar: result.data.userAvatar || "",
       userName: result.data.userName || "",
       userProfile: result.data.userProfile || "",
       userRole: result.data.userRole || ""
     };
     newUserAvatar.value = user.value.userAvatar;
+  }
+};
+
+const getQueryValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return String(value[0] || "");
+  }
+  return String(value || "");
+};
+
+const resolveChatContactFromRoute = async () => {
+  const contactUserId = getQueryValue(route.query.contactUserId);
+
+  if (!contactUserId || contactUserId === currentUserId) {
+    routeChatContact.value = undefined;
+    if (activeName.value === "seventh" && !isAdmin.value) {
+      activeName.value = "first";
+    }
+    return;
+  }
+
+  const contact: API.UserVO = {
+    id: contactUserId,
+    userName: getQueryValue(route.query.contactName) || "对方用户",
+    userAvatar: getQueryValue(route.query.contactAvatar)
+  };
+
+  if (!getQueryValue(route.query.contactName)) {
+    try {
+      const result = await getUserVoByIdUsingGet({ id: contactUserId });
+      if (result.code === 200 && result.data) {
+        contact.userName = result.data.userName || contact.userName;
+        contact.userAvatar = result.data.userAvatar || contact.userAvatar;
+      }
+    } catch (error) {
+      // route query 已经有用户 id，补充资料失败时仍允许进入私聊。
+    }
+  }
+
+  routeChatContact.value = contact;
+  if (route.query.tab === "chat") {
+    activeName.value = "seventh";
   }
 };
 
@@ -346,8 +407,16 @@ const saveEdit = () => {
   user.value.userName = newUserName.value;
 };
 
-onMounted(() => {
-  getUserInformationById();
+watch(
+  () => route.query,
+  () => {
+    resolveChatContactFromRoute();
+  }
+);
+
+onMounted(async () => {
+  await getUserInformationById();
+  await resolveChatContactFromRoute();
   fetchCommodityOrders();
   fetchTravelData(1);
   loadCommodityFavoritesList();

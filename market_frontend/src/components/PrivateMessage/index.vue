@@ -1,25 +1,53 @@
 <template>
   <div class="chat-room">
-    <!-- 左侧联系人列表 -->
     <div class="contact-list">
-      <el-scrollbar>
+      <div class="contact-title">
+        {{ props.allowDirectoryContacts ? "联系人" : "本次私聊" }}
+      </div>
+      <el-empty
+        v-if="contacts.length === 0"
+        description="暂无联系人"
+        :image-size="80"
+      />
+      <el-scrollbar v-else>
         <el-menu :default-active="activeContact" @select="handleContactSelect">
           <el-menu-item
             v-for="contact in contacts"
             :key="contact.id ?? contact.userName"
             :index="String(contact.id ?? '')"
           >
-            <span>{{ contact.userName }}</span>
+            <el-avatar
+              :size="28"
+              :src="contact.userAvatar"
+              class="contact-avatar"
+            />
+            <span>{{ contact.userName || "对方用户" }}</span>
           </el-menu-item>
         </el-menu>
       </el-scrollbar>
     </div>
 
-    <!-- 右侧聊天区域 -->
     <div class="chat-area">
-      <!-- 聊天内容展示区 -->
+      <div v-if="activeContactUser" class="chat-header">
+        <el-avatar :size="34" :src="activeContactUser.userAvatar" />
+        <div>
+          <strong>{{ activeContactUser.userName || "对方用户" }}</strong>
+          <span>一对一私聊</span>
+        </div>
+      </div>
+
       <div class="message-list">
-        <el-scrollbar>
+        <el-empty
+          v-if="!activeContact"
+          description="请选择联系人"
+          :image-size="110"
+        />
+        <el-empty
+          v-else-if="messages.length === 0"
+          description="暂无消息，开始对话"
+          :image-size="110"
+        />
+        <el-scrollbar v-else>
           <div
             v-for="message in messages"
             :key="message.id"
@@ -37,22 +65,30 @@
         </el-scrollbar>
       </div>
 
-      <!-- 输入框和表情包选择区 -->
       <div class="message-input">
         <el-input
           v-model="inputMessage"
           type="textarea"
           :rows="2"
           placeholder="请输入消息"
-          @keyup.enter="sendMessage"
-        ></el-input>
-        <el-button type="primary" @click="sendMessage">发送</el-button>
-        <el-button @click="toggleEmojiPicker">😀</el-button>
+          :disabled="!activeContact"
+          @keydown.enter.exact.prevent="sendMessage"
+        />
+        <el-button
+          type="primary"
+          :disabled="!activeContact"
+          @click="sendMessage"
+        >
+          发送
+        </el-button>
+        <el-button :disabled="!activeContact" @click="toggleEmojiPicker">
+          😀
+        </el-button>
 
         <EmojiPicker
+          v-if="showEmojiPicker"
           :native="true"
           @select="onEmojiSelect"
-          v-if="showEmojiPicker"
         />
       </div>
     </div>
@@ -60,7 +96,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import EmojiPicker from "vue3-emoji-picker";
 import "vue3-emoji-picker/css";
@@ -71,34 +107,42 @@ import {
 } from "@/api/privateMessageController";
 import { GET_ID, GET_ROLE } from "@/utils/token";
 
-// 当前用户角色
+type ChatContact = Pick<API.UserVO, "id" | "userName" | "userAvatar">;
+
+const props = withDefaults(
+  defineProps<{
+    initialContact?: ChatContact;
+    allowDirectoryContacts?: boolean;
+  }>(),
+  {
+    allowDirectoryContacts: true
+  }
+);
+
 const userRole = GET_ROLE() || "";
-
-// 当前用户ID
 const currentUserId = ref(GET_ID() || "");
-
-// 联系人列表
 const contacts = ref<API.UserVO[]>([]);
-
-// 当前选中的联系人
 const activeContact = ref("");
-
-// 消息列表
 const messages = ref<API.PrivateMessageVO[]>([]);
-
-// 输入框内容
 const inputMessage = ref("");
-
-// 是否显示表情包选择器
 const showEmojiPicker = ref(false);
 
-// 加载联系人列表
+const activeContactUser = computed(() =>
+  contacts.value.find(
+    (contact) => String(contact.id || "") === activeContact.value
+  )
+);
+
 const loadContacts = async () => {
+  if (!props.allowDirectoryContacts) {
+    contacts.value = [];
+    return;
+  }
+
   try {
-    // 根据当前用户角色设置查询条件
     const queryRole = userRole === "admin" ? "user" : "admin";
     const response = (await listUserVoByPageUsingPost({
-      userRole: queryRole // 动态查询条件
+      userRole: queryRole
     })) as unknown as API.BaseResponsePageUserVO_;
     if (response.data?.records) {
       contacts.value = response.data.records;
@@ -108,27 +152,15 @@ const loadContacts = async () => {
   }
 };
 
-// 加载与选中联系人的聊天记录
 const loadMessages = async (recipientId: string) => {
   try {
-    // 查询当前用户作为发送者的消息
-    const response1 = (await listMyPrivateMessageVoByPageUsingPost({
-      senderId: currentUserId.value,
-      recipientId
+    const response = (await listMyPrivateMessageVoByPageUsingPost({
+      contactUserId: recipientId,
+      current: 1,
+      pageSize: 50
     })) as unknown as API.BaseResponsePagePrivateMessageVO_;
 
-    // 查询当前用户作为接收者的消息
-    const response2 = (await listMyPrivateMessageVoByPageUsingPost({
-      senderId: recipientId,
-      recipientId: currentUserId.value
-    })) as unknown as API.BaseResponsePagePrivateMessageVO_;
-
-    // 合并两次查询结果
-    const sentMessages = response1.data?.records || [];
-    const receivedMessages = response2.data?.records || [];
-    const allMessages = [...sentMessages, ...receivedMessages];
-
-    // 根据 createTime 排序
+    const allMessages = response.data?.records || [];
     allMessages.sort(
       (a, b) =>
         new Date(a.createTime || "").getTime() -
@@ -141,60 +173,106 @@ const loadMessages = async (recipientId: string) => {
   }
 };
 
-// 处理联系人选择
-const handleContactSelect = (index: string) => {
-  activeContact.value = index;
-  loadMessages(index); // 加载与选中联系人的聊天记录
+const syncInitialContact = async () => {
+  const contactId = String(props.initialContact?.id || "");
+
+  if (!contactId) {
+    if (!props.allowDirectoryContacts) {
+      contacts.value = [];
+      activeContact.value = "";
+      messages.value = [];
+    }
+    return;
+  }
+
+  const normalizedContact: API.UserVO = {
+    ...props.initialContact,
+    id: contactId,
+    userName: props.initialContact?.userName || "对方用户",
+    userAvatar: props.initialContact?.userAvatar || ""
+  };
+
+  const exists = contacts.value.some(
+    (contact) => String(contact.id || "") === contactId
+  );
+
+  if (exists) {
+    contacts.value = contacts.value.map((contact) =>
+      String(contact.id || "") === contactId
+        ? { ...contact, ...normalizedContact }
+        : contact
+    );
+  } else {
+    contacts.value = props.allowDirectoryContacts
+      ? [normalizedContact, ...contacts.value]
+      : [normalizedContact];
+  }
+
+  activeContact.value = contactId;
+  await loadMessages(contactId);
 };
 
-// 发送消息
+const handleContactSelect = (index: string) => {
+  activeContact.value = index;
+  loadMessages(index);
+};
+
 const sendMessage = async () => {
-  if (inputMessage.value.trim()) {
-    try {
-      const recipientId = activeContact.value;
-      if (!recipientId) {
-        ElMessage.warning("请先选择联系人");
-        return;
-      }
-      await addPrivateMessageUsingPost({
-        senderId: currentUserId.value,
-        recipientId,
-        content: inputMessage.value,
-        type: userRole || undefined
-      });
-      // 发送成功后清空输入框并重新加载消息
-      inputMessage.value = "";
-      loadMessages(recipientId);
-    } catch (error) {
-      ElMessage.error("发送消息失败");
-    }
+  if (!inputMessage.value.trim()) {
+    return;
+  }
+
+  const recipientId = activeContact.value;
+  if (!recipientId) {
+    ElMessage.warning("请先选择联系人");
+    return;
+  }
+
+  try {
+    await addPrivateMessageUsingPost({
+      recipientId,
+      content: inputMessage.value
+    });
+    inputMessage.value = "";
+    loadMessages(recipientId);
+  } catch (error) {
+    ElMessage.error("发送消息失败");
   }
 };
 
-// 切换表情包选择器显示状态
 const toggleEmojiPicker = () => {
   showEmojiPicker.value = !showEmojiPicker.value;
 };
 
-// 选择表情包
 const onEmojiSelect = (event: any) => {
   const emoji = event.i;
   if (emoji) {
-    inputMessage.value += emoji; // 将表情符号添加到输入框中
+    inputMessage.value += emoji;
   }
 };
 
-// 组件挂载时加载联系人列表
-onMounted(() => {
-  loadContacts();
+watch(
+  () => props.initialContact,
+  () => {
+    syncInitialContact();
+  },
+  { deep: true }
+);
+
+onMounted(async () => {
+  await loadContacts();
+  await syncInitialContact();
 });
 </script>
 
 <style scoped>
 .chat-room {
   display: flex;
-  height: 100vh;
-  background-color: #f5f5f5;
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--market-line);
+  border-radius: 8px;
+  background-color: #fffdf8;
 }
 
 .contact-list {
@@ -203,36 +281,58 @@ onMounted(() => {
   background-color: #fff;
 }
 
-/* 联系人菜单项默认样式 */
+.contact-title {
+  padding: 14px 16px;
+  color: var(--market-ink);
+  font-size: 14px;
+  font-weight: 900;
+  border-bottom: 1px solid #e4e7ed;
+}
+
 .contact-list .el-menu-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   background-color: #f8f8f8;
-  /* 淡灰色背景 */
   margin: 4px 0;
-  /* 增加间距 */
   border-radius: 4px;
-  /* 圆角 */
   transition: background-color 0.3s ease;
-  /* 背景色过渡效果 */
 }
 
-/* 联系人菜单项选中样式 */
-.contact-list .el-menu-item.is-active {
-  background-color: #e6f7ff;
-  /* 淡蓝色背景 */
-  color: #1890ff;
-  /* 选中文字颜色 */
+.contact-avatar {
+  flex: 0 0 auto;
 }
 
-/* 鼠标悬停样式 */
+.contact-list .el-menu-item.is-active,
 .contact-list .el-menu-item:hover {
   background-color: #e6f7ff;
-  /* 淡蓝色背景 */
+  color: #1890ff;
 }
 
 .chat-area {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.chat-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 62px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
+}
+
+.chat-header div {
+  display: grid;
+  gap: 2px;
+}
+
+.chat-header span {
+  color: var(--market-muted);
+  font-size: 12px;
 }
 
 .message-list {
@@ -265,6 +365,7 @@ onMounted(() => {
 .message-input {
   display: flex;
   align-items: center;
+  gap: 10px;
   padding: 10px;
   border-top: 1px solid #e4e7ed;
   background-color: #fff;
@@ -272,7 +373,6 @@ onMounted(() => {
 
 .el-textarea {
   flex: 1;
-  margin-right: 10px;
 }
 
 emoji-picker {
@@ -280,5 +380,18 @@ emoji-picker {
   bottom: 60px;
   right: 10px;
   z-index: 1000;
+}
+
+@media (max-width: 720px) {
+  .chat-room {
+    flex-direction: column;
+    min-height: 620px;
+  }
+
+  .contact-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e4e7ed;
+  }
 }
 </style>
