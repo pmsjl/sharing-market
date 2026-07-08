@@ -12,7 +12,7 @@ export interface ResponseData {
 }
 
 export interface UserData {
-  id: number | string;
+  id: string;
   userName: string | null;
   userAccount: string;
   userAvatar: string | null;
@@ -51,8 +51,8 @@ export interface userInfoResponseData extends ResponseData {
 
 // 定义用户签到数据类型
 export interface userSignInfo {
-  id: number | null;
-  userId: number | null;
+  id: string | null;
+  userId: string | null;
   signDate: string | null;
   isDelete: number | null;
   createTime: string | null;
@@ -68,7 +68,7 @@ export interface userSignInfoResponseData extends ResponseData {
 
 // 定义更新用户名和头像的类型
 export interface userAvatarAndUserAccount {
-  id: number | null;
+  id: string | null;
   userAvatar: string | null;
   userAccount: string | null;
 }

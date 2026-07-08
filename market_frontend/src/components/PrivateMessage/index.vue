@@ -75,7 +75,7 @@ import { GET_ID, GET_ROLE } from "@/utils/token";
 const userRole = GET_ROLE() || "";
 
 // 当前用户ID
-const currentUserId = ref<number>(Number(GET_ID() || 0));
+const currentUserId = ref(GET_ID() || "");
 
 // 联系人列表
 const contacts = ref<API.UserVO[]>([]);
@@ -109,7 +109,7 @@ const loadContacts = async () => {
 };
 
 // 加载与选中联系人的聊天记录
-const loadMessages = async (recipientId: number) => {
+const loadMessages = async (recipientId: string) => {
   try {
     // 查询当前用户作为发送者的消息
     const response1 = (await listMyPrivateMessageVoByPageUsingPost({
@@ -144,14 +144,14 @@ const loadMessages = async (recipientId: number) => {
 // 处理联系人选择
 const handleContactSelect = (index: string) => {
   activeContact.value = index;
-  loadMessages(Number(index)); // 加载与选中联系人的聊天记录
+  loadMessages(index); // 加载与选中联系人的聊天记录
 };
 
 // 发送消息
 const sendMessage = async () => {
   if (inputMessage.value.trim()) {
     try {
-      const recipientId = Number(activeContact.value);
+      const recipientId = activeContact.value;
       if (!recipientId) {
         ElMessage.warning("请先选择联系人");
         return;

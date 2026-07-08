@@ -1,12 +1,16 @@
 package com.pmsjl.config;
 
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
-//@Configuration
+@Configuration
 public class RedisConfig {
 //    因为用到了jsonRedisSerializer，所以要导入jackson依赖
     @Bean
@@ -26,5 +30,15 @@ public class RedisConfig {
         template.setHashValueSerializer(jsonRedisSerializer);
         // 返回
         return template;
+    }
+
+
+    @Bean
+    public RedissonClient redissonClient(){
+        // 配置
+        Config config = new Config();
+        config.useSingleServer().setAddress("redis://192.168.100.100:6379");
+        // 创建RedissonClient对象
+        return Redisson.create(config);
     }
 }

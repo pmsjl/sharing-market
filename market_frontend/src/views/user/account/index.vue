@@ -17,7 +17,7 @@
           }}
         </p>
         <div class="profile-meta">
-          <span>用户 ID：{{ user.id }}</span>
+          <span>ID：{{ user.id }}</span>
           <span>身份：{{ user.userRole || "-" }}</span>
         </div>
       </div>
@@ -87,6 +87,10 @@
         </section>
       </el-tab-pane>
 
+      <el-tab-pane label="我的攻略" name="myPosts">
+        <section class="tab-panel market-panel"><MyPost /></section>
+      </el-tab-pane>
+
       <el-tab-pane label="收藏攻略" name="second">
         <section class="tab-panel market-panel"><Post /></section>
       </el-tab-pane>
@@ -150,6 +154,7 @@ import { GET_ID } from "@/utils/token";
 import useUserStore from "@/store/modules/user";
 import PrivateMessage from "@/components/PrivateMessage/index.vue";
 import Post from "@/components/Post/index.vue";
+import MyPost from "@/components/MyPost/index.vue";
 import MyComment from "@/components/MyComment/index.vue";
 import CommodityList from "@/components/CommodityList/index.vue";
 import CommodityOrderList from "@/components/CommodityOrderList/index.vue";
@@ -238,7 +243,7 @@ const refreshOrderViews = async () => {
   await fetchTravelData(1);
 };
 
-const handlePay = async (orderId: number) => {
+const handlePay = async (orderId: string) => {
   try {
     const response = await payCommodityOrderUsingPost({
       commodityOrderId: orderId

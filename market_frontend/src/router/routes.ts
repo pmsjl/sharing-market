@@ -250,16 +250,6 @@ export const asnycUserRoute = [
       },
 
       {
-        path: "/user/message",
-        component: () => import("@/views/user/message/index.vue"),
-        name: "message",
-        meta: {
-          title: "买家留言",
-          icon: "Mouse",
-          hidden: false
-        }
-      },
-      {
         path: "/user/post",
         component: () => import("@/views/user/post/index.vue"),
         name: "post",

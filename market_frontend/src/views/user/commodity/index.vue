@@ -63,7 +63,7 @@
       <el-pagination
         background
         layout="total, sizes, prev, pager, next, jumper"
-        :page-sizes="[5, 10, 15, 20]"
+        :page-sizes="[8, 12, 16, 20, 24]"
         :total="total"
         :page-size="pageSize"
         :current-page="currentPage"
@@ -165,7 +165,7 @@ import { animateIn } from "@/utils/motion";
 const pageRef = ref<HTMLElement | null>(null);
 const commodityList = ref([]);
 const total = ref(0);
-const pageSize = ref(10);
+const pageSize = ref(8);
 const currentPage = ref(1);
 const commodityTypeList = ref([]);
 

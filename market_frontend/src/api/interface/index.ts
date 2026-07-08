@@ -48,7 +48,7 @@ export const reqInterfaceInfoList = (data: PageRequest) =>
     params: data
   });
 // 根据id获取接口信息
-export const reqInterfaceInfoById = (id: number) =>
+export const reqInterfaceInfoById = (id: string) =>
   request.get<any, getInterfaceInfoResponseDataById>(
     API.INTERFACE_INFO_ID_URL,
     {
@@ -59,26 +59,26 @@ export const reqInterfaceInfoById = (id: number) =>
   );
 // 调用接口
 export const invokeInterfaceById = (
-  id: number,
+  id: string,
   params: string,
-  userId: number
+  userId: string
 ) =>
   request.post<any, invokeInterfaceResponseById>(
     API.INTERFACE_INFO_INVOKE_URL,
     { id, userRequestParams: params, userId }
   );
 // 发布接口
-export const onlineInterface = (id: number) =>
+export const onlineInterface = (id: string) =>
   request.post<any, onlineInterfaceResponse>(API.INTERFACE_INFO_ONLINE_URL, {
     id
   });
 // 下线接口
-export const offlineInterface = (id: number) =>
+export const offlineInterface = (id: string) =>
   request.post<any, onlineInterfaceResponse>(API.INTERFACE_INFO_OFFLINE_URL, {
     id
   });
 // 根据id删除接口
-export const deleteInterfaceById = (id: number) =>
+export const deleteInterfaceById = (id: string) =>
   request.post<any, onlineInterfaceResponse>(API.INTERFACE_INFO_DELETE_URL, {
     id
   });
@@ -118,7 +118,7 @@ export const updateInterfaceInfo = (
 export const getTopInterface = () =>
   request.get<any, getTopInterfaceResponse>(API.INTERFACE_INFO_TOP_URL);
 // 根据id获取接口参数
-export const getInterfaceParamsById = (id: number) =>
+export const getInterfaceParamsById = (id: string) =>
   request.get<any, InterfaceParamVO>(API.INTERFACE_INFO_PARAMS_URL, {
     params: {
       id

@@ -119,7 +119,9 @@ import useClipboard from "vue-clipboard3";
 import { MdPreview } from "md-editor-v3";
 // 获取路由参数
 const route = useRoute();
-const postId = Number(route.params.id);
+const postId = Array.isArray(route.params.id)
+  ? route.params.id[0]
+  : String(route.params.id || "");
 // 分享对话框的显示状态
 const shareDialogVisible = ref(false);
 // 当前页面地址
@@ -150,7 +152,7 @@ const fetchPostDetail = async () => {
     })) as unknown as API.BaseResponsePostVO_;
     if (response?.data) {
       post.value = {
-        id: response.data.id,
+        id: response.data.id || postId,
         title: response.data.title,
         content: response.data.content,
         createTime: response.data.createTime,
@@ -201,22 +203,26 @@ const doThumb = async () => {
 // 收藏处理
 const handleCollect = async () => {
   const res = (await doPostFavourUsingPost({
-    postId
+    postId: post.value.id
   })) as unknown as API.BaseResponseInt_;
-  if (res.code === 200) {
-    if (initCollectStatus.value === 0) {
-      initCollectStatus.value = 1;
-      ElMessage.success({
-        duration: 1000,
-        message: "收藏该帖子成功"
-      });
-    } else {
-      initCollectStatus.value = 0;
-      ElMessage.success({
-        duration: 1000,
-        message: "取消收藏帖子成功"
-      });
-    }
+  if (res.code !== 200) {
+    return ElMessage.error({
+      duration: 1000,
+      message: "收藏/取消收藏操作失败"
+    });
+  }
+  if (res.data === -1) {
+    initCollectStatus.value = 0;
+    ElMessage.success({
+      duration: 1000,
+      message: "取消收藏帖子成功"
+    });
+  } else {
+    initCollectStatus.value = 1;
+    ElMessage.success({
+      duration: 1000,
+      message: "收藏该帖子成功"
+    });
   }
   await getPostLikeAndCollect();
 };
@@ -249,6 +255,8 @@ const getPostLikeAndCollect = async () => {
   }
   likeCount.value = res.data?.thumbNum;
   collectCount.value = res.data?.favourNum;
+  initLikeStatus.value = res.data?.hasThumb ? 1 : 0;
+  initCollectStatus.value = res.data?.hasFavour ? 1 : 0;
 };
 // 分享处理
 // 处理分享的点击事件

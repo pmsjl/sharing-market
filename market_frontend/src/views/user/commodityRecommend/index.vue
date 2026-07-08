@@ -1,8 +1,6 @@
 <template>
   <div>
-    <el-text type="primary" style="font-size: 24px"
-      >基于协同过滤算法推荐商品
-    </el-text>
+    <el-text type="primary" style="font-size: 24px">商品推荐</el-text>
     <!-- 商品列表组件 -->
     <CommodityList :commodityList="commodityList" style="margin-top: 10px" />
   </div>

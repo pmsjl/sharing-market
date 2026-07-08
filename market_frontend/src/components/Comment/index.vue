@@ -42,9 +42,7 @@
             :comment="comment"
             :showCount="showCount"
             @getComment="getComments"
-            @reply="handleReply"
             @delete="handleDelete"
-            @doCancel="doCancel"
           />
         </div>
       </div>
@@ -74,37 +72,38 @@ const loginUser = ref({
   userAvatar: GET_AVATAR(),
   userName: GET_USER_NAME()
 });
-const placeholder = ref();
-const parentId = ref();
 const commentText = ref("");
 const comments = ref([]);
-const commentAreaId = ref();
 const showCount = ref(new Map());
+
+const initShowCount = (commentList) => {
+  const map = new Map();
+  const fillShowCount = (list = []) => {
+    list.forEach((comment) => {
+      map.set(comment.id, 3);
+      if (comment.replies?.length) {
+        fillShowCount(comment.replies);
+      }
+    });
+  };
+  fillShowCount(commentList);
+  return map;
+};
+
 // 获取评论
 const getComments = async () => {
   try {
     const res = await getCommentByPostIdUsingGet({
       postId: props.postId
     });
-    // 遍历 res.data 并初始化每个 id 对应的 value 为 3
-    showCount.value = res?.data?.reduce((map, item) => {
-      return map.set(item.id, 3); // 每个评论默认显示 3 条子项
-    }, new Map());
-    comments.value = res?.data || [];
-    ElMessage.success({
-      duration: 1000,
-      message: "获取帖子评论列表成功"
-    });
+    const commentList = res?.data || [];
+    showCount.value = initShowCount(commentList);
+    comments.value = commentList;
   } catch (e) {
     ElMessage.error("获取评论失败: " + e.message);
   }
 };
-//取消
-const doCancel = async () => {
-  placeholder.value = "";
-  commentAreaId.value = -1;
-  parentId.value = null;
-};
+
 // 提交评论
 const doComment = async () => {
   if (!commentText.value) {
@@ -133,20 +132,6 @@ const doComment = async () => {
   } catch (e) {
     ElMessage.error("评论失败: " + e.message);
   }
-};
-
-// 处理回复
-const handleReply = (comment) => {
-  if (comment.ancestorId == null) {
-    // 一级评论
-    commentAreaId.value = comment.id;
-  } else {
-    commentAreaId.value = comment.ancestorId;
-  }
-  parentId.value = comment.id;
-  placeholder.value = `回复@${comment.user?.userName}`;
-  // 这里可以处理回复逻辑
-  // console.log("回复评论:", comment);
 };
 
 // 处理删除

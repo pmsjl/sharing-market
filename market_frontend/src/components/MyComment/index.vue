@@ -44,7 +44,6 @@ import dayjs from "dayjs";
 interface MyComment {
   id: string;
   postId: string;
-  postContent: string;
   postTitle: string;
   updateTime: string;
   content: string;

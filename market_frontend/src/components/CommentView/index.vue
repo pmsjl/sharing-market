@@ -1,129 +1,103 @@
 <template>
-  <el-card class="comment-view">
-    <!-- 左侧头像 -->
+  <div
+    class="comment-view"
+    :class="{ 'root-comment': depth === 0, 'reply-comment': depth > 0 }"
+  >
     <el-avatar
-      :src="comment.user.userAvatar || '/assets/logo.png'"
-      size="default"
+      :src="comment.user?.userAvatar || '/assets/logo.png'"
+      :size="depth === 0 ? 'default' : 'small'"
       class="avatar"
     />
-    <!-- 右侧内容 -->
+
     <div class="comment-content">
-      <!-- 用户名 -->
       <div class="comment-header">
-        <span class="username">{{ comment.user.userName }}</span>
+        <span class="username">{{ comment.user?.userName }}</span>
+        <span v-if="depth > 0 && repliedUserName" class="reply-target">
+          回复 {{ repliedUserName }}
+        </span>
       </div>
-      <!-- 用户评论内容 -->
+
       <div class="comment-body">
         {{ comment.content }}
       </div>
-      <!-- 操作区 -->
+
       <div class="comment-actions">
-        <el-row class="actions-row">
-          <el-col>
-            <span class="create-time">{{ comment.createTime }}</span>
-            <el-text @click="handleReply" type="primary" style="cursor: pointer"
-              >回复
-            </el-text>
-            <!-- 删除按钮，只有当前用户是评论作者时才显示 -->
-            <template v-if="loginUser.id === comment.user.id">
-              <el-popconfirm
-                title="你确定要删除该评论吗？"
-                @confirm="handleDelete"
-                @cancel="cancelEvent"
-              >
-                <template #reference>
-                  <el-text
-                    style="cursor: pointer"
-                    class="delete-button"
-                    type="danger"
-                    >删除
-                  </el-text>
-                </template>
-              </el-popconfirm>
-            </template>
-          </el-col>
-        </el-row>
+        <span class="create-time">{{ comment.createTime }}</span>
+        <div class="action-buttons-inline">
+          <el-button link type="primary" size="small" @click="handleReply">
+            回复
+          </el-button>
+          <template v-if="isCurrentUserComment">
+            <el-popconfirm
+              title="你确定要删除该评论吗？"
+              @confirm="handleDelete"
+              @cancel="cancelEvent"
+            >
+              <template #reference>
+                <el-button
+                  link
+                  type="danger"
+                  size="small"
+                  class="delete-button"
+                >
+                  删除
+                </el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </div>
       </div>
 
-      <!-- 二级评论区域 -->
-      <div v-if="isReplying" class="secondary-comment">
+      <div v-if="isReplying" class="reply-editor">
         <el-input
-          type="textarea"
           v-model="replyContent"
-          :placeholder="`回复${comment.user.userName}：`"
+          type="textarea"
+          :placeholder="`回复${comment.user?.userName || '用户'}：`"
           :autosize="{ minRows: 3, maxRows: 6 }"
         />
-        <div class="action-buttons">
-          <el-button type="text" @click="cancelReply">取消</el-button>
+        <div class="reply-editor-actions">
+          <el-button text @click="cancelReply">取消</el-button>
           <el-button type="primary" @click="submitReply">回复</el-button>
         </div>
       </div>
 
-      <!-- 显示二级评论列表 -->
-      <div
-        v-if="comment.replies && comment.replies.length"
-        class="replies-section"
-      >
-        <div
-          v-for="(reply, index) in comment.replies"
-          :key="index"
-          class="secondary-comment-item"
-        >
-          <div v-show="index < showMap.get(comment.id)">
-            <div class="secondary-comment-content">
-              <el-row
-                style="
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                "
-              >
-                <el-avatar
-                  :src="reply.user.userAvatar || '/assets/logo.png'"
-                  size="small"
-                />
-                <span class="reply-username">{{ reply.user.userName }}</span>
-                <span style="margin-left: 5px">回复:</span>
-                <span class="reply-username">{{
-                  reply.repliedUser.userName
-                }}</span>
-              </el-row>
+      <div v-if="replyList.length" class="replies-section">
+        <CommentView
+          v-for="reply in visibleReplies"
+          :key="reply.id"
+          :comment="reply"
+          :postId="postId"
+          :showCount="showCount"
+          :depth="depth + 1"
+          @delete="handleChildDelete"
+          @getComment="handleRefresh"
+          @doCancel="handleCancel"
+        />
 
-              <p style="font-size: 14px; margin: 15px 0">{{ reply.content }}</p>
-              <span class="reply-time">{{ reply.createTime }}</span>
-            </div>
-          </div>
-        </div>
-        <template
-          v-if="comment.replies.length > 3 && showMap.get(comment.id) == 3"
-        >
-          <el-text
-            style="cursor: pointer"
-            type="primary"
-            @click="handleExpand(comment.id, comment.replies.length)"
-          >
+        <template v-if="replyList.length > 3 && visibleCount === 3">
+          <el-button link type="primary" size="small" @click="handleExpand">
             展开全部
-          </el-text>
+          </el-button>
         </template>
 
-        <template
-          v-if="comment.replies.length > 3 && showMap.get(comment.id) > 3"
-        >
-          <el-text
-            style="cursor: pointer"
-            type="success"
-            @click="handleCollapse(comment.id)"
-          >
+        <template v-if="replyList.length > 3 && visibleCount > 3">
+          <el-button link type="success" size="small" @click="handleCollapse">
             收起
-          </el-text>
+          </el-button>
         </template>
       </div>
     </div>
-  </el-card>
+  </div>
 </template>
 
+<script lang="ts">
+export default {
+  name: "CommentView"
+};
+</script>
+
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { GET_ID } from "@/utils/token";
 import { ElMessage } from "element-plus";
 import { addCommentUsingPost } from "@/api/commentController";
@@ -139,30 +113,49 @@ const props = defineProps({
   },
   showCount: {
     type: Map,
-    require: true
+    required: true
+  },
+  depth: {
+    type: Number,
+    default: 0
   }
 });
 
-const emit = defineEmits(["reply", "delete", "getComment", "doCancel"]);
+const emit = defineEmits(["delete", "getComment", "doCancel"]);
 
 const loginUser = ref({
   id: GET_ID()
 });
-const replyContent = ref(""); // 用于存储回复内容
-const isReplying = ref(false); // 是否正在输入二级评论
-const parentId = ref(props.comment.id); // 当前评论的父评论ID
-const showMap = ref(props.showCount);
-// 处理点击回复
+const replyContent = ref("");
+const isReplying = ref(false);
+
+const replyList = computed(() => props.comment.replies || []);
+const visibleCount = computed(
+  () => props.showCount?.get(props.comment.id) ?? 3
+);
+const visibleReplies = computed(() =>
+  replyList.value.slice(0, visibleCount.value)
+);
+const repliedUserName = computed(() => props.comment.repliedUser?.userName);
+const isCurrentUserComment = computed(() => {
+  const loginUserId = loginUser.value.id;
+  const commentUserId = props.comment.user?.id;
+  return (
+    loginUserId != null &&
+    commentUserId != null &&
+    String(loginUserId) === String(commentUserId)
+  );
+});
+
 const handleReply = () => {
   isReplying.value = true;
 };
-// 取消二级评论
+
 const cancelReply = () => {
   isReplying.value = false;
-  replyContent.value = ""; // 清空输入框内容
+  replyContent.value = "";
 };
 
-// 提交二级评论
 const submitReply = async () => {
   if (!props.postId) {
     return;
@@ -173,11 +166,14 @@ const submitReply = async () => {
       message: "请先登录"
     });
   }
+  if (!replyContent.value) {
+    return ElMessage.warning("回复内容不能为空");
+  }
   try {
     const res = await addCommentUsingPost({
       postId: props.postId,
       content: replyContent.value,
-      parentId: parentId.value
+      parentId: props.comment.id
     });
     if (res.code !== 200) {
       isReplying.value = false;
@@ -198,23 +194,30 @@ const submitReply = async () => {
   }
 };
 
-// 处理删除评论
 const handleDelete = () => {
   emit("delete", props.comment.id);
 };
-// 点击展开按钮显示所有回复
 
-const handleExpand = (id, length) => {
-  showMap.value = props.showCount;
-  showMap.value?.set(id, length);
-};
-// 点击收起按钮，显示前 3 条
-const handleCollapse = (id) => {
-  showMap.value = props.showCount;
-  showMap.value?.set(id, 3);
+const handleChildDelete = (commentId: number | string) => {
+  emit("delete", commentId);
 };
 
-// 取消删除事件
+const handleRefresh = () => {
+  emit("getComment");
+};
+
+const handleCancel = () => {
+  emit("doCancel");
+};
+
+const handleExpand = () => {
+  props.showCount?.set(props.comment.id, replyList.value.length);
+};
+
+const handleCollapse = () => {
+  props.showCount?.set(props.comment.id, 3);
+};
+
 const cancelEvent = () => {
   ElMessage.success({
     duration: 1000,
@@ -226,23 +229,47 @@ const cancelEvent = () => {
 <style scoped lang="scss">
 .comment-view {
   display: flex;
-  gap: 16px;
+  gap: 14px;
+}
+
+.root-comment {
+  padding: 18px 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.reply-comment {
+  padding: 12px 0 0 16px;
+  border-left: 2px solid #ebeef5;
+}
+
+.avatar {
+  flex: 0 0 auto;
 }
 
 .comment-content {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
 }
 
 .comment-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .username {
   font-weight: bold;
+}
+
+.reply-target {
+  color: #606266;
+  font-size: 13px;
 }
 
 .create-time {
@@ -251,43 +278,38 @@ const cancelEvent = () => {
 }
 
 .comment-body {
-  display: flex;
-  align-items: flex-start;
-  padding: 10px 0 0 0;
-  width: 1048px;
-  margin: 15px 0;
-  border-radius: 10px;
+  margin: 12px 0;
+  line-height: 1.7;
+  word-break: break-word;
 }
 
 .comment-actions {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.actions-row {
+.action-buttons-inline {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
-.delete-button {
-  color: red;
-}
-
-.el-button {
+.action-buttons-inline :deep(.el-button) {
   font-size: 14px;
+  padding: 0;
 }
 
-/* 二级评论区域 */
-.secondary-comment {
-  margin-top: 15px;
-  padding: 16px;
+.reply-editor {
+  margin-top: 14px;
+  padding: 14px;
   background-color: #f9f9f9;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.secondary-comment .action-buttons {
+.reply-editor-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -295,30 +317,9 @@ const cancelEvent = () => {
 }
 
 .replies-section {
-  margin-top: 20px;
-}
-
-.secondary-comment-item {
   display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.secondary-comment-item .secondary-comment-content {
-  background-color: #f1f1f1;
-  padding: 10px;
-  border-radius: 6px;
-  flex: 1;
-}
-
-.reply-username {
-  margin-left: 5px;
-  font-weight: bold;
-  color: #333;
-}
-
-.reply-time {
-  color: #999;
-  font-size: 12px;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
 }
 </style>

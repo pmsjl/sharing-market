@@ -63,7 +63,7 @@ const fetchCommodityOrders = async () => {
   }
 };
 
-const handlePay = async (orderId: number) => {
+const handlePay = async (orderId: string) => {
   try {
     const response = await payCommodityOrderUsingPost({
       commodityOrderId: orderId
