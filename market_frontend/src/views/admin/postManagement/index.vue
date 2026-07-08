@@ -275,7 +275,8 @@ const resetQuery = () => {
 };
 
 // 显示修改对话框
-const showEditDialog = async (id: number) => {
+const showEditDialog = async (id?: string) => {
+  if (!id) return;
   loading.value = true;
   try {
     const res = await getPostVoByIdUsingGet({ id });

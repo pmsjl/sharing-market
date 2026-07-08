@@ -8,5 +8,5 @@ export interface UserState {
   buttons: string[];
   menuRoutes: RouteRecordRaw[];
   userRole: string;
-  id: number | string;
+  id: string;
 }

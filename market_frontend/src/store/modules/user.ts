@@ -80,10 +80,7 @@ const useUserStore = defineStore("User", {
     //获取用户信息方法
     async userInfo() {
       //获取用户信息进行存储仓库当中[用户头像、名字]
-      // const id = GET_ID();
-      // const userId = parseInt(id as string);
       const userRole = GET_ROLE();
-      // await reqUserInfo(userId);
       if (userRole == "admin") {
         this.menuRoutes = [...constantRoute, ...asnycAdminRoute, anyRoute];
       } else if (userRole == "user") {

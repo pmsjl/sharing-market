@@ -2,21 +2,20 @@
   <div class="post-browse">
     <!-- 搜索区域 -->
     <div class="search-bar">
-      <el-row style="display: flex; justify-content: space-between">
-        <el-col :span="8" v-if="!addPost">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索帖子"
-            clearable
-            @clear="handleSearch"
-            @keyup.enter="handleSearch"
-          >
-            <template #append>
-              <el-button :icon="Search" @click="handleSearch" />
-            </template>
-          </el-input>
-        </el-col>
-      </el-row>
+      <div class="post-toolbar" v-if="!addPost">
+        <el-input
+          v-model="searchText"
+          class="post-search-input"
+          placeholder="搜索帖子"
+          clearable
+          @clear="handleSearch"
+          @keyup.enter="handleSearch"
+        >
+          <template #append>
+            <el-button :icon="Search" @click="handleSearch" />
+          </template>
+        </el-input>
+      </div>
     </div>
     <AddPost v-if="addPost"></AddPost>
     <!-- 帖子列表 -->
@@ -77,6 +76,7 @@
     <!-- 分页 -->
     <div class="pagination" v-if="!addPost">
       <el-pagination
+        small
         background
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[5, 10, 15, 20]"
@@ -132,7 +132,8 @@ const getPostList = async () => {
   }
 };
 // 跳转到帖子详情页
-const goToPostDetail = (postId: number) => {
+const goToPostDetail = (postId?: string) => {
+  if (!postId) return;
   router.push({ name: "PostDetail", params: { id: postId } });
 };
 
@@ -175,11 +176,20 @@ const truncateContent = (text: string, length: number) => {
 
   .search-bar {
     margin-bottom: 20px;
+    padding: 12px 14px;
 
     .el-input {
       width: 100%;
-      max-width: 400px;
     }
+  }
+
+  .post-toolbar {
+    display: flex;
+    align-items: center;
+  }
+
+  .post-search-input {
+    max-width: 420px;
   }
 
   .post-list {
@@ -273,8 +283,24 @@ const truncateContent = (text: string, length: number) => {
 
   .pagination {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     margin-top: 20px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+}
+
+@media (max-width: 760px) {
+  .post-browse {
+    padding: 12px;
+
+    .post-search-input {
+      max-width: none;
+    }
+
+    .pagination {
+      justify-content: flex-start;
+    }
   }
 }
 </style>

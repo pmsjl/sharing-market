@@ -1,60 +1,7 @@
 declare namespace API {
-  type Barrage = {
-    createTime?: string;
-    id?: number;
-    isDelete?: number;
-    isSelected?: number;
-    message?: string;
-    updateTime?: string;
-    userAvatar?: string;
-    userId?: number;
-  };
-
-  type BarrageAddRequest = {
-    message?: string;
-    userAvatar?: string;
-  };
-
-  type BarrageQueryRequest = {
-    createTime?: string;
-    current?: number;
-    id?: number;
-    isSelected?: number;
-    message?: string;
-    pageSize?: number;
-    sortField?: string;
-    sortOrder?: string;
-    updateTime?: string;
-    userAvatar?: string;
-    userId?: number;
-  };
-
-  type BarrageUpdateRequest = {
-    id?: number;
-    isSelected?: number;
-    message?: string;
-    userAvatar?: string;
-    userId?: number;
-  };
-
-  type BarrageVO = {
-    id?: number;
-    isSelected?: number;
-    message?: string;
-    userAvatar?: string;
-    userId?: number;
-  };
-
   type BaseResponse = {
     code?: number;
     data?: Record<string, any>;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponseBarrageVO_ = {
-    code?: number;
-    data?: BarrageVO;
     hashMap?: Record<string, any>;
     message?: string;
   };
@@ -160,20 +107,6 @@ declare namespace API {
   type BaseResponseNoticeVO_ = {
     code?: number;
     data?: NoticeVO;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponsePageBarrage_ = {
-    code?: number;
-    data?: PageBarrage_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponsePageBarrageVO_ = {
-    code?: number;
-    data?: PageBarrageVO_;
     hashMap?: Record<string, any>;
     message?: string;
   };
@@ -376,7 +309,7 @@ declare namespace API {
 
   type BuyCommodityRequest = {
     buyNumber?: number;
-    commodityId?: number;
+    commodityId?: string;
     payStatus?: number;
     paymentAmount?: number;
     remark?: string;
@@ -394,74 +327,74 @@ declare namespace API {
   };
 
   type Comment = {
-    ancestorId?: number;
+    ancestorId?: string;
     content?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
-    parentId?: number;
-    postId?: number;
+    parentId?: string;
+    postId?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommentAddRequest = {
     content?: string;
-    parentId?: number;
-    postId?: number;
+    parentId?: string;
+    postId?: string;
   };
 
   type CommentEditRequest = {
     content?: string;
-    id?: number;
+    id?: string;
   };
 
   type CommentQueryRequest = {
-    ancestorId?: number;
+    ancestorId?: string;
     content?: string;
     current?: number;
-    id?: number;
+    id?: string;
     pageSize?: number;
-    parentId?: number;
-    postId?: number;
+    parentId?: string;
+    postId?: string;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommentUpdateRequest = {
     content?: string;
-    id?: number;
-    parentId?: number;
-    postId?: number;
-    userId?: number;
+    id?: string;
+    parentId?: string;
+    postId?: string;
+    userId?: string;
   };
 
   type CommentVO = {
-    ancestorId?: number;
+    ancestorId?: string;
     content?: string;
     createTime?: string;
-    id?: number;
-    parentId?: number;
-    postId?: number;
+    id?: string;
+    parentId?: string;
+    postId?: string;
     repliedUser?: UserVO;
     replies?: CommentVO[];
     updateTime?: string;
     user?: UserVO;
-    userId?: number;
+    userId?: string;
   };
 
   type Commodity = {
-    adminId?: number;
+    adminId?: string;
     commodityAvatar?: string;
     commodityDescription?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     createTime?: string;
     degree?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isDelete?: number;
     isListed?: number;
     price?: number;
@@ -470,12 +403,12 @@ declare namespace API {
   };
 
   type CommodityAddRequest = {
-    adminId?: number;
+    adminId?: string;
     commodityAvatar?: string;
     commodityDescription?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     degree?: string;
     favourNum?: number;
     isListed?: number;
@@ -484,15 +417,15 @@ declare namespace API {
   };
 
   type CommodityEditRequest = {
-    adminId?: number;
+    adminId?: string;
     commodityAvatar?: string;
     commodityDescription?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     degree?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isListed?: number;
     price?: number;
     viewNum?: number;
@@ -500,84 +433,84 @@ declare namespace API {
 
   type CommodityOrder = {
     buyNumber?: number;
-    commodityId?: number;
+    commodityId?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     payStatus?: number;
     paymentAmount?: number;
     remark?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityOrderAddRequest = {
     buyNumber?: number;
-    commodityId?: number;
+    commodityId?: string;
     payStatus?: number;
     paymentAmount?: number;
     remark?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityOrderEditRequest = {
-    id?: number;
+    id?: string;
     payStatus?: number;
     remark?: string;
   };
 
   type CommodityOrderQueryRequest = {
     buyNumber?: number;
-    commodityId?: number;
+    commodityId?: string;
     current?: number;
-    id?: number;
+    id?: string;
     pageSize?: number;
     payStatus?: number;
     paymentAmount?: number;
     remark?: string;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string;
     userName?: string;
     userPhone?: string;
   };
 
   type CommodityOrderUpdateRequest = {
     buyNumber?: number;
-    commodityId?: number;
-    id?: number;
+    commodityId?: string;
+    id?: string;
     payStatus?: number;
     paymentAmount?: number;
     remark?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityOrderVO = {
     buyNumber?: number;
-    commodityId?: number;
+    commodityId?: string;
     commodityName?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     payStatus?: number;
     paymentAmount?: number;
     remark?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userName?: string;
     userPhone?: string;
   };
 
   type CommodityQueryRequest = {
-    adminId?: number;
+    adminId?: string;
     commodityDescription?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     current?: number;
     degree?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isListed?: number;
     pageSize?: number;
     price?: number;
@@ -587,59 +520,59 @@ declare namespace API {
   };
 
   type CommodityScore = {
-    commodityId?: number;
+    commodityId?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     score?: number;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityScoreAddRequest = {
-    commodityId?: number;
+    commodityId?: string;
     score?: number;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityScoreEditRequest = {
-    commodityId?: number;
-    id?: number;
+    commodityId?: string;
+    id?: string;
     score?: number;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityScoreQueryRequest = {
-    commodityId?: number;
+    commodityId?: string;
     current?: number;
-    id?: number;
+    id?: string;
     pageSize?: number;
     score?: number;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityScoreUpdateRequest = {
-    commodityId?: number;
-    id?: number;
+    commodityId?: string;
+    id?: string;
     score?: number;
-    userId?: number;
+    userId?: string;
   };
 
   type CommodityScoreVO = {
-    commodityId?: number;
+    commodityId?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     score?: number;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userVO?: UserVO;
   };
 
   type CommodityType = {
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     typeName?: string;
     updateTime?: string;
@@ -650,13 +583,13 @@ declare namespace API {
   };
 
   type CommodityTypeEditRequest = {
-    id?: number;
+    id?: string;
     typeName?: string;
   };
 
   type CommodityTypeQueryRequest = {
     current?: number;
-    id?: number;
+    id?: string;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
@@ -664,45 +597,45 @@ declare namespace API {
   };
 
   type CommodityTypeUpdateRequest = {
-    id?: number;
+    id?: string;
     typeName?: string;
   };
 
   type CommodityTypeVO = {
     createTime?: string;
-    id?: number;
+    id?: string;
     typeName?: string;
     updateTime?: string;
   };
 
   type CommodityUpdateRequest = {
-    adminId?: number;
+    adminId?: string;
     commodityAvatar?: string;
     commodityDescription?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     degree?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isListed?: number;
     price?: number;
     viewNum?: number;
   };
 
   type CommodityVO = {
-    adminId?: number;
+    adminId?: string;
     adminName?: string;
     commodityAvatar?: string;
     commodityDescription?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     commodityTypeName?: string;
     createTime?: string;
     degree?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isListed?: number;
     price?: number;
     updateTime?: string;
@@ -710,27 +643,22 @@ declare namespace API {
   };
 
   type DeleteRequest = {
-    id?: number;
+    id?: string;
   };
 
   type getAverageScoreUsingGETParams = {
     /** commodityId */
-    commodityId: number;
-  };
-
-  type getBarrageVOByIdUsingGETParams = {
-    /** id */
-    id?: number;
+    commodityId: string;
   };
 
   type getCommentByPostIdUsingGETParams = {
     /** postId */
-    postId?: number;
+    postId?: string;
   };
 
   type getCommentVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getCommodityOrderHeatmapDataUsingGETParams = {
@@ -740,58 +668,58 @@ declare namespace API {
 
   type getCommodityOrderVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getCommodityScoreVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getCommodityTypeVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getCommodityVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getNoticeVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getPostVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getPrivateMessageVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getUserAiMessageVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getUserByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type getUserVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string;
   };
 
   type LoginUserVO = {
     balance?: number;
     createTime?: string;
-    id?: number;
+    id?: string;
     updateTime?: string;
     userAvatar?: string;
     userName?: string;
@@ -803,33 +731,32 @@ declare namespace API {
 
   type MyCommentVO = {
     content?: string;
-    id?: number;
-    postContent?: string;
-    postId?: number;
+    id?: string;
+    postId?: string;
     postTitle?: string;
     updateTime?: string;
   };
 
   type Notice = {
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
-    noticeAdminId?: number;
+    noticeAdminId?: string;
     noticeContent?: string;
     noticeTitle?: string;
     updateTime?: string;
   };
 
   type NoticeAddRequest = {
-    noticeAdminId?: number;
+    noticeAdminId?: string;
     noticeContent?: string;
     noticeTitle?: string;
   };
 
   type NoticeQueryRequest = {
     current?: number;
-    id?: number;
-    noticeAdminId?: number;
+    id?: string;
+    noticeAdminId?: string;
     noticeContent?: string;
     noticeTitle?: string;
     pageSize?: number;
@@ -838,16 +765,16 @@ declare namespace API {
   };
 
   type NoticeUpdateRequest = {
-    id?: number;
-    noticeAdminId?: number;
+    id?: string;
+    noticeAdminId?: string;
     noticeContent?: string;
     noticeTitle?: string;
   };
 
   type NoticeVO = {
     createTime?: string;
-    id?: number;
-    noticeAdminId?: number;
+    id?: string;
+    noticeAdminId?: string;
     noticeContent?: string;
     noticeTitle?: string;
     updateTime?: string;
@@ -857,32 +784,6 @@ declare namespace API {
   type OrderItem = {
     asc?: boolean;
     column?: string;
-  };
-
-  type PageBarrage_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: Barrage[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
-  };
-
-  type PageBarrageVO_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: BarrageVO[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
   };
 
   type PageComment_ = {
@@ -1159,20 +1060,20 @@ declare namespace API {
   };
 
   type PayCommodityOrderRequest = {
-    commodityOrderId?: number;
+    commodityOrderId?: string;
   };
 
   type Post = {
     content?: string;
     createTime?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isDelete?: number;
     tags?: string;
     thumbNum?: number;
     title?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type PostAddRequest = {
@@ -1183,13 +1084,13 @@ declare namespace API {
 
   type PostEditRequest = {
     content?: string;
-    id?: number;
+    id?: string;
     tags?: string[];
     title?: string;
   };
 
   type PostFavourAddRequest = {
-    postId?: number;
+    postId?: string;
   };
 
   type PostFavourQueryRequest = {
@@ -1198,15 +1099,15 @@ declare namespace API {
     postQueryRequest?: PostQueryRequest;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type PostQueryRequest = {
     content?: string;
     current?: number;
-    favourUserId?: number;
-    id?: number;
-    notId?: number;
+    favourUserId?: string;
+    id?: string;
+    notId?: string;
     orTags?: string[];
     pageSize?: number;
     searchText?: string;
@@ -1214,16 +1115,16 @@ declare namespace API {
     sortOrder?: string;
     tags?: string[];
     title?: string;
-    userId?: number;
+    userId?: string;
   };
 
   type PostThumbAddRequest = {
-    postId?: number;
+    postId?: string;
   };
 
   type PostUpdateRequest = {
     content?: string;
-    id?: number;
+    id?: string;
     tags?: string[];
     title?: string;
   };
@@ -1234,24 +1135,24 @@ declare namespace API {
     favourNum?: number;
     hasFavour?: boolean;
     hasThumb?: boolean;
-    id?: number;
+    id?: string;
     tagList?: string[];
     thumbNum?: number;
     title?: string;
     updateTime?: string;
     user?: UserVO;
-    userId?: number;
+    userId?: string;
   };
 
   type PrivateMessage = {
     alreadyRead?: number;
     content?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     isRecalled?: number;
-    recipientId?: number;
-    senderId?: number;
+    recipientId?: string;
+    senderId?: string;
     type?: string;
     updateTime?: string;
   };
@@ -1260,18 +1161,18 @@ declare namespace API {
     alreadyRead?: number;
     content?: string;
     isRecalled?: number;
-    recipientId?: number;
-    senderId?: number;
+    recipientId?: string;
+    senderId?: string;
     type?: string;
   };
 
   type PrivateMessageEditRequest = {
     alreadyRead?: number;
     content?: string;
-    id?: number;
+    id?: string;
     isRecalled?: number;
-    recipientId?: number;
-    senderId?: number;
+    recipientId?: string;
+    senderId?: string;
     type?: string;
   };
 
@@ -1279,11 +1180,11 @@ declare namespace API {
     alreadyRead?: number;
     content?: string;
     current?: number;
-    id?: number;
+    id?: string;
     isRecalled?: number;
     pageSize?: number;
-    recipientId?: number;
-    senderId?: number;
+    recipientId?: string;
+    senderId?: string;
     sortField?: string;
     sortOrder?: string;
     type?: string;
@@ -1292,10 +1193,10 @@ declare namespace API {
   type PrivateMessageUpdateRequest = {
     alreadyRead?: number;
     content?: string;
-    id?: number;
+    id?: string;
     isRecalled?: number;
-    recipientId?: number;
-    senderId?: number;
+    recipientId?: string;
+    senderId?: string;
     type?: string;
   };
 
@@ -1303,17 +1204,17 @@ declare namespace API {
     alreadyRead?: number;
     content?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isRecalled?: number;
-    recipientId?: number;
-    senderId?: number;
+    recipientId?: string;
+    senderId?: string;
     type?: string;
     updateTime?: string;
   };
 
   type recommendCommoditiesUsingGETParams = {
     /** userId */
-    userId: number;
+    userId: string;
   };
 
   type uploadFileUsingPOSTParams = {
@@ -1325,7 +1226,7 @@ declare namespace API {
     balance?: number;
     createTime?: string;
     editTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     mpOpenId?: string;
     unionId?: string;
@@ -1349,25 +1250,25 @@ declare namespace API {
   type UserAiMessage = {
     aiGenerateText?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     isDelete?: number;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userInputText?: string;
   };
 
   type UserAiMessageAddRequest = {
     aiGenerateText?: string;
-    userId?: number;
+    userId?: string;
     userInputText?: string;
   };
 
   type UserAiMessageEditRequest = {
     aiGenerateText?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userInputText?: string;
   };
 
@@ -1375,72 +1276,72 @@ declare namespace API {
     aiGenerateText?: string;
     createTime?: string;
     current?: number;
-    id?: number;
+    id?: string;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userInputText?: string;
   };
 
   type UserAiMessageUpdateRequest = {
     aiGenerateText?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userInputText?: string;
   };
 
   type UserAiMessageVO = {
     aiGenerateText?: string;
     createTime?: string;
-    id?: number;
+    id?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     userInputText?: string;
   };
 
   type UserCommodityFavoritesAddRequest = {
-    commodityId?: number;
+    commodityId?: string;
   };
 
   type UserCommodityFavoritesEditRequest = {
-    id?: number;
+    id?: string;
     status?: number;
   };
 
   type UserCommodityFavoritesQueryRequest = {
-    commodityId?: number;
+    commodityId?: string;
     current?: number;
-    id?: number;
+    id?: string;
     pageSize?: number;
     remark?: string;
     sortField?: string;
     sortOrder?: string;
     status?: number;
-    userId?: number;
+    userId?: string;
   };
 
   type UserCommodityFavoritesVO = {
-    adminId?: number;
+    adminId?: string;
     commodityAvatar?: string;
     commodityDescription?: string;
-    commodityId?: number;
+    commodityId?: string;
     commodityInventory?: number;
     commodityName?: string;
-    commodityTypeId?: number;
+    commodityTypeId?: string;
     createTime?: string;
     degree?: string;
     favourNum?: number;
-    id?: number;
+    id?: string;
     isListed?: number;
     price?: number;
     remark?: string;
     status?: number;
     updateTime?: string;
-    userId?: number;
+    userId?: string;
     viewNum?: number;
   };
 
@@ -1458,7 +1359,7 @@ declare namespace API {
     aiRemainNumber?: number;
     balance?: number;
     current?: number;
-    id?: number;
+    id?: string;
     mpOpenId?: string;
     pageSize?: number;
     sortField?: string;
@@ -1484,7 +1385,7 @@ declare namespace API {
   type UserUpdateRequest = {
     aiRemainNumber?: number;
     balance?: number;
-    id?: number;
+    id?: string;
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
@@ -1495,7 +1396,7 @@ declare namespace API {
     aiRemainNumber?: number;
     balance?: number;
     createTime?: string;
-    id?: number;
+    id?: string;
     userAvatar?: string;
     userName?: string;
     userPhone?: string;

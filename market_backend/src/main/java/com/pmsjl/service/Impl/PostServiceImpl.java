@@ -1,6 +1,7 @@
 package com.pmsjl.service.Impl;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -8,12 +9,16 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.mapper.PostFavourMapper;
 import com.pmsjl.mapper.PostMapper;
+import com.pmsjl.mapper.PostThumbMapper;
 import com.pmsjl.model.dto.post.PostAddRequest;
 import com.pmsjl.model.dto.post.PostEditRequest;
 import com.pmsjl.model.dto.post.PostQueryRequest;
 import com.pmsjl.model.dto.post.PostUpdateRequest;
 import com.pmsjl.model.entity.Post;
+import com.pmsjl.model.entity.PostFavour;
+import com.pmsjl.model.entity.PostThumb;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.PostVO;
 import com.pmsjl.model.vo.UserVO;
@@ -51,6 +56,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private PostThumbMapper postThumbMapper;
+
+    @Autowired
+    private PostFavourMapper postFavourMapper;
 
     @Override
     public Long addPost(PostAddRequest postAddRequest, HttpServletRequest request) {
@@ -240,6 +251,28 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
                 }
             });
         }
+        User loginUser = userService.getLoginUser(request);
+        Set<Long> postIdSet = records.stream()
+                .map(Post::getId)
+                .filter(ObjectUtils::isNotEmpty)
+                .collect(Collectors.toSet());
+        if (!postIdSet.isEmpty()) {
+            LambdaQueryWrapper<PostThumb> thumbWrapper = new LambdaQueryWrapper<>();
+            thumbWrapper.eq(PostThumb::getUserId, loginUser.getId());
+            thumbWrapper.in(PostThumb::getPostId, postIdSet);
+            Set<Long> thumbPostIdSet = postThumbMapper.selectList(thumbWrapper).stream()
+                    .map(PostThumb::getPostId)
+                    .collect(Collectors.toSet());
+            postVOList.forEach(postVO -> postVO.setHasThumb(thumbPostIdSet.contains(postVO.getId())));
+
+            LambdaQueryWrapper<PostFavour> favourWrapper = new LambdaQueryWrapper<>();
+            favourWrapper.eq(PostFavour::getUserId, loginUser.getId());
+            favourWrapper.in(PostFavour::getPostId, postIdSet);
+            Set<Long> favourPostIdSet = postFavourMapper.selectList(favourWrapper).stream()
+                    .map(PostFavour::getPostId)
+                    .collect(Collectors.toSet());
+            postVOList.forEach(postVO -> postVO.setHasFavour(favourPostIdSet.contains(postVO.getId())));
+        }
         page.setRecords(postVOList);
         return page;
     }
@@ -265,12 +298,22 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             BeanUtils.copyProperties(user, userVO);
             postVO.setUser(userVO);
         }
+        User loginUser = userService.getLoginUser(request);
+        LambdaQueryWrapper<PostThumb> thumbWrapper = new LambdaQueryWrapper<>();
+        thumbWrapper.eq(PostThumb::getUserId, loginUser.getId());
+        thumbWrapper.eq(PostThumb::getPostId, post.getId());
+        postVO.setHasThumb(postThumbMapper.selectCount(thumbWrapper) > 0);
+
+        LambdaQueryWrapper<PostFavour> favourWrapper = new LambdaQueryWrapper<>();
+        favourWrapper.eq(PostFavour::getUserId, loginUser.getId());
+        favourWrapper.eq(PostFavour::getPostId, post.getId());
+        postVO.setHasFavour(postFavourMapper.selectCount(favourWrapper) > 0);
         return postVO;
     }
 
     private PostVO getPostVO(Post post) {
         PostVO postVO = PostVO.objToVo(post);
-        // PostThumb/PostFavour 后端模块还没有复现，这两个用户态字段先给前端稳定的 false。
+        // 用户态字段默认给 false，列表/详情再按当前登录用户覆盖 hasThumb。
         postVO.setHasThumb(false);
         postVO.setHasFavour(false);
         return postVO;

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pmsjl.mapper.PostFavourMapper">
+
+    <select id="selectMyFavourPostPage" resultType="com.pmsjl.model.entity.Post">
+        SELECT
+            p.*
+        FROM post_favour f
+        INNER JOIN post p ON f.postId = p.id
+        WHERE f.userId = #{queryRequest.favourUserId}
+          AND p.isDelete = 0
+        <if test="queryRequest.id != null">
+            AND p.id = #{queryRequest.id}
+        </if>
+        <if test="queryRequest.notId != null">
+            AND p.id != #{queryRequest.notId}
+        </if>
+        <if test="queryRequest.userId != null">
+            AND p.userId = #{queryRequest.userId}
+        </if>
+        <if test="queryRequest.searchText != null and queryRequest.searchText != ''">
+            AND (p.title LIKE CONCAT('%', #{queryRequest.searchText}, '%')
+                 OR p.content LIKE CONCAT('%', #{queryRequest.searchText}, '%'))
+        </if>
+        <if test="queryRequest.title != null and queryRequest.title != ''">
+            AND p.title LIKE CONCAT('%', #{queryRequest.title}, '%')
+        </if>
+        <if test="queryRequest.content != null and queryRequest.content != ''">
+            AND p.content LIKE CONCAT('%', #{queryRequest.content}, '%')
+        </if>
+        <if test="queryRequest.tags != null and queryRequest.tags.size() > 0">
+            <foreach collection="queryRequest.tags" item="tag">
+                AND p.tags LIKE CONCAT('%"', #{tag}, '"%')
+            </foreach>
+        </if>
+        <if test="queryRequest.orTags != null and queryRequest.orTags.size() > 0">
+            AND (
+            <foreach collection="queryRequest.orTags" item="tag" separator=" OR ">
+                p.tags LIKE CONCAT('%"', #{tag}, '"%')
+            </foreach>
+            )
+        </if>
+        <choose>
+            <when test="queryRequest.sortField == 'createTime'">
+                ORDER BY p.createTime
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="queryRequest.sortField == 'updateTime'">
+                ORDER BY p.updateTime
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="queryRequest.sortField == 'thumbNum'">
+                ORDER BY p.thumbNum
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="queryRequest.sortField == 'favourNum'">
+                ORDER BY p.favourNum
+                <choose>
+                    <when test="queryRequest.sortOrder == 'ascend' or queryRequest.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <otherwise>
+                ORDER BY f.updateTime DESC
+            </otherwise>
+        </choose>
+    </select>
+</mapper>

@@ -28,15 +28,15 @@ enum API {
 export const reqLogin = (data: loginFormData) =>
   request.post<any, loginResponseData>(API.LOGIN_URL, data);
 // 获取用户信息
-export const reqUserInfo = (id: number) =>
+export const reqUserInfo = (id: string) =>
   request.get<any, userInfoResponseData>(API.USERINFO_URL + id);
 // 退出登录
 export const reqLogout = () => request.post<any, any>(API.LOGOUT_URL);
 // 用户每日登录接口
-export const reqSignEveryDay = (id: number) =>
+export const reqSignEveryDay = (id: string) =>
   request.get<any, userSignInfoResponseData>(API.SIGN_URL + id);
 // 更新凭证的接口
-export const reqUpdateCertificate = (id: number) =>
+export const reqUpdateCertificate = (id: string) =>
   request.get<any, loginResponseData>(API.UPDATE_CERTIFICATE_URL + id);
 // 上传头像的接口
 export const reqUploadImage = (imageFile: any) =>

@@ -72,7 +72,7 @@ import { ref, onMounted, onUnmounted, watch } from "vue";
 import dayjs from "dayjs";
 
 type CommodityOrderItem = API.CommodityOrderVO & {
-  id?: number;
+  id?: string;
   payStatus?: number;
   createTime?: string;
 };
@@ -82,12 +82,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (event: "pay", orderId: number): void;
+  (event: "pay", orderId: string): void;
 }>();
 
 const dialogVisible = ref(false);
 const currentOrder = ref<CommodityOrderItem | null>(null);
-const remainingTimes = ref<Record<number, string>>({});
+const remainingTimes = ref<Record<string, string>>({});
 
 const showPayDialog = (order: CommodityOrderItem) => {
   currentOrder.value = order;

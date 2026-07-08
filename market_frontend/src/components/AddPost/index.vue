@@ -21,18 +21,12 @@
         />
       </el-form-item>
       <el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-button type="primary" @click="handleSubmit" class="small-button"
-              >提交
-            </el-button>
-          </el-col>
-          <el-col :span="12">
-            <el-button @click="handleReset" class="small-button"
-              >重置
-            </el-button>
-          </el-col>
-        </el-row>
+        <div class="editor-actions">
+          <el-button @click="handleReset" class="small-button">重置</el-button>
+          <el-button type="primary" @click="handleSubmit" class="small-button">
+            提交
+          </el-button>
+        </div>
       </el-form-item>
     </el-form>
   </div>
@@ -105,8 +99,8 @@ const validateTag = (tag) => {
 
 <style lang="scss" scoped>
 .post-editor {
-  height: calc(100vh - 40px); // 撑满整个屏幕高度，减去内边距
-  padding: 20px; // 屏幕内边距
+  min-height: calc(100vh - 180px);
+  padding: 8px 0 0;
   display: flex;
   flex-direction: column;
 
@@ -116,7 +110,7 @@ const validateTag = (tag) => {
     flex-direction: column;
 
     .el-form-item {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
 
       &:last-child {
         margin-bottom: 0;
@@ -146,17 +140,29 @@ const validateTag = (tag) => {
   }
 
   .small-button {
-    width: 100%; // 按钮宽度占满 el-col
-    max-width: 150px; // 限制按钮最大宽度
+    min-width: 88px;
+    min-height: 36px;
+    padding: 8px 18px;
   }
 
-  .el-row {
+  .editor-actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+  }
+}
 
-    .el-col {
-      display: flex;
-      justify-content: center; // 按钮居中
+@media (max-width: 760px) {
+  .post-editor {
+    min-height: auto;
+
+    .editor-actions {
+      flex-direction: column-reverse;
+    }
+
+    .small-button {
+      width: 100%;
     }
   }
 }

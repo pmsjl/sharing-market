@@ -65,7 +65,8 @@ const props = defineProps({
   }
 });
 
-const goCommodityDetail = (id: number) => {
+const goCommodityDetail = (id?: string) => {
+  if (!id) return;
   $router.push("/user/commodity/detail/" + id);
 };
 </script>
@@ -112,14 +113,18 @@ const goCommodityDetail = (id: number) => {
 
 .image-wrap {
   position: relative;
-  aspect-ratio: 4 / 3;
+  width: 100%;
+  aspect-ratio: 4 / 5;
   background: #f1dec0;
+  overflow: hidden;
 
   img,
   .image-placeholder {
+    display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
   }
 }
 

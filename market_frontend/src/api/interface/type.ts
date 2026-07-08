@@ -5,7 +5,7 @@ export interface ResponseData {
 }
 
 export interface InterfaceData {
-  id: number | string | null;
+  id: string | null;
   name: string | null;
   description: string | null;
   url: string | null;
@@ -14,7 +14,7 @@ export interface InterfaceData {
   responseHeader: string | null;
   status: number | null;
   method: string | null;
-  userId: number | null;
+  userId: string | null;
   interfaceNumber: number | null;
   createTime: string | null;
   updateTime: string | null;
@@ -71,7 +71,7 @@ export interface addInterfaceResponse {
 }
 
 export interface addInterfaceInfoData {
-  id: number | null;
+  id: string | null;
   name: string | null;
   description: string | null;
   url: string | null;
@@ -79,7 +79,7 @@ export interface addInterfaceInfoData {
   requestHeader: string | null;
   responseHeader: string | null;
   method: string | null;
-  userId: number | null;
+  userId: string | null;
 }
 
 export interface updateInterfaceResponse {
@@ -89,7 +89,7 @@ export interface updateInterfaceResponse {
 }
 
 export interface InterfaceInfoVoData {
-  id: number | string | null;
+  id: string | null;
   name: string | null;
   description: string | null;
   url: string | null;
@@ -98,7 +98,7 @@ export interface InterfaceInfoVoData {
   responseHeader: string | null;
   status: number | null;
   method: string | null;
-  userId: number | null;
+  userId: string | null;
   createTime: string | null;
   updateTime: string | null;
   isDelete: number | null;

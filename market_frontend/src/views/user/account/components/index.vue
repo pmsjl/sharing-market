@@ -128,7 +128,7 @@ const handleCurrentChange = (val: number) => {
   paginationConfig.value.current = val;
   getQuestionVoListByPage();
 };
-const goQuestionDetail = (id: number) => {
+const goQuestionDetail = (id: string) => {
   $router.push("/user/question/" + id);
 };
 onMounted(() => {

@@ -229,7 +229,8 @@ const getNoticeList = async () => {
 };
 
 // 显示修改公告的对话框
-const showEditDialog = async (id: number) => {
+const showEditDialog = async (id?: string) => {
+  if (!id) return;
   loading.value = true;
   try {
     const res = await getNoticeVoByIdUsingGet({

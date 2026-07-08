@@ -2,39 +2,40 @@
   <div class="post-browse">
     <!-- 搜索区域 -->
     <div class="search-bar">
-      <el-row style="display: flex; justify-content: space-between">
-        <el-col :span="8" v-if="!addPost">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索帖子"
-            clearable
-            @clear="handleSearch"
-            @keyup.enter="handleSearch"
-          >
-            <template #append>
-              <el-button :icon="Search" @click="handleSearch" />
-            </template>
-          </el-input>
-        </el-col>
-        <el-col :span="6">
+      <div class="post-toolbar" v-if="!addPost">
+        <el-input
+          v-model="searchText"
+          class="post-search-input"
+          placeholder="搜索帖子"
+          clearable
+          @clear="handleSearch"
+          @keyup.enter="handleSearch"
+        >
+          <template #append>
+            <el-button :icon="Search" @click="handleSearch" />
+          </template>
+        </el-input>
+        <div class="post-toolbar-actions">
           <el-button
             type="primary"
+            class="toolbar-button"
             @click="showAddPost()"
             :icon="Promotion"
-            v-if="!addPost"
           >
             分享攻略
           </el-button>
-          <el-button
-            type="success"
-            @click="addPost = false"
-            :icon="Back"
-            :style="{ marginLeft: addPost ? '100px' : '30px' }"
-          >
-            返回攻略列表
-          </el-button>
-        </el-col>
-      </el-row>
+        </div>
+      </div>
+      <div class="post-toolbar post-toolbar--back" v-else>
+        <el-button
+          type="success"
+          class="toolbar-button"
+          @click="addPost = false"
+          :icon="Back"
+        >
+          返回攻略列表
+        </el-button>
+      </div>
     </div>
     <AddPost v-if="addPost"></AddPost>
     <!-- 帖子列表 -->
@@ -95,6 +96,7 @@
     <!-- 分页 -->
     <div class="pagination" v-if="!addPost">
       <el-pagination
+        small
         background
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[5, 10, 15, 20]"
@@ -151,7 +153,8 @@ const getPostList = async () => {
   }
 };
 // 跳转到帖子详情页
-const goToPostDetail = (postId: number) => {
+const goToPostDetail = (postId?: string) => {
+  if (!postId) return;
   router.push({ name: "PostDetail", params: { id: postId } });
 };
 const showAddPost = () => {
@@ -201,11 +204,38 @@ const truncateContent = (text: string, length: number) => {
 
   .search-bar {
     margin-bottom: 20px;
+    padding: 12px 14px;
 
     .el-input {
       width: 100%;
-      max-width: 400px;
     }
+  }
+
+  .post-toolbar {
+    display: grid;
+    grid-template-columns: minmax(240px, 420px) auto;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .post-toolbar--back {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .post-search-input {
+    max-width: 420px;
+  }
+
+  .post-toolbar-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .toolbar-button {
+    min-height: 36px;
+    padding: 8px 18px;
   }
 
   .post-list {
@@ -299,8 +329,30 @@ const truncateContent = (text: string, length: number) => {
 
   .pagination {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     margin-top: 20px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+}
+
+@media (max-width: 760px) {
+  .post-browse {
+    padding: 12px;
+
+    .post-toolbar {
+      grid-template-columns: 1fr;
+    }
+
+    .post-toolbar-actions,
+    .post-toolbar--back,
+    .pagination {
+      justify-content: flex-start;
+    }
+
+    .toolbar-button {
+      width: 100%;
+    }
   }
 }
 </style>
