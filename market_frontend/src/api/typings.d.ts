@@ -1177,17 +1177,11 @@ declare namespace API {
   };
 
   type PrivateMessageQueryRequest = {
-    alreadyRead?: number;
-    content?: string;
+    contactUserId?: string;
     current?: number;
-    id?: string;
-    isRecalled?: number;
     pageSize?: number;
-    recipientId?: string;
-    senderId?: string;
     sortField?: string;
     sortOrder?: string;
-    type?: string;
   };
 
   type PrivateMessageUpdateRequest = {

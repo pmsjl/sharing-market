@@ -103,7 +103,7 @@ import { listMyFavourPostByPageUsingPost } from "@/api/postFavourController";
 const searchText = ref("");
 
 // 帖子列表
-const postList = ref([]);
+const postList = ref<API.PostVO[]>([]);
 const addPost = ref(false);
 const router = useRouter(); // 获取路由实例
 // 分页配置
@@ -122,7 +122,7 @@ const getPostList = async () => {
       pageSize: paginationConfig.value.pageSize
     });
     if (res.code === 200) {
-      postList.value = res.data.records;
+      postList.value = res.data.records || [];
       paginationConfig.value.total = parseInt(res.data.total);
     } else {
       ElMessage.error("获取帖子列表失败");

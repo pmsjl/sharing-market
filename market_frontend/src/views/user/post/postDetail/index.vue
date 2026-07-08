@@ -3,11 +3,21 @@
     <!-- 帖子详情 -->
     <div class="post-content">
       <div class="post-header">
-        <el-avatar :src="post.user?.userAvatar" class="user-avatar"></el-avatar>
+        <el-avatar :src="post.user?.userAvatar" class="user-avatar" />
         <div class="user-details">
           <span class="user-name">{{ post.user?.userName }}</span>
           <span class="post-time">{{ post.createTime }}</span>
         </div>
+        <el-button
+          v-if="canChatWithAuthor"
+          class="chat-author-button"
+          size="small"
+          type="primary"
+          plain
+          @click="goToPrivateChat"
+        >
+          私聊作者
+        </el-button>
       </div>
       <h1 class="post-title">{{ post.title }}</h1>
       <MdPreview
@@ -108,8 +118,8 @@
 
 <script setup lang="ts">
 import Comments from "@/components/Comment/index.vue";
-import { ref, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { computed, ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { getPostVoByIdUsingGet } from "@/api/postController";
 import { doPostFavourUsingPost } from "@/api/postFavourController";
 import { ElMessage } from "element-plus";
@@ -117,27 +127,39 @@ import { doThumbUsingPost } from "@/api/postThumbController";
 import QRCodeVue3 from "qrcode-vue3";
 import useClipboard from "vue-clipboard3";
 import { MdPreview } from "md-editor-v3";
+import { GET_ID } from "@/utils/token";
 // 获取路由参数
 const route = useRoute();
+const router = useRouter();
 const postId = Array.isArray(route.params.id)
   ? route.params.id[0]
   : String(route.params.id || "");
+const currentUserId = String(GET_ID() || "");
 // 分享对话框的显示状态
 const shareDialogVisible = ref(false);
 // 当前页面地址
 const currentPageUrl = ref(window.location.href);
 
 // 帖子详情数据
-const post = ref({
+const post = ref<API.PostVO>({
   id: postId,
   title: "",
   content: "",
   createTime: "",
+  userId: "",
   user: {
+    id: "",
     userName: "",
     userAvatar: ""
   }
 });
+
+const authorId = computed(() =>
+  String(post.value.user?.id || post.value.userId || "")
+);
+const canChatWithAuthor = computed(
+  () => Boolean(authorId.value) && authorId.value !== currentUserId
+);
 
 // 点赞和收藏计数
 const likeCount = ref(); // 示例查看次数
@@ -156,7 +178,9 @@ const fetchPostDetail = async () => {
         title: response.data.title,
         content: response.data.content,
         createTime: response.data.createTime,
+        userId: response.data.userId,
         user: {
+          id: response.data.user?.id,
           userName: response.data.user?.userName,
           userAvatar: response.data.user?.userAvatar
         }
@@ -263,6 +287,18 @@ const getPostLikeAndCollect = async () => {
 const handleShare = () => {
   shareDialogVisible.value = true;
 };
+const goToPrivateChat = () => {
+  if (!canChatWithAuthor.value) return;
+  router.push({
+    path: "/user/account",
+    query: {
+      tab: "chat",
+      contactUserId: authorId.value,
+      contactName: post.value.user?.userName || "帖子作者",
+      contactAvatar: post.value.user?.userAvatar || ""
+    }
+  });
+};
 // 在组件挂载时获取数据（hasThumb/hasFavour 已在 fetchPostDetail 中获取）
 onMounted(async () => {
   await fetchPostDetail();
@@ -305,6 +341,10 @@ onMounted(async () => {
           margin-top: 10px;
           color: #999;
         }
+      }
+
+      .chat-author-button {
+        margin-left: auto;
       }
     }
 

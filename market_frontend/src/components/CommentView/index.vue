@@ -285,21 +285,34 @@ const cancelEvent = () => {
 
 .comment-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 10px;
   flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #edf0f5;
 }
 
 .action-buttons-inline {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .action-buttons-inline :deep(.el-button) {
   font-size: 14px;
-  padding: 0;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.action-buttons-inline :deep(.el-button:hover) {
+  background: #ecf5ff;
+}
+
+.action-buttons-inline :deep(.delete-button:hover) {
+  background: #fef0f0;
 }
 
 .reply-editor {

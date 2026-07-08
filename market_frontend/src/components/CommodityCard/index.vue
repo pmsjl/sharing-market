@@ -40,6 +40,14 @@
           <el-button type="primary" @click="handleBuy" :icon="Coin">
             购买商品
           </el-button>
+          <el-button
+            v-if="canContactSeller"
+            type="success"
+            plain
+            @click="handleContactSeller"
+          >
+            联系卖家
+          </el-button>
           <el-button @click="handleShare" :icon="Share">分享</el-button>
         </div>
 
@@ -137,8 +145,8 @@
 
 <script setup lang="ts">
 import { Coin } from "@element-plus/icons-vue";
-import { onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Share, Star, StarFilled, View } from "@element-plus/icons-vue";
 import QRCodeVue3 from "qrcode-vue3";
@@ -155,9 +163,12 @@ import {
 import CommodityScore from "@/components/CommodityScore/index.vue";
 import CommodityScoreList from "@/components/CommodityScoreList/index.vue";
 import { animateIn } from "@/utils/motion";
+import { GET_ID } from "@/utils/token";
 
 const route = useRoute();
+const router = useRouter();
 const commodityId = route.params.id as string;
+const currentUserId = String(GET_ID() || "");
 const pageRef = ref<HTMLElement | null>(null);
 const detailActiveName = ref("first");
 const commodity = ref({
@@ -170,6 +181,7 @@ const commodity = ref({
   viewNum: 0,
   favourNum: 0,
   commodityTypeName: "",
+  adminId: "",
   adminName: "",
   isListed: 0
 });
@@ -182,6 +194,10 @@ const id = ref();
 const shareDialogVisible = ref(false);
 const buyDialogVisible = ref(false);
 const currentPageUrl = ref(window.location.href);
+const sellerId = computed(() => String(commodity.value.adminId || ""));
+const canContactSeller = computed(
+  () => Boolean(sellerId.value) && sellerId.value !== currentUserId
+);
 
 const buyForm = ref({
   buyNumber: 1,
@@ -290,6 +306,18 @@ const handleCollect = async () => {
 
 const handleShare = () => {
   shareDialogVisible.value = true;
+};
+
+const handleContactSeller = () => {
+  if (!canContactSeller.value) return;
+  router.push({
+    path: "/user/account",
+    query: {
+      tab: "chat",
+      contactUserId: sellerId.value,
+      contactName: commodity.value.adminName || "卖家"
+    }
+  });
 };
 
 const handleBuy = () => {
