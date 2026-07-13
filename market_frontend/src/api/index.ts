@@ -15,7 +15,7 @@ import * as postFavourController from "./postFavourController";
 import * as postThumbController from "./postThumbController";
 import * as privateMessageController from "./privateMessageController";
 import * as userController from "./userController";
-import * as userAiMessageController from "./userAiMessageController";
+import * as aiController from "./aiController";
 import * as userCommodityFavoritesController from "./userCommodityFavoritesController";
 export default {
   wxMpController,
@@ -31,6 +31,6 @@ export default {
   postThumbController,
   privateMessageController,
   userController,
-  userAiMessageController,
+  aiController,
   userCommodityFavoritesController
 };

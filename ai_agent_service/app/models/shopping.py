@@ -1,0 +1,1 @@
+"""Python shopping model placeholder."""

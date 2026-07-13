@@ -230,20 +230,6 @@ declare namespace API {
     message?: string;
   };
 
-  type BaseResponsePageUserAiMessage_ = {
-    code?: number;
-    data?: PageUserAiMessage_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponsePageUserAiMessageVO_ = {
-    code?: number;
-    data?: PageUserAiMessageVO_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
   type BaseResponsePageUserCommodityFavoritesVO_ = {
     code?: number;
     data?: PageUserCommodityFavoritesVO_;
@@ -282,20 +268,6 @@ declare namespace API {
   type BaseResponseUser_ = {
     code?: number;
     data?: User;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponseUserAiMessage_ = {
-    code?: number;
-    data?: UserAiMessage;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponseUserAiMessageVO_ = {
-    code?: number;
-    data?: UserAiMessageVO;
     hashMap?: Record<string, any>;
     message?: string;
   };
@@ -701,11 +673,6 @@ declare namespace API {
     id?: string;
   };
 
-  type getUserAiMessageVOByIdUsingGETParams = {
-    /** id */
-    id?: string;
-  };
-
   type getUserByIdUsingGETParams = {
     /** id */
     id?: string;
@@ -1007,32 +974,6 @@ declare namespace API {
     total?: number;
   };
 
-  type PageUserAiMessage_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: UserAiMessage[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
-  };
-
-  type PageUserAiMessageVO_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: UserAiMessageVO[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
-  };
-
   type PageUserCommodityFavoritesVO_ = {
     countId?: string;
     current?: number;
@@ -1206,11 +1147,6 @@ declare namespace API {
     updateTime?: string;
   };
 
-  type recommendCommoditiesUsingGETParams = {
-    /** userId */
-    userId: string;
-  };
-
   type uploadFileUsingPOSTParams = {
     biz?: string;
   };
@@ -1239,62 +1175,6 @@ declare namespace API {
     userAvatar?: string;
     userName?: string;
     userRole?: string;
-  };
-
-  type UserAiMessage = {
-    aiGenerateText?: string;
-    createTime?: string;
-    id?: string;
-    isDelete?: number;
-    updateTime?: string;
-    userId?: string;
-    userInputText?: string;
-  };
-
-  type UserAiMessageAddRequest = {
-    aiGenerateText?: string;
-    userId?: string;
-    userInputText?: string;
-  };
-
-  type UserAiMessageEditRequest = {
-    aiGenerateText?: string;
-    createTime?: string;
-    id?: string;
-    updateTime?: string;
-    userId?: string;
-    userInputText?: string;
-  };
-
-  type UserAiMessageQueryRequest = {
-    aiGenerateText?: string;
-    createTime?: string;
-    current?: number;
-    id?: string;
-    pageSize?: number;
-    sortField?: string;
-    sortOrder?: string;
-    updateTime?: string;
-    userId?: string;
-    userInputText?: string;
-  };
-
-  type UserAiMessageUpdateRequest = {
-    aiGenerateText?: string;
-    createTime?: string;
-    id?: string;
-    updateTime?: string;
-    userId?: string;
-    userInputText?: string;
-  };
-
-  type UserAiMessageVO = {
-    aiGenerateText?: string;
-    createTime?: string;
-    id?: string;
-    updateTime?: string;
-    userId?: string;
-    userInputText?: string;
   };
 
   type UserCommodityFavoritesAddRequest = {

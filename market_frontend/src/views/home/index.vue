@@ -74,16 +74,16 @@ const quickEntries = [
     path: "/user/commodity"
   },
   {
+    kicker: "AGENT",
+    title: "导购 Agent",
+    desc: "按预算和用途整理购买建议",
+    path: "/user/agentGuide"
+  },
+  {
     kicker: "ORDER",
     title: "我的订单",
     desc: "查看支付状态和交易记录",
     path: "/user/orders"
-  },
-  {
-    kicker: "AI",
-    title: "智能推荐",
-    desc: "让 AI 帮你筛出合适好物",
-    path: "/user/commodityRecommend"
   },
   {
     kicker: "POST",
@@ -216,11 +216,14 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  align-items: stretch;
 }
 
 .quick-note {
   display: grid;
+  align-content: start;
   gap: 8px;
+  height: 100%;
   min-height: 150px;
   padding: 20px;
   border: 1px solid var(--market-line);
@@ -230,11 +233,11 @@ onMounted(() => {
   background: var(--market-surface);
   box-shadow: var(--market-shadow-soft);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
+    border-color: rgba(217, 108, 44, 0.45);
     box-shadow: var(--market-shadow);
-    transform: translateY(-4px);
   }
 
   span {

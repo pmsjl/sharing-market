@@ -161,17 +161,6 @@ export const asnycAdminRoute = [
           hidden: false, //代表路由标题在菜单中是否隐藏  true:隐藏 false:不隐藏
           icon: "EditPen" //菜单文字左侧的图标,支持element-plus全部图标
         }
-      },
-      {
-        //面经管理页面
-        path: "/admin/aiManagement",
-        component: () => import("@/views/admin/aiManagement/index.vue"),
-        name: "aiManagement",
-        meta: {
-          title: "AI 管理", //菜单标题
-          hidden: false, //代表路由标题在菜单中是否隐藏  true:隐藏 false:不隐藏
-          icon: "Scissor" //菜单文字左侧的图标,支持element-plus全部图标
-        }
       }
     ]
   }
@@ -239,6 +228,17 @@ export const asnycUserRoute = [
         }
       },
       {
+        path: "/user/agentGuide",
+        component: () => import("@/views/user/agentGuide/index.vue"),
+        name: "agentGuide",
+        meta: {
+          title: "智能导购",
+          icon: "ShoppingCartFull",
+          hidden: false,
+          workspace: true
+        }
+      },
+      {
         path: "/user/notice",
         component: () => import("@/views/user/notice/index.vue"),
         name: "notice",
@@ -267,26 +267,6 @@ export const asnycUserRoute = [
           title: "攻略详情",
           icon: "Postcard",
           hidden: true
-        }
-      },
-      {
-        path: "/user/AiTalk",
-        component: () => import("@/views/user/AITalk/index.vue"),
-        name: "AiTalk",
-        meta: {
-          title: "AI对话",
-          icon: "Microphone",
-          hidden: false
-        }
-      },
-      {
-        path: "/user/commodityRecommend",
-        component: () => import("@/views/user/commodityRecommend/index.vue"),
-        name: "commodityRecommend",
-        meta: {
-          title: "商品推荐",
-          icon: "Sell",
-          hidden: false
         }
       }
     ]
