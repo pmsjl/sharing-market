@@ -265,7 +265,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         User loginUser = userService.getLoginUser(request);
         Commodity commodity = getById(id);
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
-        if (!userService.isAdmin(request) &&commodity.getAdminId()!=loginUser.getId()){
+        if (!userService.isAdmin(request) && !Objects.equals(commodity.getAdminId(), loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean result = removeById(id);

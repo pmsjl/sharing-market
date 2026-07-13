@@ -6,7 +6,7 @@
       <component :is="Component" v-if="flag" />
     </transition>
   </router-view>
-  <div class="footer">
+  <div v-if="!$route.meta.workspace" class="footer">
     <p>
       <span style="margin: 0px 10px">
         <i class="iconfont icon-gitee" style="color: #d81e06"></i>
@@ -58,9 +58,11 @@
 
 <script setup lang="ts">
 import { watch, ref, nextTick } from "vue";
+import { useRoute } from "vue-router";
 import useLayOutSettingStore from "@/store/modules/setting";
 
 let layOutSettingStore = useLayOutSettingStore();
+const $route = useRoute();
 
 //控制当前组件是否销毁重建
 let flag = ref(true);

@@ -74,7 +74,7 @@ public class UserCommodityFavoritesServiceImpl
         if (Objects.equals(oldFavorite.getStatus(), status)) {
             return true;
         }
-        if (status == 1) {
+        if (Objects.equals(status, 1)) {
             commodityService.validateCommodityExists(oldFavorite.getCommodityId());
         }
         boolean updated = lambdaUpdate()
@@ -82,7 +82,7 @@ public class UserCommodityFavoritesServiceImpl
                 .eq(UserCommodityFavorites::getId, id)
                 .update();
         ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR);
-        changeCommodityFavourNum(oldFavorite.getCommodityId(), status == 1 ? 1 : -1);
+        changeCommodityFavourNum(oldFavorite.getCommodityId(), Objects.equals(status, 1) ? 1 : -1);
         return true;
     }
 

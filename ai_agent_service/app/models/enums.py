@@ -1,0 +1,1 @@
+"""Python enum model placeholder."""

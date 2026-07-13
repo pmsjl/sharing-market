@@ -1,0 +1,1 @@
+"""Shopping guide prompt placeholder."""

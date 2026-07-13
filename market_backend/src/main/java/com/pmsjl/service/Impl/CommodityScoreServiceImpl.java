@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,13 +59,13 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         Long commodityId = commodityScore.getCommodityId();
         Commodity commodity = commodityService.getById(commodityId);
         ThrowUtils.throwIf(
-                commodity == null || commodity.getIsDelete() == 1,
+                commodity == null || Objects.equals(commodity.getIsDelete(), 1),
                 ErrorCode.NOT_FOUND_ERROR,
                 "商品不存在"
         );
         // 4. 校验商品是否上架
         ThrowUtils.throwIf(
-                commodity.getIsListed() != 1,
+                !Objects.equals(commodity.getIsListed(), 1),
                 ErrorCode.PARAMS_ERROR,
                 "商品未上架，不能评价"
         );

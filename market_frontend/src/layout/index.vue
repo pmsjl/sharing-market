@@ -25,7 +25,10 @@
       <header class="layout_tabbar">
         <Tabbar />
       </header>
-      <main class="layout_main">
+      <main
+        class="layout_main"
+        :class="{ 'workspace-mode': $route.meta.workspace }"
+      >
         <Main />
       </main>
     </section>
@@ -124,6 +127,11 @@ export default {
   height: calc(100dvh - $base-tabbar-height);
   padding: 22px;
   overflow: auto;
+
+  &.workspace-mode {
+    padding: 12px;
+    overflow: hidden;
+  }
 }
 
 @media (max-width: 768px) {
@@ -144,6 +152,10 @@ export default {
   .layout_main {
     height: calc(100dvh - $base-tabbar-height);
     padding: 14px;
+
+    &.workspace-mode {
+      padding: 0;
+    }
   }
 }
 </style>
