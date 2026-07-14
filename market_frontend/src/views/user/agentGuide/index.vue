@@ -399,9 +399,9 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
 import {
-  AiChatResponse,
-  AiConversation,
-  AiMessage,
+  AiChatVO,
+  AiConversationVO,
+  AiMessageVO,
   AiShoppingContext,
   createAiConversation,
   deleteAiConversation,
@@ -431,8 +431,8 @@ const backendUnavailable = ref(false);
 const historyDrawerOpen = ref(false);
 const contextDrawerOpen = ref(false);
 const viewportWidth = ref(window.innerWidth);
-const conversations = ref<AiConversation[]>([]);
-const messages = ref<AiMessage[]>([]);
+const conversations = ref<AiConversationVO[]>([]);
+const messages = ref<AiMessageVO[]>([]);
 const activeConversationId = ref<string | null>(null);
 const conversationPage = ref(1);
 const conversationTotal = ref(0);
@@ -623,7 +623,7 @@ const startNewChat = () => {
   nextTick(() => composerRef.value?.focus());
 };
 
-const selectConversation = async (item: AiConversation) => {
+const selectConversation = async (item: AiConversationVO) => {
   activeConversationId.value = item.id;
   messagePage.value = 1;
   normalizeContext(item.shoppingContext);
@@ -631,7 +631,7 @@ const selectConversation = async (item: AiConversation) => {
   await loadMessages(item.id);
 };
 
-const confirmDeleteConversation = async (item: AiConversation) => {
+const confirmDeleteConversation = async (item: AiConversationVO) => {
   try {
     await ElMessageBox.confirm(
       `删除「${item.title || "未命名咨询"}」后将无法在列表中恢复。`,
@@ -655,10 +655,10 @@ const confirmDeleteConversation = async (item: AiConversation) => {
 };
 
 const makeLocalMessage = (
-  role: AiMessage["role"],
+  role: AiMessageVO["role"],
   content: string,
-  status: AiMessage["status"]
-): AiMessage => ({
+  status: AiMessageVO["status"]
+): AiMessageVO => ({
   id: `local-${role}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
   role,
   content,
@@ -666,10 +666,7 @@ const makeLocalMessage = (
   createTime: new Date().toISOString()
 });
 
-const applyServerResponse = async (
-  data: AiChatResponse,
-  localIds: string[]
-) => {
+const applyServerResponse = async (data: AiChatVO, localIds: string[]) => {
   messages.value = messages.value.filter(
     (message) => !localIds.includes(message.id)
   );

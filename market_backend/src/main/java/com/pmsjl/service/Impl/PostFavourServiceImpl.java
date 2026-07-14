@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.pmsjl.constant.RedisConstants.*;
+import static com.pmsjl.constant.RedisConstant.*;
 
 /**
  * <p>

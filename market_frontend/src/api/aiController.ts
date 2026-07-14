@@ -1,7 +1,7 @@
 import request from "@/utils/request";
 
-export type AiMessageRole = "USER" | "ASSISTANT";
-export type AiMessageStatus = "PENDING" | "SUCCESS" | "FAILED";
+export type AiMessageRoleEnum = "USER" | "ASSISTANT";
+export type AiMessageStatusEnum = "PENDING" | "SUCCESS" | "FAILED";
 
 export interface AiShoppingContext {
   budgetMin?: number;
@@ -11,7 +11,7 @@ export interface AiShoppingContext {
   avoidances?: string[];
 }
 
-export interface AiCommodity {
+export interface CommodityVO {
   id: string;
   commodityName: string;
   commodityDescription?: string;
@@ -24,21 +24,21 @@ export interface AiCommodity {
   favourNum?: number;
 }
 
-export interface AiRecommendation {
-  commodity: AiCommodity;
+export interface AiRecommendationVO {
+  commodity: CommodityVO;
   matchScore?: number;
   reason?: string;
   riskTip?: string;
 }
 
-export interface AiSuggestedAction {
+export interface AiSuggestedActionVO {
   type: "VIEW_COMMODITY" | "SEARCH_COMMODITY";
   label: string;
   commodityId?: string;
   keyword?: string;
 }
 
-export interface AiRagSource {
+export interface AiRagSourceVO {
   sourceType: "COMMODITY" | "POST" | "COMMENT" | "NOTICE" | "GUIDE";
   sourceId: string;
   title: string;
@@ -46,30 +46,30 @@ export interface AiRagSource {
   targetPath: string;
 }
 
-export interface AiStructuredContent {
+export interface AiStructuredContentVO {
   intent?: string;
   summary?: string;
-  recommendations?: AiRecommendation[];
+  recommendations?: AiRecommendationVO[];
   purchaseAdvice?: string[];
   warnings?: string[];
   searchKeywords?: string[];
-  suggestedActions?: AiSuggestedAction[];
-  sources?: AiRagSource[];
+  suggestedActions?: AiSuggestedActionVO[];
+  sources?: AiRagSourceVO[];
 }
 
-export interface AiMessage {
+export interface AiMessageVO {
   id: string;
   sequenceNo?: number;
-  role: AiMessageRole;
+  role: AiMessageRoleEnum;
   content: string;
-  structuredContent?: AiStructuredContent | null;
-  status: AiMessageStatus;
+  structuredContent?: AiStructuredContentVO | null;
+  status: AiMessageStatusEnum;
   errorCode?: string;
   retryable?: boolean;
   createTime: string;
 }
 
-export interface AiConversation {
+export interface AiConversationVO {
   id: string;
   title: string;
   scene: string;
@@ -80,34 +80,34 @@ export interface AiConversation {
   createTime: string;
 }
 
-export interface AiChatResponse {
+export interface AiChatVO {
   requestId: string;
-  conversation: AiConversation;
-  userMessage: AiMessage;
-  assistantMessage: AiMessage;
+  conversation: AiConversationVO;
+  userMessage: AiMessageVO;
+  assistantMessage: AiMessageVO;
 }
 
-export interface AiPage<T> {
+export interface AiPageVO<T> {
   current: number;
   pageSize: number;
   total: number;
   records: T[];
 }
 
-export interface AiResult<T> {
+export interface Result<T> {
   code: number;
   data?: T;
   message?: string;
   hashMap?: Record<string, unknown>;
 }
 
-export interface SendAiMessageRequest {
+export interface AiChatMessageRequest {
   content: string;
   shoppingContext?: AiShoppingContext;
 }
 
-export const createAiConversation = (body: SendAiMessageRequest) =>
-  request<unknown, AiResult<AiChatResponse>>({
+export const createAiConversation = (body: AiChatMessageRequest) =>
+  request<unknown, Result<AiChatVO>>({
     url: "/api/ai/conversations",
     method: "POST",
     data: body
@@ -115,16 +115,16 @@ export const createAiConversation = (body: SendAiMessageRequest) =>
 
 export const sendAiConversationMessage = (
   conversationId: string,
-  body: SendAiMessageRequest
+  body: AiChatMessageRequest
 ) =>
-  request<unknown, AiResult<AiChatResponse>>({
+  request<unknown, Result<AiChatVO>>({
     url: `/api/ai/conversations/${conversationId}/messages`,
     method: "POST",
     data: body
   });
 
 export const listAiConversations = (current = 1, pageSize = 10) =>
-  request<unknown, AiResult<AiPage<AiConversation>>>({
+  request<unknown, Result<AiPageVO<AiConversationVO>>>({
     url: "/api/ai/conversations",
     method: "GET",
     params: { current, pageSize }
@@ -135,14 +135,14 @@ export const listAiConversationMessages = (
   current = 1,
   pageSize = 20
 ) =>
-  request<unknown, AiResult<AiPage<AiMessage>>>({
+  request<unknown, Result<AiPageVO<AiMessageVO>>>({
     url: `/api/ai/conversations/${conversationId}/messages`,
     method: "GET",
     params: { current, pageSize }
   });
 
 export const deleteAiConversation = (conversationId: string) =>
-  request<unknown, AiResult<boolean>>({
+  request<unknown, Result<boolean>>({
     url: `/api/ai/conversations/${conversationId}`,
     method: "DELETE"
   });

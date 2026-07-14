@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.pmsjl.constant.RedisConstants.POST_THUMB_KEY;
+import static com.pmsjl.constant.RedisConstant.POST_THUMB_KEY;
 
 /**
  * 帖子点赞服务实现

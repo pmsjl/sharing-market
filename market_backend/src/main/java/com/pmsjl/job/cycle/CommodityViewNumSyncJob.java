@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
-import static com.pmsjl.constant.RedisConstants.CACHE_COMMODITY_KEY;
-import static com.pmsjl.constant.RedisConstants.COMMODITY_VIEW_NUM_KEY;
+import static com.pmsjl.constant.RedisConstant.CACHE_COMMODITY_KEY;
+import static com.pmsjl.constant.RedisConstant.COMMODITY_VIEW_NUM_KEY;
 
 @Slf4j
 @Component

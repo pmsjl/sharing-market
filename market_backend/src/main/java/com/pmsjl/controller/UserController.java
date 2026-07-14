@@ -22,7 +22,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
-import static com.pmsjl.constant.RedisConstants.*;
+import static com.pmsjl.constant.RedisConstant.*;
 
 import java.util.HashMap;
 import java.util.List;

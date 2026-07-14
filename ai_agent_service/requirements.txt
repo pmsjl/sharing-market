@@ -1,1 +1,3 @@
-# TODO Add dependencies when Python implementation begins.
+fastapi>=0.136,<1.0
+uvicorn[standard]>=0.30,<1.0
+httpx>=0.28,<1.0
