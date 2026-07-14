@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import static com.pmsjl.constant.RedisConstants.*;
+import static com.pmsjl.constant.RedisConstant.*;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 

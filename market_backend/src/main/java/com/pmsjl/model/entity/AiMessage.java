@@ -40,7 +40,7 @@ public class AiMessage implements Serializable {
     private String content;
 
     /**
-     * Agent 返回的结构化内容 JSON，仅助手消息通常包含该字段。
+     * Agent 返回的结构化内容 JSON，仅assistant消息通常包含该字段。
      */
     private String structuredContent;
 

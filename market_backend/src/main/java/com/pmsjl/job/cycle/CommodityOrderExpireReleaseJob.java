@@ -1,7 +1,6 @@
 package com.pmsjl.job.cycle;
 
 import com.pmsjl.common.ErrorCode;
-import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityOrder;
 import com.pmsjl.service.CommodityOrderService;
@@ -17,7 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.Date;
 import java.util.List;
 
-import static com.pmsjl.constant.RedisConstants.CACHE_COMMODITY_KEY;
+import static com.pmsjl.constant.RedisConstant.CACHE_COMMODITY_KEY;
 
 @Slf4j
 @Component

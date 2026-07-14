@@ -1,5 +1,5 @@
 package com.pmsjl.controller;
-import static com.pmsjl.constant.RedisConstants.*;
+import static com.pmsjl.constant.RedisConstant.*;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.annotation.AuthCheck;
 import com.pmsjl.common.DeleteRequest;

@@ -1,6 +1,6 @@
 package com.pmsjl.service.Impl;
 
-import static com.pmsjl.constant.RedisConstants.*;
+import static com.pmsjl.constant.RedisConstant.*;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateTime;

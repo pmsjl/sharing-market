@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 
-import static com.pmsjl.constant.RedisConstants.CACHE_COMMODITY_KEY;
+import static com.pmsjl.constant.RedisConstant.CACHE_COMMODITY_KEY;
 
 @Service
 public class UserCommodityFavoritesServiceImpl
