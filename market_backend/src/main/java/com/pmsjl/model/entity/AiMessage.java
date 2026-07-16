@@ -62,8 +62,8 @@ public class AiMessage implements Serializable {
     /** 本轮 AI 请求总耗时，单位为毫秒。 */
     private Integer latencyMs;
 
-    /** 生成失败时记录的稳定错误码。 */
-    private String errorCode;
+    /** Agent 生成失败时记录的稳定字符串标识，不使用项目整数型 ErrorCode。 */
+    private String agentErrorKey;
 
     /** 失败消息是否允许用户重试。 */
     private Boolean retryable;

@@ -12,8 +12,8 @@ public class AgentErrorResponse implements Serializable {
     /** 本次 Agent 调用的全链路请求标识。 */
     private String requestId;
 
-    /** 便于 Java 侧分类处理的稳定错误码。 */
-    private String errorCode;
+    /** Agent 内部失败的稳定字符串标识，例如 AI_MODEL_TIMEOUT。 */
+    private String agentErrorKey;
 
     /** 面向调用方的错误说明，不应包含敏感内部信息。 */
     private String message;

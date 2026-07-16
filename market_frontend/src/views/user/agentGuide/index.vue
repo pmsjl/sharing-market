@@ -58,7 +58,16 @@
         </button>
 
         <div
-          v-if="!conversationLoading && !conversations.length"
+          v-if="conversationLoadFailed"
+          class="history-load-state rail-history-error"
+        >
+          <strong>暂时无法加载历史记录</strong>
+          <p>不影响你发起新的咨询。</p>
+          <button type="button" @click="reloadConversations">重新加载</button>
+        </div>
+
+        <div
+          v-else-if="!conversationLoading && !conversations.length"
           class="rail-empty"
         >
           <span aria-hidden="true">⌁</span>
@@ -78,12 +87,9 @@
       </button>
 
       <div class="rail-note">
-        <span
-          class="status-dot"
-          :class="{ offline: backendUnavailable }"
-        ></span>
+        <span class="status-dot" :class="{ offline: agentUnavailable }"></span>
         <span>{{
-          backendUnavailable ? "Agent 后端等待接入" : "Agent 服务已连接"
+          agentUnavailable ? "AI 服务暂不可用" : "AI 导购可开始咨询"
         }}</span>
       </div>
     </aside>
@@ -117,7 +123,15 @@
         </button>
       </header>
 
-      <section ref="messageListRef" class="message-stage" aria-live="polite">
+      <section
+        ref="messageListRef"
+        class="message-stage"
+        role="log"
+        aria-label="咨询消息记录"
+        aria-live="polite"
+        tabindex="0"
+        @keydown="handleMessageStageKeydown"
+      >
         <button
           v-if="hasOlderMessages"
           type="button"
@@ -130,6 +144,15 @@
 
         <div v-if="messageLoading && !messages.length" class="stage-loading">
           <span></span><span></span><span></span>
+        </div>
+
+        <div
+          v-else-if="messageLoadFailed && !messages.length"
+          class="history-load-state message-history-error"
+        >
+          <strong>暂时无法加载此会话的历史消息</strong>
+          <p>请稍后重试；这不会影响你新建咨询。</p>
+          <el-button size="small" @click="reloadMessages">重新加载</el-button>
         </div>
 
         <div v-else-if="!messages.length" class="welcome-card">
@@ -184,12 +207,13 @@
                     重新发送
                   </el-button>
                 </template>
-                <MdPreview
-                  v-else
-                  :model-value="message.content"
-                  preview-theme="github"
-                  code-theme="github"
-                />
+                <div v-else class="markdown-answer">
+                  <MdPreview
+                    :model-value="message.content"
+                    preview-theme="github"
+                    code-theme="github"
+                  />
+                </div>
               </template>
             </div>
 
@@ -285,11 +309,14 @@
             @keydown="handleComposerKeydown"
           />
           <div class="composer-actions">
-            <span>Enter 发送 · Shift + Enter 换行</span>
+            <span v-if="messageLoadFailed">
+              历史消息加载失败，请重新加载后再继续咨询
+            </span>
+            <span v-else>Enter 发送 · Shift + Enter 换行</span>
             <el-button
               type="primary"
               :loading="sending"
-              :disabled="!composer.trim() || sending"
+              :disabled="!composer.trim() || sending || messageLoadFailed"
               @click="sendMessage"
             >
               发送
@@ -427,7 +454,9 @@ const composerFocused = ref(false);
 const sending = ref(false);
 const conversationLoading = ref(false);
 const messageLoading = ref(false);
-const backendUnavailable = ref(false);
+const agentUnavailable = ref(false);
+const conversationLoadFailed = ref(false);
+const messageLoadFailed = ref(false);
 const historyDrawerOpen = ref(false);
 const contextDrawerOpen = ref(false);
 const viewportWidth = ref(window.innerWidth);
@@ -554,9 +583,46 @@ const formatMessageTime = (value?: string) => {
 
 const scrollToBottom = async () => {
   await nextTick();
-  if (messageListRef.value) {
-    messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+  const messageStage = messageListRef.value;
+  if (!messageStage) return;
+  messageStage.scrollTo({
+    top: messageStage.scrollHeight,
+    behavior: "smooth"
+  });
+};
+
+const handleMessageStageKeydown = (event: KeyboardEvent) => {
+  if (event.currentTarget !== event.target || !messageListRef.value) return;
+
+  const messageStage = messageListRef.value;
+  const pageStep = Math.max(160, Math.floor(messageStage.clientHeight * 0.8));
+  const keyScrollOffsets: Record<string, number> = {
+    ArrowDown: 48,
+    ArrowUp: -48,
+    PageDown: pageStep,
+    PageUp: -pageStep
+  };
+
+  if (event.key === "Home") {
+    event.preventDefault();
+    messageStage.scrollTo({ top: 0, behavior: "smooth" });
+    return;
   }
+  if (event.key === "End") {
+    event.preventDefault();
+    messageStage.scrollTo({
+      top: messageStage.scrollHeight,
+      behavior: "smooth"
+    });
+    return;
+  }
+  if (!(event.key in keyScrollOffsets)) return;
+
+  event.preventDefault();
+  messageStage.scrollBy({
+    top: keyScrollOffsets[event.key],
+    behavior: "smooth"
+  });
 };
 
 const loadConversations = async (append = false) => {
@@ -569,21 +635,37 @@ const loadConversations = async (append = false) => {
       ? [...conversations.value, ...res.data.records]
       : res.data.records;
     conversationTotal.value = res.data.total;
-    backendUnavailable.value = false;
+    conversationLoadFailed.value = false;
+    return true;
   } catch (_error) {
-    backendUnavailable.value = true;
-    if (!append) conversations.value = [];
+    if (!append) {
+      conversationLoadFailed.value = true;
+      conversations.value = [];
+    } else {
+      ElMessage.error("更多历史记录暂时无法加载");
+    }
+    return false;
   } finally {
     conversationLoading.value = false;
   }
 };
 
 const loadMoreConversations = async () => {
+  const previousPage = conversationPage.value;
   conversationPage.value += 1;
-  await loadConversations(true);
+  const loaded = await loadConversations(true);
+  if (!loaded) conversationPage.value = previousPage;
+};
+
+const reloadConversations = async () => {
+  conversationPage.value = 1;
+  await loadConversations();
 };
 
 const loadMessages = async (conversationId: string, older = false) => {
+  const previousScrollHeight = older
+    ? messageListRef.value?.scrollHeight || 0
+    : 0;
   messageLoading.value = true;
   try {
     const res = await listAiConversationMessages(
@@ -598,19 +680,40 @@ const loadMessages = async (conversationId: string, older = false) => {
     );
     messages.value = older ? [...records, ...messages.value] : records;
     messageTotal.value = res.data.total;
-    backendUnavailable.value = false;
-    if (!older) await scrollToBottom();
+    messageLoadFailed.value = false;
+    if (older) {
+      await nextTick();
+      if (messageListRef.value) {
+        messageListRef.value.scrollTop +=
+          messageListRef.value.scrollHeight - previousScrollHeight;
+      }
+    } else {
+      await scrollToBottom();
+    }
+    return true;
   } catch (_error) {
-    backendUnavailable.value = true;
-    if (!older) messages.value = [];
+    if (!older) {
+      messages.value = [];
+      messageLoadFailed.value = true;
+    }
+    return false;
   } finally {
     messageLoading.value = false;
   }
 };
 
 const loadOlderMessages = async () => {
+  if (!activeConversationId.value) return;
+  const previousPage = messagePage.value;
   messagePage.value += 1;
-  await loadMessages(activeConversationId.value as string, true);
+  const loaded = await loadMessages(activeConversationId.value, true);
+  if (!loaded) messagePage.value = previousPage;
+};
+
+const reloadMessages = async () => {
+  if (!activeConversationId.value) return;
+  messagePage.value = 1;
+  await loadMessages(activeConversationId.value);
 };
 
 const startNewChat = () => {
@@ -618,6 +721,7 @@ const startNewChat = () => {
   messages.value = [];
   messagePage.value = 1;
   messageTotal.value = 0;
+  messageLoadFailed.value = false;
   clearShoppingContext();
   historyDrawerOpen.value = false;
   nextTick(() => composerRef.value?.focus());
@@ -626,6 +730,9 @@ const startNewChat = () => {
 const selectConversation = async (item: AiConversationVO) => {
   activeConversationId.value = item.id;
   messagePage.value = 1;
+  messageTotal.value = 0;
+  messages.value = [];
+  messageLoadFailed.value = false;
   normalizeContext(item.shoppingContext);
   historyDrawerOpen.value = false;
   await loadMessages(item.id);
@@ -682,7 +789,8 @@ const applyServerResponse = async (data: AiChatVO, localIds: string[]) => {
     conversations.value.length
   );
   normalizeContext(data.conversation.shoppingContext || getShoppingContext());
-  backendUnavailable.value = false;
+  agentUnavailable.value = false;
+  conversationLoadFailed.value = false;
   await scrollToBottom();
 };
 
@@ -718,14 +826,14 @@ const submitContent = async (
       throw new Error(res.message || "Agent 服务暂时不可用");
     await applyServerResponse(res.data, localIds);
   } catch (error: any) {
-    backendUnavailable.value = true;
+    agentUnavailable.value = true;
     messages.value = messages.value.filter(
       (item) => item.id !== pendingMessage.id
     );
     messages.value.push({
       ...makeLocalMessage(
         "ASSISTANT",
-        "当前页面已经按新会话接口准备好，但后端 Agent 服务尚未实现。接口接入后可在这里继续本次咨询。",
+        error?.message || "AI 服务暂不可用，请检查服务后重试。",
         "FAILED"
       ),
       retryable: true
@@ -792,6 +900,7 @@ onBeforeUnmount(() => window.removeEventListener("resize", handleResize));
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
   height: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--market-line);
@@ -849,8 +958,10 @@ button {
   font-size: 20px;
 }
 .conversation-list {
-  min-height: 120px;
+  min-height: 0;
+  flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .conversation-ticket {
@@ -911,6 +1022,32 @@ button {
   color: var(--market-muted);
   text-align: center;
 }
+.history-load-state {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  padding: 22px 16px;
+  border: 1px dashed rgba(217, 108, 44, 0.42);
+  border-radius: 8px;
+  color: var(--market-ink);
+  background: var(--market-note-yellow-bg);
+}
+.history-load-state p {
+  margin: 0;
+  color: var(--market-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.rail-history-error > button {
+  border: 0;
+  color: var(--market-orange);
+  font-weight: 800;
+  background: transparent;
+  cursor: pointer;
+}
+.rail-history-error {
+  margin: 12px 0;
+}
 .rail-empty span {
   display: block;
   color: var(--market-board);
@@ -950,7 +1087,9 @@ button {
 
 .chat-workspace {
   display: grid;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--market-paper);
 }
@@ -1034,9 +1173,17 @@ button {
 
 .message-stage {
   min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 34px clamp(20px, 5vw, 72px);
-  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  outline: none;
+}
+.message-stage:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(47, 125, 92, 0.42);
 }
 .welcome-card {
   position: relative;
@@ -1147,12 +1294,17 @@ button {
   font-size: 12px;
 }
 .message-bubble {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   padding: 14px 17px;
   border: 1px solid var(--market-line);
   border-radius: 7px 14px 14px 14px;
   color: var(--market-ink);
   background: var(--market-surface);
   box-shadow: var(--market-shadow-soft);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .chat-message.user .message-bubble {
   border-color: rgba(47, 125, 92, 0.24);
@@ -1215,12 +1367,39 @@ button {
   cursor: pointer;
 }
 :deep(.md-editor-preview-wrapper) {
+  min-width: 0;
   padding: 0;
 }
 :deep(.md-editor-preview) {
+  min-width: 0;
   color: var(--market-ink);
   font-size: 14px;
   background: transparent;
+}
+.markdown-answer {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+.markdown-answer :deep(p),
+.markdown-answer :deep(li),
+.markdown-answer :deep(blockquote),
+.markdown-answer :deep(td),
+.markdown-answer :deep(th) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.markdown-answer :deep(pre) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.markdown-answer :deep(img),
+.markdown-answer :deep(video),
+.markdown-answer :deep(canvas) {
+  max-width: 100%;
+  height: auto;
 }
 
 .recommendation-block {
@@ -1545,6 +1724,7 @@ button {
   }
   .message-stage {
     padding: 22px 12px;
+    scrollbar-gutter: auto;
   }
   .welcome-card {
     margin-top: 10px;

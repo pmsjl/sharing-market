@@ -91,6 +91,7 @@ class AgentRunResponse(BaseModel):
 
 class AgentErrorResponse(BaseModel):
     requestId: str | None = None
-    errorCode: str
+    # 例如 AI_MODEL_TIMEOUT；不使用 Java 项目的整数型 ErrorCode。
+    agentErrorKey: str
     message: str
     retryable: bool

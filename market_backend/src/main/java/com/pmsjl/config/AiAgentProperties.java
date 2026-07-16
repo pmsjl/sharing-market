@@ -15,14 +15,14 @@ import org.springframework.stereotype.Component;
 public class AiAgentProperties {
 
     /** Python FastAPI 服务根地址，例如 http://127.0.0.1:8103。 */
-    private String baseUrl = "http://127.0.0.1:8103";
+    private String baseUrl;
 
     /** Java 与 Python 间的服务身份校验 Token。 */
     private String internalToken;
 
     /** 建立到 Python 服务连接的最长等待时间（毫秒）。 */
-    private long connectTimeoutMs = 3000;
+    private long connectTimeoutMs;
 
     /** 等待 Python 和模型返回结果的最长时间（毫秒）。 */
-    private long readTimeoutMs = 30000;
+    private long readTimeoutMs;
 }

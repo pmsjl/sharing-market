@@ -64,7 +64,8 @@ export interface AiMessageVO {
   content: string;
   structuredContent?: AiStructuredContentVO | null;
   status: AiMessageStatusEnum;
-  errorCode?: string;
+  /** Agent 失败的字符串标识，不是公开 Result.code。 */
+  agentErrorKey?: string;
   retryable?: boolean;
   createTime: string;
 }

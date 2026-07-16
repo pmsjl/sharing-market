@@ -127,7 +127,7 @@ public class AiChatServiceImpl implements AiChatService {
             assistantMessage.setOutputTokens(agentRunResponse.getUsage() == null ? null : agentRunResponse.getUsage().getOutputTokens());
             assistantMessage.setLatencyMs(agentRunResponse.getLatencyMs());
             assistantMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
-            assistantMessage.setErrorCode(null);
+            assistantMessage.setAgentErrorKey(null);
             assistantMessage.setRetryable(false);
             assistantMessage.setUpdateTime(now);
             ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
@@ -154,7 +154,7 @@ public class AiChatServiceImpl implements AiChatService {
             AiMessage assistantMessage = pendingChat.assistantMessage();
             assistantMessage.setContent(FAILED_MESSAGE);
             assistantMessage.setStatus(AiMessageStatusEnum.FAILED.getValue());
-            assistantMessage.setErrorCode(exception.getErrorCode());
+            assistantMessage.setAgentErrorKey(exception.getAgentErrorKey());
             assistantMessage.setRetryable(exception.isRetryable());
             assistantMessage.setUpdateTime(now);
             ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
@@ -304,7 +304,7 @@ public class AiChatServiceImpl implements AiChatService {
         messageVO.setContent(message.getContent());
         messageVO.setStructuredContent(deserializeStructuredContent(message.getStructuredContent()));
         messageVO.setStatus(AiMessageStatusEnum.fromValue(message.getStatus()));
-        messageVO.setErrorCode(message.getErrorCode());
+        messageVO.setAgentErrorKey(message.getAgentErrorKey());
         messageVO.setRetryable(message.getRetryable());
         messageVO.setCreateTime(message.getCreateTime());
         return messageVO;
