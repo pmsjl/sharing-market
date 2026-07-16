@@ -1,1 +1,0 @@
-"""Python model test placeholder."""

@@ -37,16 +37,17 @@ async def run_agent(
         return _error_response(
             x_request_id,
             exception.status_code,
-            exception.error_code,
+            exception.agent_error_key,
             exception.message,
             exception.retryable,
         )
 
 
-def _error_response(request_id: str | None, status_code: int, error_code: str, message: str, retryable: bool) -> JSONResponse:
+def _error_response(request_id: str | None, status_code: int, agent_error_key: str, message: str,
+                    retryable: bool) -> JSONResponse:
     body = AgentErrorResponse(
         requestId=request_id,
-        errorCode=error_code,
+        agentErrorKey=agent_error_key,
         message=message,
         retryable=retryable,
     )

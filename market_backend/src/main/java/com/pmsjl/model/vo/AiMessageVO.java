@@ -29,8 +29,8 @@ public class AiMessageVO implements Serializable {
     /** 消息处理状态。 */
     private AiMessageStatusEnum status;
 
-    /** 消息生成失败时的稳定错误码。 */
-    private String errorCode;
+    /** Agent 生成失败时的稳定字符串标识，例如 AI_MODEL_TIMEOUT。 */
+    private String agentErrorKey;
 
     /** 失败消息是否允许用户重试。 */
     private Boolean retryable;

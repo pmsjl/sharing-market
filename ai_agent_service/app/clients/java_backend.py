@@ -1,1 +1,0 @@
-"""Java backend client placeholder."""

@@ -12,10 +12,10 @@ from app.prompts.shopping_guide import build_messages
 class AgentServiceError(Exception):
     """可安全返回给 Java 的模型服务错误。"""
 
-    def __init__(self, status_code: int, error_code: str, message: str, retryable: bool) -> None:
+    def __init__(self, status_code: int, agent_error_key: str, message: str, retryable: bool) -> None:
         super().__init__(message)
         self.status_code = status_code
-        self.error_code = error_code
+        self.agent_error_key = agent_error_key
         self.message = message
         self.retryable = retryable
 

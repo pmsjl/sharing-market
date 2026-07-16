@@ -1,1 +1,0 @@
-"""Python common model placeholder."""

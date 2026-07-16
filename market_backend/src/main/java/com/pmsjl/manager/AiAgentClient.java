@@ -80,8 +80,8 @@ public class AiAgentClient {
     private AiAgentClientException toRemoteException(String responseBody, int statusCode) {
         try {
             AgentErrorResponse errorResponse = objectMapper.readValue(responseBody, AgentErrorResponse.class);
-            if (StringUtils.isNotBlank(errorResponse.getErrorCode())) {
-                return new AiAgentClientException(errorResponse.getErrorCode(), errorResponse.getMessage(),
+            if (StringUtils.isNotBlank(errorResponse.getAgentErrorKey())) {
+                return new AiAgentClientException(errorResponse.getAgentErrorKey(), errorResponse.getMessage(),
                         Boolean.TRUE.equals(errorResponse.getRetryable()));
             }
         } catch (JsonProcessingException ignored) {
