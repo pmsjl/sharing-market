@@ -11,8 +11,8 @@ public enum ErrorCode {
     SYSTEM_ERROR(50000, "系统内部异常"),
     OPERATION_ERROR(50001, "操作失败"),
     WORD_FORBIDDEN_ERROR(422200, "包含违禁词，多次违禁将封禁账号"),
-    USER_BALANCE_NOT_ENOUGH(50002,"用户余额不足，无法调用 AI");
-
+    USER_BALANCE_NOT_ENOUGH(50002,"用户余额不足，无法调用 AI"),
+    CONFLICT_ERROR(40900, "请求冲突");
     /**
      * 状态码
      */

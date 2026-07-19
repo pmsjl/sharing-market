@@ -5,7 +5,13 @@ import time
 import httpx
 
 from app.core.config import Settings
-from app.models.agent import AgentModelInfo, AgentOutput, AgentRunRequest, AgentRunResponse, AgentUsage
+from app.models.agent import (
+    AgentModelInfo,
+    AgentOutput,
+    AgentRunRequest,
+    AgentRunResponse,
+    AgentUsage,
+)
 from app.prompts.shopping_guide import build_messages
 
 
@@ -44,6 +50,7 @@ class AgentService:
                     json=payload,
                 )
                 response.raise_for_status()
+
         except httpx.TimeoutException as exception:
             raise AgentServiceError(504, "AI_MODEL_TIMEOUT", "模型响应超时", True) from exception
         except httpx.HTTPStatusError as exception:
@@ -58,6 +65,7 @@ class AgentService:
             response_data = response.json()
         except ValueError as exception:
             raise AgentServiceError(502, "AI_MODEL_RESPONSE_INVALID", "模型返回内容格式异常", True) from exception
+        
         answer = self._extract_answer(response_data)
         usage_data = response_data.get("usage") or {}
         latency_ms = int((time.perf_counter() - started_at) * 1000)
