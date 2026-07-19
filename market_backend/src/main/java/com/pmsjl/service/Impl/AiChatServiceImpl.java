@@ -1,4 +1,4 @@
-package com.pmsjl.service.Impl;
+ package com.pmsjl.service.Impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -225,7 +225,7 @@ public class AiChatServiceImpl implements AiChatService {
         return conversation;
     }
 
-    private void validateShoppingContext(AiShoppingContext shoppingContext) {
+    public void validateShoppingContext(AiShoppingContext shoppingContext) {
         if (shoppingContext == null) {
             return;
         }

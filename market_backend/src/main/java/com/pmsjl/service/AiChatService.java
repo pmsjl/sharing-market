@@ -2,6 +2,7 @@ package com.pmsjl.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
+import com.pmsjl.model.dto.ai.AiShoppingContext;
 import com.pmsjl.model.vo.AiChatVO;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -17,4 +18,6 @@ public interface AiChatService {
      * @return 当前会话和本轮两条消息的公开响应
      */
     AiChatVO createConversation(AiChatMessageRequest aiChatMessageRequest, HttpServletRequest request);
+    void validateShoppingContext(AiShoppingContext shoppingContext);
+
 }
