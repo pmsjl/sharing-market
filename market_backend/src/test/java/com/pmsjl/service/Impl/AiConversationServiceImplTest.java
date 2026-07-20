@@ -1,0 +1,144 @@
+package com.pmsjl.service.Impl;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.mapper.AiConversationMapper;
+import com.pmsjl.model.dto.ai.AiConversationQueryRequest;
+import com.pmsjl.model.entity.AiConversation;
+import com.pmsjl.model.entity.User;
+import com.pmsjl.model.enums.AiConversationSceneEnum;
+import com.pmsjl.model.enums.AiConversationStatusEnum;
+import com.pmsjl.model.vo.AiConversationVO;
+import com.pmsjl.model.vo.AiPageVO;
+import com.pmsjl.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Date;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AiConversationServiceImplTest {
+
+    @Mock
+    private AiConversationMapper conversationMapper;
+
+    @Mock
+    private UserService userService;
+
+    @Mock
+    private HttpServletRequest request;
+
+    private AiConversationServiceImpl conversationService;
+
+    @BeforeEach
+    void setUp() {
+        MybatisConfiguration mybatisConfiguration = new MybatisConfiguration();
+        mybatisConfiguration.setMapUnderscoreToCamelCase(false);
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(mybatisConfiguration, "AiConversationServiceImplTest"),
+                AiConversation.class);
+        conversationService = new AiConversationServiceImpl();
+        ReflectionTestUtils.setField(conversationService, "baseMapper", conversationMapper);
+        ReflectionTestUtils.setField(conversationService, "userService", userService);
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new com.fasterxml.jackson.databind.ObjectMapper());
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void listMyConversationsUsesLoginUserAndBuildsContractPage() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+
+        Date now = new Date();
+        AiConversation conversation = new AiConversation();
+        conversation.setId(1002L);
+        conversation.setUserId(101L);
+        conversation.setTitle("二手教材值不值得买");
+        conversation.setScene("SHOPPING_GUIDE");
+        conversation.setShoppingContext("{\"budgetMax\":80,\"preferenceTags\":[\"有笔记\"],\"avoidances\":[]}");
+        conversation.setStatus("ACTIVE");
+        conversation.setLastMessagePreview("建议先核对版次");
+        conversation.setLastMessageTime(now);
+        conversation.setCreateTime(now);
+
+        when(conversationMapper.selectPage(any(Page.class), any(Wrapper.class))).thenAnswer(invocation -> {
+            Page<AiConversation> page = invocation.getArgument(0);
+            page.setTotal(1);
+            page.setRecords(List.of(conversation));
+            return page;
+        });
+
+        AiConversationQueryRequest queryRequest = new AiConversationQueryRequest();
+        queryRequest.setCurrent(1);
+        queryRequest.setPageSize(10);
+        queryRequest.setSortField("createTime");
+        queryRequest.setSortOrder("asc");
+        AiPageVO<AiConversationVO> result = conversationService.listMyConversations(queryRequest, request);
+
+        assertEquals(1, result.getCurrent());
+        assertEquals(10, result.getPageSize());
+        assertEquals(1, result.getTotal());
+        assertEquals(1, result.getRecords().size());
+        AiConversationVO record = result.getRecords().get(0);
+        assertEquals(1002L, record.getId());
+        assertEquals(AiConversationSceneEnum.SHOPPING_GUIDE, record.getScene());
+        assertEquals(AiConversationStatusEnum.ACTIVE, record.getStatus());
+        assertEquals(80, record.getShoppingContext().getBudgetMax().intValue());
+        assertEquals(List.of("有笔记"), record.getShoppingContext().getPreferenceTags());
+
+        ArgumentCaptor<Page<AiConversation>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        ArgumentCaptor<Wrapper<AiConversation>> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(conversationMapper).selectPage(pageCaptor.capture(), wrapperCaptor.capture());
+        assertEquals("createTime", pageCaptor.getValue().orders().get(0).getColumn());
+        assertTrue(pageCaptor.getValue().orders().get(0).isAsc());
+        assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
+        assertTrue(pageCaptor.getValue().orders().get(1).isAsc());
+        Wrapper<AiConversation> wrapper = wrapperCaptor.getValue();
+        String sqlSegment = wrapper.getSqlSegment();
+        assertTrue(((AbstractWrapper<?, ?, ?>) wrapper).getParamNameValuePairs().containsValue(101L));
+        assertTrue(sqlSegment.contains("userId"));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void listMyConversationsNormalizesInvalidPaginationAndUsesDefaultSort() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(conversationMapper.selectPage(any(Page.class), any(Wrapper.class))).thenAnswer(invocation ->
+                invocation.getArgument(0));
+
+        AiConversationQueryRequest queryRequest = new AiConversationQueryRequest();
+        queryRequest.setCurrent(0);
+        queryRequest.setPageSize(21);
+        queryRequest.setSortField("memorySummary");
+        queryRequest.setSortOrder("asc");
+
+        AiPageVO<AiConversationVO> result = conversationService.listMyConversations(queryRequest, request);
+
+        assertEquals(1, result.getCurrent());
+        assertEquals(10, result.getPageSize());
+        ArgumentCaptor<Page<AiConversation>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        verify(conversationMapper).selectPage(pageCaptor.capture(), any(Wrapper.class));
+        assertEquals("lastMessageTime", pageCaptor.getValue().orders().get(0).getColumn());
+        assertFalse(pageCaptor.getValue().orders().get(0).isAsc());
+        assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
+        assertFalse(pageCaptor.getValue().orders().get(1).isAsc());
+    }
+}

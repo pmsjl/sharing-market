@@ -2,6 +2,10 @@ package com.pmsjl.service.Impl;
 
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.ObjectUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.OrderItem;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +16,7 @@ import com.pmsjl.manager.AiAgentClientException;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
+import com.pmsjl.model.dto.ai.AiMessageQueryRequest;
 import com.pmsjl.model.dto.ai.AiShoppingContext;
 import com.pmsjl.model.dto.ai.internal.AgentHistoryMessage;
 import com.pmsjl.model.dto.ai.internal.AgentRunRequest;
@@ -26,6 +31,7 @@ import com.pmsjl.model.enums.AiMessageStatusEnum;
 import com.pmsjl.model.vo.AiChatVO;
 import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiMessageVO;
+import com.pmsjl.model.vo.AiPageVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.service.AiChatService;
 import com.pmsjl.service.AiConversationService;
@@ -36,6 +42,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -44,9 +51,11 @@ import java.util.*;
 import static com.pmsjl.constant.AiChatConstant.*;
 import static com.pmsjl.constant.AiChatConstant.FAILED_MESSAGE;
 
-// TODO AI message service implementation placeholder.
 @Service
 public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage> implements AiMessageService {
+    private static final int MAX_MESSAGE_PAGE_SIZE = 50;
+    private static final Set<String> ALLOWED_MESSAGE_SORT_FIELDS = Set.of("sequenceNo");
+
     @Autowired
     private AiChatService aiChatService;
     @Autowired
@@ -61,6 +70,54 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     private ObjectMapper objectMapper;
     @Autowired
     private AiAgentClient aiAgentClient;
+
+    @Override
+    public AiPageVO<AiMessageVO> listConversationMessages(Long conversationId,
+                                                           AiMessageQueryRequest queryRequest,
+                                                           HttpServletRequest request) {
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        int current = queryRequest.getCurrent();
+        int pageSize = queryRequest.getPageSize();
+        String sortField = queryRequest.getSortField();
+        String sortOrder = queryRequest.getSortOrder();
+        if (current <= 0) {
+            current = 1;
+        }
+        if (pageSize <= 0 || pageSize > MAX_MESSAGE_PAGE_SIZE) {
+            pageSize = 20;
+        }
+
+        User loginUser = userService.getLoginUser(request);
+        AiConversation conversation = aiConversationService.getById(conversationId);
+        ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR, "会话不存在或已删除");
+        ThrowUtils.throwIf(!ObjectUtil.equals(conversation.getUserId(), loginUser.getId()),
+                ErrorCode.NO_AUTH_ERROR, "会话属于其他用户");
+
+        Page<AiMessage> page = new Page<>(current, pageSize);
+        boolean ascending = "asc".equalsIgnoreCase(sortOrder);
+        if (StringUtils.isNotBlank(sortField) && ALLOWED_MESSAGE_SORT_FIELDS.contains(sortField)) {
+            page.addOrder(ascending ? OrderItem.asc(sortField) : OrderItem.desc(sortField));
+            page.addOrder(OrderItem.desc("id"));
+        } else {
+            page.addOrder(OrderItem.desc("sequenceNo"), OrderItem.desc("id"));
+        }
+        Page<AiMessage> entityPage = this.lambdaQuery()
+                .eq(AiMessage::getConversationId, conversationId)
+                .eq(AiMessage::getUserId, loginUser.getId())
+                .page(page);
+        List<AiMessageVO> records = entityPage.getRecords().stream()
+                .sorted(Comparator.comparing(AiMessage::getSequenceNo)
+                        .thenComparing(AiMessage::getId))
+                .map(this::toMessageVO)
+                .toList();
+
+        AiPageVO<AiMessageVO> result = new AiPageVO<>();
+        result.setCurrent(entityPage.getCurrent());
+        result.setPageSize(entityPage.getSize());
+        result.setTotal(entityPage.getTotal());
+        result.setRecords(records);
+        return result;
+    }
 
     @Override
     public AiChatVO sendMessage(Long conversationId, AiChatMessageRequest aiChatMessageRequest, HttpServletRequest request) {
@@ -274,15 +331,10 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
     private AiMessageVO toMessageVO(AiMessage message) {
         AiMessageVO messageVO = new AiMessageVO();
-        messageVO.setId(message.getId());
-        messageVO.setSequenceNo(message.getSequenceNo());
+        BeanUtils.copyProperties(message, messageVO);
         messageVO.setRole(AiMessageRoleEnum.fromValue(message.getRole()));
-        messageVO.setContent(message.getContent());
         messageVO.setStructuredContent(deserializeStructuredContent(message.getStructuredContent()));
         messageVO.setStatus(AiMessageStatusEnum.fromValue(message.getStatus()));
-        messageVO.setAgentErrorKey(message.getAgentErrorKey());
-        messageVO.setRetryable(message.getRetryable());
-        messageVO.setCreateTime(message.getCreateTime());
         return messageVO;
     }
 

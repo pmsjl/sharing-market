@@ -124,22 +124,29 @@ export const sendAiConversationMessage = (
     data: body
   });
 
-export const listAiConversations = (current = 1, pageSize = 10) =>
+export const listAiConversations = (
+  current = 1,
+  pageSize = 10,
+  sortField = "lastMessageTime",
+  sortOrder = "desc"
+) =>
   request<unknown, Result<AiPageVO<AiConversationVO>>>({
     url: "/api/ai/conversations",
     method: "GET",
-    params: { current, pageSize }
+    params: { current, pageSize, sortField, sortOrder }
   });
 
 export const listAiConversationMessages = (
   conversationId: string,
   current = 1,
-  pageSize = 20
+  pageSize = 20,
+  sortField = "sequenceNo",
+  sortOrder = "desc"
 ) =>
   request<unknown, Result<AiPageVO<AiMessageVO>>>({
     url: `/api/ai/conversations/${conversationId}/messages`,
     method: "GET",
-    params: { current, pageSize }
+    params: { current, pageSize, sortField, sortOrder }
   });
 
 export const deleteAiConversation = (conversationId: string) =>
