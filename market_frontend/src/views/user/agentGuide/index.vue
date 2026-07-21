@@ -111,16 +111,41 @@
             <small>先聊需求，再一起缩小选择范围</small>
           </div>
         </div>
-        <button
-          type="button"
-          class="context-trigger"
-          :class="{ active: contextFieldCount > 0 }"
-          @click="contextDrawerOpen = true"
-        >
-          <span aria-hidden="true">◎</span>
-          购买条件
-          <b v-if="contextFieldCount">{{ contextFieldCount }}</b>
-        </button>
+        <div class="toolbar-actions">
+          <button
+            type="button"
+            class="context-trigger"
+            :class="{ active: contextFieldCount > 0 }"
+            @click="contextDrawerOpen = true"
+          >
+            <span aria-hidden="true">◎</span>
+            购买条件
+            <b v-if="contextFieldCount">{{ contextFieldCount }}</b>
+          </button>
+          <button
+            type="button"
+            class="focus-toggle"
+            :aria-label="
+              layoutSettingStore.focusMode ? '退出专注模式' : '进入专注模式'
+            "
+            :aria-pressed="layoutSettingStore.focusMode"
+            :title="
+              layoutSettingStore.focusMode ? '退出专注模式' : '进入专注模式'
+            "
+            @click="toggleFocusMode"
+          >
+            <svg
+              v-if="layoutSettingStore.focusMode"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+            >
+              <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
+            </svg>
+            <svg v-else aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <section
@@ -425,6 +450,7 @@ import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
+import useLayOutSettingStore from "@/store/modules/setting";
 import {
   AiChatVO,
   AiConversationVO,
@@ -436,7 +462,6 @@ import {
   listAiConversations,
   sendAiConversationMessage
 } from "@/api/aiController";
-import { animateIn } from "@/utils/motion";
 
 type Starter = {
   kicker: string;
@@ -446,6 +471,7 @@ type Starter = {
 };
 
 const router = useRouter();
+const layoutSettingStore = useLayOutSettingStore();
 const pageRef = ref<HTMLElement | null>(null);
 const messageListRef = ref<HTMLElement | null>(null);
 const composerRef = ref();
@@ -527,6 +553,11 @@ const hasOlderMessages = computed(
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
   if (window.innerWidth > 900) historyDrawerOpen.value = false;
+};
+
+const toggleFocusMode = () => {
+  layoutSettingStore.focusMode = !layoutSettingStore.focusMode;
+  historyDrawerOpen.value = false;
 };
 
 const normalizeContext = (source?: AiShoppingContext | null) => {
@@ -885,14 +916,15 @@ const openCommodity = (commodityId: string) => {
 };
 
 onMounted(async () => {
+  layoutSettingStore.focusMode = true;
   window.addEventListener("resize", handleResize);
   await loadConversations();
-  animateIn(
-    pageRef.value?.querySelectorAll(".conversation-rail, .chat-workspace") || []
-  );
 });
 
-onBeforeUnmount(() => window.removeEventListener("resize", handleResize));
+onBeforeUnmount(() => {
+  layoutSettingStore.focusMode = false;
+  window.removeEventListener("resize", handleResize);
+});
 </script>
 
 <style scoped lang="scss">
@@ -900,6 +932,7 @@ onBeforeUnmount(() => window.removeEventListener("resize", handleResize));
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
   height: 100%;
+  max-height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -1086,14 +1119,15 @@ button {
 }
 
 .chat-workspace {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--market-paper);
 }
 .chat-toolbar {
+  flex: 0 0 auto;
   min-height: 72px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--market-line);
@@ -1103,6 +1137,12 @@ button {
 .chat-title {
   justify-content: flex-start;
   gap: 11px;
+}
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 .chat-title strong {
   display: block;
@@ -1136,7 +1176,8 @@ button {
   font-size: 12px;
 }
 .icon-button,
-.context-trigger {
+.context-trigger,
+.focus-toggle {
   border: 1px solid var(--market-line);
   border-radius: 8px;
   color: var(--market-ink);
@@ -1156,6 +1197,37 @@ button {
   padding: 9px 12px;
   font-weight: 800;
 }
+.focus-toggle {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  flex: 0 0 36px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 50%;
+  color: var(--market-muted);
+  background: transparent;
+}
+.focus-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+.focus-toggle:hover {
+  color: var(--market-green);
+  background: var(--market-note-green-bg);
+}
+.context-trigger {
+  flex: 0 0 auto;
+}
+.focus-toggle:focus-visible {
+  border-color: rgba(47, 125, 92, 0.35);
+}
 .context-trigger.active {
   border-color: rgba(217, 108, 44, 0.42);
   color: var(--market-orange);
@@ -1172,6 +1244,7 @@ button {
 }
 
 .message-stage {
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   overflow-x: hidden;
@@ -1547,7 +1620,9 @@ button {
 }
 
 .composer-dock {
-  padding: 12px clamp(20px, 5vw, 72px) 18px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 12px clamp(20px, 5vw, 72px) max(18px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--market-line);
   background: var(--market-topbar-bg);
 }
@@ -1566,6 +1641,8 @@ button {
   box-shadow: var(--market-focus);
 }
 .composer-shell :deep(.el-textarea__inner) {
+  max-height: min(132px, 32dvh) !important;
+  overflow-y: auto !important;
   padding: 5px 0 8px;
   color: var(--market-ink);
   background: transparent;
@@ -1695,7 +1772,7 @@ button {
   .chat-toolbar {
     justify-content: flex-start;
   }
-  .context-trigger {
+  .toolbar-actions {
     margin-left: auto;
   }
 }
@@ -1751,13 +1828,32 @@ button {
     max-width: 88%;
   }
   .composer-dock {
-    padding: 9px 10px 12px;
+    padding: 9px 10px max(12px, env(safe-area-inset-bottom));
   }
   .composer-actions > span {
     display: none;
   }
   .composer-actions {
     justify-content: flex-end;
+  }
+}
+
+@media (max-height: 560px) {
+  .chat-toolbar {
+    min-height: 56px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .chat-title small {
+    display: none;
+  }
+  .message-stage {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .composer-dock {
+    padding-top: 6px;
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
   }
 }
 </style>

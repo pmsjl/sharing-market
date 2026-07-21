@@ -83,6 +83,17 @@ public class AiChatController {
         return ResultUtils.success(page);
     }
 
+    /**
+     * 逻辑删除当前登录用户自己的 AI 会话及其消息，保留 Agent 审计轨迹。
+     */
+    @DeleteMapping("/{conversationId}")
+    public Result<Boolean> deleteConversation(@PathVariable("conversationId") Long conversationId,
+                                              HttpServletRequest request) {
+        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+                "conversationId 必须为正整数");
+        return ResultUtils.success(aiConversationService.deleteConversation(conversationId, request));
+    }
+
     @PostMapping("/{conversationId}/messages")
     public Result<AiChatVO> sendMessage(@PathVariable("conversationId") Long conversationId,
                                         @RequestBody AiChatMessageRequest aiChatMessageRequest,

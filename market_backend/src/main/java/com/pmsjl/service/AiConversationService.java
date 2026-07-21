@@ -14,4 +14,9 @@ public interface AiConversationService extends IService<AiConversation> {
      */
     AiPageVO<AiConversationVO> listMyConversations(AiConversationQueryRequest queryRequest,
                                                     HttpServletRequest request);
+
+    /**
+     * 逻辑删除当前登录用户自己的会话和所属消息，保留 Agent 审计轨迹。
+     */
+    Boolean deleteConversation(Long conversationId, HttpServletRequest request);
 }

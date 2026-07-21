@@ -5,9 +5,13 @@ import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pmsjl.common.ErrorCode;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.AiConversationMapper;
+import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiConversationQueryRequest;
 import com.pmsjl.model.entity.AiConversation;
+import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.enums.AiConversationSceneEnum;
 import com.pmsjl.model.enums.AiConversationStatusEnum;
@@ -41,6 +45,9 @@ class AiConversationServiceImplTest {
     private UserService userService;
 
     @Mock
+    private AiMessageMapper messageMapper;
+
+    @Mock
     private HttpServletRequest request;
 
     private AiConversationServiceImpl conversationService;
@@ -52,10 +59,14 @@ class AiConversationServiceImplTest {
         TableInfoHelper.initTableInfo(
                 new MapperBuilderAssistant(mybatisConfiguration, "AiConversationServiceImplTest"),
                 AiConversation.class);
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(mybatisConfiguration, "AiConversationServiceImplTest-AiMessage"),
+                AiMessage.class);
         conversationService = new AiConversationServiceImpl();
         ReflectionTestUtils.setField(conversationService, "baseMapper", conversationMapper);
         ReflectionTestUtils.setField(conversationService, "userService", userService);
         ReflectionTestUtils.setField(conversationService, "objectMapper", new com.fasterxml.jackson.databind.ObjectMapper());
+        ReflectionTestUtils.setField(conversationService, "aiMessageMapper", messageMapper);
     }
 
     @Test
@@ -140,5 +151,47 @@ class AiConversationServiceImplTest {
         assertFalse(pageCaptor.getValue().orders().get(0).isAsc());
         assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
         assertFalse(pageCaptor.getValue().orders().get(1).isAsc());
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void deleteConversationLogicallyDeletesOwnedMessagesAndConversation() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        conversation.setUserId(101L);
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(conversation);
+        when(messageMapper.delete(any(Wrapper.class))).thenReturn(4);
+        when(conversationMapper.deleteById(500L)).thenReturn(1);
+
+        assertTrue(conversationService.deleteConversation(500L, request));
+
+        ArgumentCaptor<Wrapper<AiMessage>> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(messageMapper).delete(wrapperCaptor.capture());
+        Wrapper<AiMessage> wrapper = wrapperCaptor.getValue();
+        String sqlSegment = wrapper.getSqlSegment();
+        assertTrue(sqlSegment.contains("conversationId"));
+        assertTrue(sqlSegment.contains("userId"));
+        assertTrue(((AbstractWrapper<?, ?, ?>) wrapper).getParamNameValuePairs().containsValue(500L));
+        assertTrue(((AbstractWrapper<?, ?, ?>) wrapper).getParamNameValuePairs().containsValue(101L));
+        verify(conversationMapper).deleteById(500L);
+    }
+
+    @Test
+    void deleteConversationHidesMissingDeletedAndOtherUsersConversations() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(null);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> conversationService.deleteConversation(500L, request));
+
+        assertEquals(ErrorCode.NOT_FOUND_ERROR.getCode(), exception.getCode());
+        verifyNoInteractions(messageMapper);
+        verify(conversationMapper, never()).deleteById(500L);
     }
 }
