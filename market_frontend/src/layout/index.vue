@@ -1,5 +1,10 @@
 <template>
-  <div class="layout_container">
+  <div
+    class="layout_container"
+    :class="{
+      'focus-mode': $route.meta.workspace && LayOutSettingStore.focusMode
+    }"
+  >
     <aside
       class="layout_slider"
       :class="{ fold: LayOutSettingStore.fold ? true : false }"
@@ -57,7 +62,9 @@ export default {
 .layout_container {
   display: flex;
   width: 100%;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   background: var(--market-body-bg);
 }
@@ -108,15 +115,18 @@ export default {
 }
 
 .layout_content {
+  display: grid;
+  grid-template-rows: $base-tabbar-height minmax(0, 1fr);
   flex: 1;
+  height: 100%;
   min-width: 0;
-  transition: all 0.24s ease;
+  min-height: 0;
 }
 
 .layout_tabbar {
-  position: sticky;
-  top: 0;
-  height: $base-tabbar-height;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
   border-bottom: 1px solid var(--market-line);
   background: var(--market-topbar-bg);
   backdrop-filter: blur(18px);
@@ -124,12 +134,29 @@ export default {
 }
 
 .layout_main {
-  height: calc(100dvh - $base-tabbar-height);
+  min-width: 0;
+  min-height: 0;
   padding: 22px;
   overflow: auto;
 
   &.workspace-mode {
     padding: 12px;
+    overflow: hidden;
+  }
+}
+
+.layout_container.focus-mode {
+  .layout_slider,
+  .layout_tabbar {
+    display: none;
+  }
+
+  .layout_content {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .layout_main {
+    padding: 0;
     overflow: hidden;
   }
 }
@@ -150,7 +177,6 @@ export default {
   }
 
   .layout_main {
-    height: calc(100dvh - $base-tabbar-height);
     padding: 14px;
 
     &.workspace-mode {

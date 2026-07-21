@@ -1,6 +1,7 @@
 package com.pmsjl.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,15 +11,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.AiConversationMapper;
+import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiConversationQueryRequest;
 import com.pmsjl.model.dto.ai.AiShoppingContext;
 import com.pmsjl.model.entity.AiConversation;
+import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.enums.AiConversationSceneEnum;
 import com.pmsjl.model.enums.AiConversationStatusEnum;
 import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiPageVO;
 import com.pmsjl.service.AiConversationService;
+import com.pmsjl.service.AiMessageService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -43,6 +48,29 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private AiMessageMapper aiMessageMapper;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean deleteConversation(Long conversationId, HttpServletRequest request) {
+        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+                "conversationId 必须为正整数");
+        User loginUser = userService.getLoginUser(request);
+        AiConversation conversation = baseMapper.selectOwnedByIdForUpdate(conversationId, loginUser.getId());
+        ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR, "会话不存在或已删除");
+
+        int deletedRows = aiMessageMapper.delete(
+                new LambdaQueryWrapper<AiMessage>()
+                        .eq(AiMessage::getConversationId, conversationId)
+                        .eq(AiMessage::getUserId, loginUser.getId())
+        );
+        ThrowUtils.throwIf(deletedRows == 0, ErrorCode.OPERATION_ERROR, "删除AI会话消息失败");
+        ThrowUtils.throwIf(baseMapper.deleteById(conversationId) != 1,
+                ErrorCode.OPERATION_ERROR, "删除 AI 会话失败");
+        return true;
+    }
 
     @Override
     public AiPageVO<AiConversationVO> listMyConversations(AiConversationQueryRequest queryRequest,
