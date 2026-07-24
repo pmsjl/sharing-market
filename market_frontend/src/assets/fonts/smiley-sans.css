@@ -1,0 +1,10 @@
+/* 得意黑 Smiley Sans Oblique v2.0.1（OFL 1.1 开源许可，© atelier-anchor）
+   基于官方 TTF 生成的 GB2312 + 当前前端文案 WOFF2 子集（约 898KB）。
+   仅用于标题、hero、价格和印章等展示场景。 */
+@font-face {
+  font-family: "Smiley Sans";
+  src: url("./smiley-sans-oblique.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}

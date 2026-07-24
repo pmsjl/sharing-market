@@ -10,6 +10,7 @@ import "./permission.ts";
 import "element-plus/theme-chalk/dark/css-vars.css";
 import gloablComponent from "@/components/index";
 import "@/assets/fonts/iconfont.css";
+import "@/assets/fonts/smiley-sans.css";
 import { restoreTheme } from "@/utils/theme";
 
 const app = createApp(App);

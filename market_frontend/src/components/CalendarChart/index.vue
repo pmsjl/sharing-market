@@ -1,5 +1,12 @@
 <template>
   <div class="calendar-chart-shell">
+    <div class="calendar-heading">
+      <div>
+        <span>SHOPPING CALENDAR</span>
+        <strong>{{ year }} 年购物印记</strong>
+      </div>
+      <small>颜色越深，成交越活跃</small>
+    </div>
     <div ref="chartDom" class="calendar-chart"></div>
   </div>
 </template>
@@ -35,7 +42,17 @@ const renderChart = async () => {
     chartInstance = echarts.init(chartDom.value);
   }
 
-  const eChartsData = props.data.map((item) => [item.date, item.value]);
+  const today = new Date().toISOString().slice(0, 10);
+  const eChartsData = props.data.map((item) => ({
+    value: [item.date, item.value],
+    itemStyle:
+      item.date === today
+        ? {
+            borderColor: "#e0651f",
+            borderWidth: 2
+          }
+        : undefined
+  }));
   const maxValue = Math.max(1, ...props.data.map((item) => item.value || 0));
   const cellWidth = Math.max(
     12,
@@ -45,10 +62,19 @@ const renderChart = async () => {
   chartInstance.setOption(
     {
       tooltip: {
+        borderWidth: 1,
+        borderColor: "#d7b98c",
+        backgroundColor: "rgba(35, 49, 63, 0.94)",
+        textStyle: {
+          color: "#fdf6e3",
+          fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif'
+        },
+        extraCssText:
+          "border-radius:8px;box-shadow:0 12px 26px rgba(35,49,63,.2);",
         formatter: (params: any) => {
-          const date = params.data?.[0] || "";
-          const value = params.data?.[1] || 0;
-          return `日期: ${date}<br>订单数量: ${value}`;
+          const date = params.data?.value?.[0] || "";
+          const value = params.data?.value?.[1] || 0;
+          return `<strong>${date}</strong><br/>成交印记：${value} 次`;
         }
       },
       visualMap: {
@@ -56,7 +82,7 @@ const renderChart = async () => {
         min: 0,
         max: maxValue,
         inRange: {
-          color: ["#f6f8fb", "#b7e9bf", "#42a35a"]
+          color: ["#f7ecd8", "#f2b8a0", "#e0651f", "#2b6e50"]
         }
       },
       calendar: {
@@ -87,7 +113,7 @@ const renderChart = async () => {
           color: "#5f6773"
         },
         itemStyle: {
-          borderColor: "#d9e0ea",
+          borderColor: "rgba(35, 49, 63, 0.1)",
           borderWidth: 1
         }
       },
@@ -95,7 +121,19 @@ const renderChart = async () => {
         {
           type: "heatmap",
           coordinateSystem: "calendar",
-          data: eChartsData
+          data: eChartsData,
+          itemStyle: {
+            borderRadius: 8,
+            opacity: 0.9
+          },
+          emphasis: {
+            itemStyle: {
+              borderColor: "#e0651f",
+              borderWidth: 2,
+              shadowBlur: 8,
+              shadowColor: "rgba(224, 101, 31, 0.32)"
+            }
+          }
         }
       ]
     },
@@ -145,16 +183,63 @@ watch(
 );
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .calendar-chart-shell {
   width: 100%;
   overflow-x: auto;
-  padding: 12px 0 4px;
+  padding: 20px;
+  border-top: 8px solid transparent;
+  background: linear-gradient(var(--market-surface), var(--market-surface))
+      padding-box,
+    repeating-linear-gradient(
+        -45deg,
+        var(--market-stamp-red),
+        var(--market-stamp-red) 12px,
+        var(--market-chalk) 12px,
+        var(--market-chalk) 24px
+      )
+      border-box;
+}
+
+.calendar-heading {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 620px;
+  padding: 0 8px 12px;
+  border-bottom: 1px dashed var(--market-line);
+
+  div {
+    display: grid;
+    gap: 5px;
+  }
+
+  span,
+  small {
+    color: var(--market-muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+  }
+
+  strong {
+    font-family: var(--market-font-display);
+    font-size: 22px;
+  }
 }
 
 .calendar-chart {
   width: 100%;
   min-width: 860px;
   height: 280px;
+}
+
+@media (max-width: 600px) {
+  .calendar-chart-shell {
+    padding: 14px 10px;
+  }
 }
 </style>

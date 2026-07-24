@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 木框公告板 -->
+  <rect x="8" y="12" width="48" height="40" rx="4"/>
+  <rect x="13" y="17" width="38" height="30" rx="2" stroke-width="2.2"/>
+  <!-- 便签 -->
+  <path d="M19 23 h16 v14 h-16 z" fill="currentColor" fill-opacity="0.08" stroke-width="2.2"/>
+  <line x1="23" y1="28" x2="31" y2="28" stroke-width="2"/>
+  <line x1="23" y1="32" x2="29" y2="32" stroke-width="2"/>
+  <!-- 图钉 -->
+  <circle cx="27" cy="22" r="2.6" fill="currentColor" fill-opacity="0.25" stroke-width="2.2"/>
+  <line x1="27" y1="24.6" x2="27" y2="27" stroke-width="2"/>
+  <!-- 卷角告示 -->
+  <path d="M39 24 h8 v12 l-4 4 h-4 z" stroke-width="2.2"/>
+  <path d="M43 36 v-4 h4" stroke-width="2"/>
+  <!-- 底座 -->
+  <line x1="18" y1="56" x2="46" y2="56" stroke-width="2.4"/>
+  <line x1="24" y1="52" x2="20" y2="56" stroke-width="2.2"/>
+  <line x1="40" y1="52" x2="44" y2="56" stroke-width="2.2"/>
+</svg>

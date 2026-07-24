@@ -15,6 +15,11 @@
 
     <section class="feature-grid">
       <article v-for="item in features" :key="item.title" class="feature-card">
+        <img
+          class="feature-illustration"
+          :src="illustrations[item.kicker]"
+          :alt="item.title"
+        />
         <span>{{ item.kicker }}</span>
         <h2>{{ item.title }}</h2>
         <p>{{ item.desc }}</p>
@@ -44,6 +49,25 @@ import { useRouter } from "vue-router";
 import { animateIn } from "@/utils/motion";
 import { GET_ROLE } from "@/utils/token";
 import { getRoleHomePath } from "@/utils/roleHome";
+import illDiscover from "@/assets/illustrations/textbook.svg";
+import illGuide from "@/assets/illustrations/ai-lamp.svg";
+import illTrade from "@/assets/illustrations/ticket-stub.svg";
+import illCommunity from "@/assets/illustrations/notice-pin.svg";
+import illUsers from "@/assets/illustrations/notice-pin.svg";
+import illGoods from "@/assets/illustrations/gadget.svg";
+import illOrders from "@/assets/illustrations/ticket-stub.svg";
+import illContent from "@/assets/illustrations/mug.svg";
+
+const illustrations: Record<string, string> = {
+  DISCOVER: illDiscover,
+  GUIDE: illGuide,
+  TRADE: illTrade,
+  COMMUNITY: illCommunity,
+  USERS: illUsers,
+  GOODS: illGoods,
+  ORDERS: illOrders,
+  CONTENT: illContent
+};
 
 const $router = useRouter();
 const pageRef = ref<HTMLElement | null>(null);
@@ -128,6 +152,7 @@ onMounted(() => {
   h1 {
     max-width: 760px;
     margin: 14px 0 12px;
+    font-family: var(--market-font-display);
     font-size: clamp(32px, 5vw, 52px);
     font-weight: 900;
     line-height: 1.08;
@@ -158,15 +183,32 @@ onMounted(() => {
   border-radius: 8px;
   background: var(--market-surface);
   box-shadow: var(--market-shadow-soft);
+  transition: transform var(--market-dur-fast) ease,
+    box-shadow var(--market-dur-fast) ease;
+
+  &:hover {
+    box-shadow: var(--market-shadow);
+    transform: translateY(-3px);
+  }
+
+  .feature-illustration {
+    width: 46px;
+    height: 46px;
+    margin-bottom: 10px;
+    color: var(--market-green);
+  }
 
   span {
+    display: block;
     color: var(--market-orange);
     font-size: 12px;
     font-weight: 900;
+    letter-spacing: 2px;
   }
 
   h2 {
     margin: 12px 0;
+    font-family: var(--market-font-display);
     font-size: 22px;
     font-weight: 900;
   }
@@ -184,8 +226,12 @@ onMounted(() => {
 }
 
 .role-note {
+  @include ruled-paper(30px, 40px);
+  padding-left: 58px !important;
+
   h2 {
     margin-bottom: 10px;
+    font-family: var(--market-font-display);
     font-size: 24px;
     font-weight: 900;
   }

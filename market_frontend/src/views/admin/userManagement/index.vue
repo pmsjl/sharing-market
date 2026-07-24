@@ -82,7 +82,7 @@
             @cancel="cancelEvent"
           >
             <template #reference>
-              <el-button type="success"> 删除</el-button>
+              <el-button type="danger"> 删除</el-button>
             </template>
           </el-popconfirm>
         </template>

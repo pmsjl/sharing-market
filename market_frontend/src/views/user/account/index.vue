@@ -433,11 +433,33 @@ onMounted(async () => {
 }
 
 .profile-hero {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 20px;
   align-items: center;
   padding: 28px;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(43, 110, 80, 0.08), transparent 38%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 31px,
+      rgba(94, 160, 181, 0.07) 31px 32px
+    ),
+    var(--market-card-bg);
+
+  &::after {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    color: var(--market-green);
+    font-family: var(--market-font-mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    content: "CAMPUS VENDOR FILE";
+    opacity: 0.58;
+  }
 }
 
 .avatar {
@@ -452,6 +474,12 @@ onMounted(async () => {
 .hero-avatar {
   width: 104px;
   height: 104px;
+  padding: 7px 7px 24px;
+  border: 1px solid rgba(35, 49, 63, 0.14);
+  border-radius: 3px;
+  background: var(--market-surface);
+  box-shadow: 0 14px 24px rgba(62, 45, 24, 0.18);
+  transform: rotate(-2deg);
 }
 
 .avatar-fallback {
@@ -463,13 +491,19 @@ onMounted(async () => {
 }
 
 .profile-copy {
+  min-width: 0;
+
   h1 {
     margin: 8px 0;
+    color: var(--market-ink);
+    font-family: var(--market-font-display);
     font-size: clamp(28px, 4vw, 44px);
     font-weight: 900;
   }
 
   p {
+    max-width: 680px;
+    margin: 0;
     color: var(--market-muted);
     line-height: 1.7;
   }
@@ -487,28 +521,106 @@ onMounted(async () => {
     color: var(--market-ink);
     font-size: 13px;
     font-weight: 800;
-    background: #fff7e8;
+    font-family: var(--market-font-mono);
+    background: var(--market-paper-deep);
   }
 }
 
 .account-tabs {
+  min-width: 0;
+
   :deep(.el-tabs__header) {
-    margin-bottom: 16px;
-    padding: 8px;
-    border: 1px solid var(--market-line);
-    border-radius: 8px;
-    background: var(--market-surface);
-    box-shadow: var(--market-shadow-soft);
+    margin-bottom: 0;
+    padding: 12px 12px 0;
+    border: 0;
+    border-radius: 10px 10px 0 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   :deep(.el-tabs__nav-wrap::after) {
     display: none;
   }
+
+  :deep(.el-tabs__nav) {
+    display: flex;
+    gap: 5px;
+    border: 0;
+  }
+
+  :deep(.el-tabs__active-bar) {
+    display: none;
+  }
+
+  :deep(.el-tabs__item) {
+    height: 42px;
+    padding: 0 17px;
+    border: 1px solid var(--market-line);
+    border-bottom: 0;
+    border-radius: 9px 9px 0 0;
+    color: var(--market-muted);
+    font-weight: 800;
+    background: var(--market-paper-deep);
+    transform: translateY(4px);
+    transition: color var(--market-dur-fast) ease,
+      transform var(--market-dur-fast) var(--market-ease-spring),
+      background var(--market-dur-fast) ease;
+  }
+
+  // Element Plus 会清空首个和末个页签的边缘 padding；索引卡必须显式恢复。
+  :deep(.el-tabs__item:nth-child(2)) {
+    padding-left: 17px;
+  }
+
+  :deep(.el-tabs__item:last-child) {
+    padding-right: 17px;
+  }
+
+  :deep(.el-tabs__item:hover) {
+    color: var(--market-green);
+    background: var(--market-note-green-bg);
+    transform: translateY(2px);
+  }
+
+  :deep(.el-tabs__item:focus-visible) {
+    box-shadow: inset 0 0 0 2px rgba(43, 110, 80, 0.32);
+    outline: none;
+  }
+
+  :deep(.el-tabs__item.is-active) {
+    color: var(--market-green);
+    background: var(--market-surface);
+    transform: translateY(0);
+    z-index: 2;
+
+    &::after {
+      position: absolute;
+      right: 10px;
+      bottom: 4px;
+      left: 10px;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--market-orange);
+      content: "";
+    }
+  }
+
+  :deep(.el-tabs__content) {
+    position: relative;
+    min-width: 0;
+    border: 1px solid var(--market-line);
+    border-radius: 10px;
+    background: var(--market-surface);
+    box-shadow: var(--market-shadow-soft);
+  }
 }
 
 .profile-form,
 .tab-panel {
+  min-width: 0;
   padding: 24px;
+  border: 0;
+  box-shadow: none;
 }
 
 .section-title {
@@ -535,7 +647,7 @@ onMounted(async () => {
   padding: 18px;
   border: 1px dashed var(--market-line);
   border-radius: 8px;
-  background: #fff7e8;
+  background: var(--market-paper-deep);
 }
 
 .field-grid {
@@ -591,6 +703,23 @@ onMounted(async () => {
 
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .account-tabs :deep(.el-tabs__header) {
+    min-width: 0;
+  }
+
+  .account-tabs :deep(.el-tabs__nav-wrap) {
+    min-width: 0;
+  }
+
+  .account-tabs :deep(.el-tabs__nav-scroll) {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .account-tabs :deep(.el-tabs__nav) {
+    width: max-content;
   }
 }
 </style>

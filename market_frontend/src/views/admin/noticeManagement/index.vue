@@ -1,5 +1,5 @@
 <template>
-  <div class="search_container">
+  <div class="admin-page search_container">
     <el-card shadow="always">
       <!-- 搜索内容和导出区域 -->
       <el-row style="margin-bottom: 20px">

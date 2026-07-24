@@ -48,15 +48,13 @@
         <!-- 标签 -->
         <div class="post-footer">
           <div class="post-tags">
-            <el-tag
+            <span
               v-for="tag in post.tagList"
               :key="tag"
-              type="info"
-              size="small"
-              class="tag"
+              class="handwritten-tag"
             >
-              {{ tag }}
-            </el-tag>
+              <b>#</b>{{ tag }}
+            </span>
           </div>
           <!-- 点赞和收藏 -->
           <div class="post-actions">
@@ -194,7 +192,7 @@ const truncateContent = (text: string, length: number) => {
 
   .post-list {
     .post-item {
-      background-color: #fff;
+      background-color: var(--market-surface);
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
@@ -287,6 +285,65 @@ const truncateContent = (text: string, length: number) => {
     margin-top: 20px;
     overflow-x: auto;
     padding-bottom: 4px;
+  }
+
+  .post-list .post-item {
+    position: relative;
+    padding: 22px 22px 22px 48px;
+    overflow: hidden;
+    border: 1px solid var(--market-line);
+    color: var(--market-ink);
+    box-shadow: var(--market-shadow-soft);
+    @include ruled-paper(28px, 38px);
+
+    &::before {
+      position: absolute;
+      top: 17px;
+      bottom: 17px;
+      left: 12px;
+      width: 13px;
+      background: radial-gradient(
+        circle,
+        var(--market-paper-deep) 0 4px,
+        rgba(35, 49, 63, 0.22) 4.5px 5.5px,
+        transparent 6px
+      );
+      background-size: 13px 34px;
+      content: "";
+    }
+
+    .user-info .user-details .user-name,
+    .post-header .post-title {
+      color: var(--market-ink);
+    }
+
+    .post-header .post-title {
+      font-family: var(--market-font-display);
+      font-size: 21px;
+    }
+
+    .user-info .user-details .post-time,
+    .post-content,
+    .post-footer .post-actions .action-item {
+      color: var(--market-muted);
+    }
+  }
+
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .handwritten-tag {
+    color: var(--market-green);
+    font-family: var(--market-font-display);
+    font-size: 14px;
+    font-weight: 800;
+
+    b {
+      color: var(--market-orange);
+    }
   }
 }
 

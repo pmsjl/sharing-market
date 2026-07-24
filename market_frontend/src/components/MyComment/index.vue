@@ -8,7 +8,7 @@
       <div :data="myComments" class="comment-list">
         <div v-for="item in myComments" :key="item.id" class="my-comments-item">
           <el-card class="comment-card" :body-style="{ padding: '20px' }">
-            <div style="display: flex; justify-content: space-between">
+            <div class="comment-heading">
               <slot name="header">
                 <el-text strong>
                   <router-link
@@ -73,14 +73,15 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .my-comments-container {
-  margin: 20px;
+  margin: 0;
 }
 
 .my-comments-card {
-  background: #f5f5f5;
-  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .comment-list {
@@ -92,20 +93,52 @@ onMounted(() => {
 }
 
 .comment-card {
-  background: #fff;
+  position: relative;
+  padding-left: 24px;
+  border: 1px solid var(--market-line);
+  background: var(--market-surface);
+  @include ruled-paper(28px, 28px);
+
+  &::before {
+    position: absolute;
+    top: 14px;
+    left: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--market-paper-deep);
+    box-shadow: 0 34px var(--market-paper-deep);
+    content: "";
+  }
+}
+
+.comment-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .comment-link {
-  color: #409eff;
+  color: var(--market-green);
+  font-family: var(--market-font-display);
   text-decoration: none;
 }
 
 .comment-update-time {
-  color: #999;
+  color: var(--market-muted);
+  font-family: var(--market-font-mono);
 }
 
 .comment-content {
   margin-top: 10px;
-  color: #333;
+  color: var(--market-ink);
+  line-height: 28px;
+}
+
+@media (max-width: 600px) {
+  .comment-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

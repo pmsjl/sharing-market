@@ -1,6 +1,6 @@
 <template>
   <div class="market-page commodity-page" ref="pageRef">
-    <div class="market-page-header">
+    <div class="market-page-header stall-header">
       <div>
         <span class="market-eyebrow">MARKET BOARD</span>
         <h1 class="market-title">商品公告栏</h1>
@@ -51,8 +51,8 @@
           </el-select>
         </el-form-item>
         <div class="market-form-actions">
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button type="primary" @click="getCommodityList">查询</el-button>
+          <el-button link type="warning" @click="resetQuery">重置</el-button>
+          <el-button type="warning" @click="getCommodityList">查询</el-button>
         </div>
       </div>
     </el-card>
@@ -308,6 +308,24 @@ const resetAddForm = () => {
 <style scoped lang="scss">
 .commodity-page {
   display: block;
+}
+
+// 市集区页头下沿雨棚
+.stall-header {
+  position: relative;
+  padding-bottom: 16px;
+
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 10px;
+    border-radius: 4px;
+    content: "";
+    @include awning-strip(10px);
+    opacity: 0.9;
+  }
 }
 
 .upload-row {

@@ -130,10 +130,11 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .score-list-container {
   margin-top: 20px;
-  background: #fff;
   padding: 20px;
+  border: 1px solid var(--market-line);
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--market-shadow-soft);
+  @include ruled-paper(32px, 44px);
 
   .list-header {
     display: flex;
@@ -141,17 +142,18 @@ onUnmounted(() => {
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px dashed var(--market-line);
 
     h3 {
       margin: 0;
       font-size: 16px;
-      color: #303133;
+      color: var(--market-ink);
+      font-family: var(--market-font-display);
     }
 
     span {
       font-size: 14px;
-      color: #909399;
+      color: var(--market-muted);
     }
   }
 
@@ -160,7 +162,8 @@ onUnmounted(() => {
     justify-content: space-between;
     align-items: center;
     padding: 15px 0;
-    border-bottom: 1px solid #f0f2f5;
+    padding-left: 34px;
+    border-bottom: 1px dashed var(--market-line);
 
     &:last-child {
       border-bottom: none;
@@ -174,7 +177,8 @@ onUnmounted(() => {
       .user-detail {
         .username {
           font-size: 14px;
-          color: #303133;
+          color: var(--market-ink);
+          font-weight: 800;
           margin-bottom: 4px;
         }
 
@@ -187,7 +191,8 @@ onUnmounted(() => {
 
     .score-time {
       font-size: 12px;
-      color: #909399;
+      color: var(--market-muted);
+      font-family: var(--market-font-mono);
       white-space: nowrap;
     }
   }
@@ -200,7 +205,15 @@ onUnmounted(() => {
   .empty-tips {
     padding: 40px 0;
     text-align: center;
-    color: #909399;
+    color: var(--market-muted);
+  }
+}
+
+@media (max-width: 520px) {
+  .score-list-container .score-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 }
 </style>

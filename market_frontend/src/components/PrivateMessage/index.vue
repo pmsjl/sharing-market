@@ -21,7 +21,9 @@
               :src="contact.userAvatar"
               class="contact-avatar"
             />
-            <span>{{ contact.userName || "对方用户" }}</span>
+            <span class="contact-name">{{
+              contact.userName || "对方用户"
+            }}</span>
           </el-menu-item>
         </el-menu>
       </el-scrollbar>
@@ -30,7 +32,7 @@
     <div class="chat-area">
       <div v-if="activeContactUser" class="chat-header">
         <el-avatar :size="34" :src="activeContactUser.userAvatar" />
-        <div>
+        <div class="chat-user-copy">
           <strong>{{ activeContactUser.userName || "对方用户" }}</strong>
           <span>一对一私聊</span>
         </div>
@@ -75,13 +77,18 @@
           @keydown.enter.exact.prevent="sendMessage"
         />
         <el-button
+          class="send-message-button"
           type="primary"
           :disabled="!activeContact"
           @click="sendMessage"
         >
           发送
         </el-button>
-        <el-button :disabled="!activeContact" @click="toggleEmojiPicker">
+        <el-button
+          class="emoji-button"
+          :disabled="!activeContact"
+          @click="toggleEmojiPicker"
+        >
           😀
         </el-button>
 
@@ -265,38 +272,75 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .chat-room {
   display: flex;
+  width: 100%;
+  min-width: 0;
   min-height: 560px;
   overflow: hidden;
   border: 1px solid var(--market-line);
   border-radius: 8px;
-  background-color: #fffdf8;
+  color: var(--market-ink);
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
 }
 
 .contact-list {
-  width: 200px;
-  border-right: 1px solid #e4e7ed;
-  background-color: #fff;
+  width: 244px;
+  flex: 0 0 244px;
+  border-right: 1px dashed var(--market-line);
+  background: var(--market-paper-deep);
 }
 
 .contact-title {
-  padding: 14px 16px;
+  position: relative;
+  padding: 16px 18px 13px;
   color: var(--market-ink);
   font-size: 14px;
   font-weight: 900;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px dashed var(--market-line);
+  font-family: var(--market-font-display);
+  letter-spacing: 1px;
+
+  &::after {
+    position: absolute;
+    right: 14px;
+    bottom: 13px;
+    color: var(--market-orange);
+    font-family: var(--market-font-mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    content: "DIRECTORY";
+  }
+}
+
+.contact-list :deep(.el-menu) {
+  border-right: 0;
+  background: transparent;
 }
 
 .contact-list .el-menu-item {
+  position: relative;
   display: flex;
+  min-width: 0;
   gap: 8px;
   align-items: center;
-  background-color: #f8f8f8;
-  margin: 4px 0;
+  margin: 6px 8px;
+  padding: 0 13px !important;
+  border: 1px solid transparent;
   border-radius: 4px;
-  transition: background-color 0.3s ease;
+  background: var(--market-surface);
+  transition: background var(--market-dur-fast) ease,
+    transform var(--market-dur-fast) ease;
+}
+
+.contact-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--market-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contact-avatar {
@@ -305,13 +349,27 @@ onMounted(async () => {
 
 .contact-list .el-menu-item.is-active,
 .contact-list .el-menu-item:hover {
-  background-color: #e6f7ff;
-  color: #1890ff;
+  border-color: var(--market-line);
+  color: var(--market-green);
+  background: var(--market-note-green-bg);
+  transform: translateX(2px);
+}
+
+.contact-list .el-menu-item.is-active::after {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--market-orange);
+  box-shadow: 0 0 0 3px rgba(224, 101, 31, 0.1);
+  content: "";
 }
 
 .chat-area {
   flex: 1;
   display: flex;
+  min-width: 0;
   flex-direction: column;
 }
 
@@ -321,13 +379,21 @@ onMounted(async () => {
   align-items: center;
   min-height: 62px;
   padding: 12px 16px;
-  border-bottom: 1px solid #e4e7ed;
-  background: #fff;
+  border-bottom: 1px dashed var(--market-line);
+  background: var(--market-header-bg);
 }
 
-.chat-header div {
+.chat-user-copy {
   display: grid;
+  min-width: 0;
   gap: 2px;
+}
+
+.chat-user-copy strong {
+  overflow: hidden;
+  color: var(--market-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-header span {
@@ -339,7 +405,18 @@ onMounted(async () => {
   flex: 1;
   padding: 10px;
   overflow-y: auto;
-  background-color: #fff;
+  background: linear-gradient(
+      90deg,
+      transparent 40px,
+      rgba(192, 57, 43, 0.18) 40px 41px,
+      transparent 41px
+    ),
+    repeating-linear-gradient(
+      transparent,
+      transparent 31px,
+      var(--market-line) 31px 32px
+    ),
+    var(--market-surface);
 }
 
 .message-item {
@@ -347,28 +424,73 @@ onMounted(async () => {
 }
 
 .message-content {
+  position: relative;
+  min-width: 0;
   max-width: 60%;
-  padding: 10px;
-  border-radius: 5px;
+  padding: 11px 14px;
+  border: 1px solid var(--market-line);
+  border-radius: 4px;
+  line-height: 1.65;
+  box-shadow: 0 6px 14px rgba(62, 45, 24, 0.09);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .message-content.sent {
-  background-color: #95ec69;
+  border-color: rgba(43, 110, 80, 0.24);
+  background: linear-gradient(
+      135deg,
+      transparent calc(100% - 13px),
+      rgba(43, 110, 80, 0.1) 0
+    ),
+    var(--market-note-green-bg);
   margin-left: auto;
+  transform: rotate(0.6deg);
 }
 
 .message-content.received {
-  background-color: #f0f0f0;
+  background: linear-gradient(
+      225deg,
+      transparent calc(100% - 13px),
+      rgba(224, 101, 31, 0.07) 0
+    ),
+    var(--market-surface);
   margin-right: auto;
+  transform: rotate(-0.6deg);
 }
 
 .message-input {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px;
-  border-top: 1px solid #e4e7ed;
-  background-color: #fff;
+  padding: 13px 12px 11px;
+  border-top: 1px dashed var(--market-muted);
+  background: var(--market-paper-deep);
+
+  &::before {
+    position: absolute;
+    top: -8px;
+    left: 16px;
+    padding: 0 5px;
+    color: var(--market-muted);
+    font-size: 13px;
+    background: var(--market-paper-deep);
+    content: "✂";
+  }
+}
+
+.send-message-button {
+  min-width: 72px;
+  border-radius: 5px;
+  font-family: var(--market-font-display);
+}
+
+.emoji-button {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
 }
 
 .el-textarea {
@@ -390,8 +512,37 @@ emoji-picker {
 
   .contact-list {
     width: 100%;
+    max-height: 190px;
+    flex-basis: auto;
     border-right: none;
-    border-bottom: 1px solid #e4e7ed;
+    border-bottom: 1px dashed var(--market-line);
+  }
+
+  .message-content {
+    max-width: 82%;
+  }
+
+  .message-input {
+    flex-wrap: wrap;
+
+    .el-textarea {
+      flex-basis: 100%;
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-room {
+    min-height: 580px;
+  }
+
+  .message-list {
+    padding: 8px;
+  }
+
+  .message-content {
+    max-width: 90%;
+    padding: 10px 12px;
   }
 }
 </style>

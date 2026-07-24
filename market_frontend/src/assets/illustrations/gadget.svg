@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 机身 -->
+  <rect x="18" y="10" width="28" height="46" rx="6"/>
+  <!-- 屏幕 -->
+  <rect x="23" y="17" width="18" height="28" rx="2" stroke-width="2.2"/>
+  <!-- 屏幕内容：音符 + 电波 -->
+  <path d="M29 38 v-9 l8 -2.4 v9" stroke-width="2.2"/>
+  <circle cx="27" cy="38" r="2.6" stroke-width="2.2"/>
+  <circle cx="35" cy="35.6" r="2.6" stroke-width="2.2"/>
+  <!-- home 键 -->
+  <circle cx="32" cy="50" r="2" stroke-width="2"/>
+  <!-- 无线波 -->
+  <path d="M10 22 a8 8 0 0 1 0 10" stroke-width="2.2"/>
+  <path d="M54 22 a8 8 0 0 0 0 10" stroke-width="2.2"/>
+</svg>
