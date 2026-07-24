@@ -102,6 +102,19 @@ onMounted(() => {
 }
 
 .orders-panel {
+  position: relative;
   padding: 22px;
+  padding-top: 30px;
+  overflow: hidden;
+
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 9px;
+    content: "";
+    @include awning-strip(9px);
+  }
 }
 </style>

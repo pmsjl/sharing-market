@@ -1,4 +1,8 @@
-// Campus bulletin-board design tokens.
+// ============================================================
+// 「学院市集 · Collegiate Market」设计基座
+// 校园公告栏 → 市集摊位 / 活页纸 / 票根 / 印章 / 粉笔字
+// ============================================================
+
 $base-menu-width: 248px;
 $base-menu-min-width: 72px;
 $base-menu-logo-height: 72px;
@@ -11,15 +15,19 @@ $market-paper: #fffaf0;
 $market-paper-deep: #f7ecd8;
 $market-surface: #fffdf8;
 $market-board: #d7b98c;
-$market-green: #2f7d5c;
+$market-green: #2b6e50;
 $market-green-dark: #1f5f46;
 $market-blue: #26547c;
-$market-orange: #d96c2c;
+$market-orange: #e0651f;
 $market-yellow: #f4c95d;
 $market-red: #c64545;
+$market-chalk: #fdf6e3;
+$market-ticket-pink: #f2b8a0;
+$market-stamp-red: #c0392b;
 $market-line: rgba(35, 49, 63, 0.12);
-$market-shadow: 0 16px 38px rgba(62, 45, 24, 0.12);
+$market-shadow: 0 16px 38px rgba(62, 45, 24, 0.16);
 $market-shadow-soft: 0 10px 24px rgba(62, 45, 24, 0.08);
+$market-shadow-lift: 0 22px 44px rgba(62, 45, 24, 0.18);
 
 $base-menu-background: #fff7e8;
 
@@ -36,13 +44,18 @@ $base-menu-background: #fff7e8;
   --market-orange: #{$market-orange};
   --market-yellow: #{$market-yellow};
   --market-red: #{$market-red};
+  --market-chalk: #{$market-chalk};
+  --market-ticket-pink: #{$market-ticket-pink};
+  --market-stamp-red: #{$market-stamp-red};
   --market-line: #{$market-line};
   --market-shadow: #{$market-shadow};
   --market-shadow-soft: #{$market-shadow-soft};
+  --market-shadow-lift: #{$market-shadow-lift};
+  --market-wash: rgba(43, 110, 80, 0.06);
   --market-body-bg:
     linear-gradient(rgba(255, 250, 240, 0.9), rgba(255, 250, 240, 0.9)),
     radial-gradient(circle at 12% 18%, rgba(244, 201, 93, 0.28), transparent 28%),
-    radial-gradient(circle at 88% 8%, rgba(47, 125, 92, 0.16), transparent 26%),
+    radial-gradient(circle at 88% 8%, rgba(43, 110, 80, 0.16), transparent 26%),
     #f8edd9;
   --market-card-bg:
     linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 250, 240, 0.94)),
@@ -63,18 +76,26 @@ $base-menu-background: #fff7e8;
   --market-board-overlay: rgba(215, 185, 140, 0.34);
   --market-pin-border: rgba(255, 255, 255, 0.72);
   --market-menu-hover-bg: rgba(244, 201, 93, 0.24);
-  --market-menu-active-bg: rgba(47, 125, 92, 0.13);
+  --market-menu-active-bg: rgba(43, 110, 80, 0.13);
   --market-topbar-bg: rgba(255, 253, 248, 0.86);
   --market-radius: 8px;
   --market-radius-lg: 14px;
-  --market-focus: 0 0 0 3px rgba(217, 108, 44, 0.22);
-  --market-font: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  --market-radius-ticket: 4px;
+  --market-focus: 0 0 0 3px rgba(224, 101, 31, 0.22);
+  --market-font-display: "Smiley Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --market-font-body: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --market-font-mono: "DIN Alternate", "Bahnschrift", "Courier New", monospace;
+  --market-font: var(--market-font-body);
+  --market-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --market-dur-fast: 0.18s;
+  --market-dur-med: 0.32s;
+  --market-grain-opacity: 0.35;
 
   --el-color-primary: #{$market-green};
-  --el-color-primary-light-3: #4f9978;
-  --el-color-primary-light-5: #76b196;
-  --el-color-primary-light-7: #acd1bd;
-  --el-color-primary-light-9: #e9f4ee;
+  --el-color-primary-light-3: #4d9373;
+  --el-color-primary-light-5: #72ab90;
+  --el-color-primary-light-7: #a8cbb8;
+  --el-color-primary-light-9: #e6f2ec;
   --el-color-primary-dark-2: #{$market-green-dark};
   --el-color-success: #{$market-green};
   --el-color-warning: #{$market-orange};
@@ -89,7 +110,7 @@ html[data-theme="night"] {
   --market-muted: #c7bda9;
   --market-paper: #161d22;
   --market-paper-deep: #1f2b31;
-  --market-surface: #202a2f;
+  --market-surface: #232d30;
   --market-board: #6f5636;
   --market-green: #74c69d;
   --market-green-dark: #a3d9b8;
@@ -97,16 +118,23 @@ html[data-theme="night"] {
   --market-orange: #f2a35e;
   --market-yellow: #f6d879;
   --market-red: #ff8a8a;
+  --market-chalk: #f7ecd8;
+  --market-ticket-pink: #d98a6c;
+  --market-stamp-red: #ff7a66;
   --market-line: rgba(243, 234, 219, 0.16);
   --market-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
   --market-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.28);
+  --market-shadow-lift: 0 24px 48px rgba(0, 0, 0, 0.46);
+  --market-wash: rgba(116, 198, 157, 0.09);
+  // 熄灯自习室：顶部一条低透明暖光带
   --market-body-bg:
+    linear-gradient(180deg, rgba(242, 163, 94, 0.07), transparent 260px),
     linear-gradient(rgba(22, 29, 34, 0.92), rgba(22, 29, 34, 0.96)),
-    radial-gradient(circle at 18% 14%, rgba(242, 163, 94, 0.18), transparent 28%),
-    radial-gradient(circle at 86% 10%, rgba(116, 198, 157, 0.14), transparent 30%),
+    radial-gradient(circle at 18% 14%, rgba(242, 163, 94, 0.16), transparent 28%),
+    radial-gradient(circle at 86% 10%, rgba(116, 198, 157, 0.12), transparent 30%),
     #11181d;
   --market-card-bg:
-    linear-gradient(135deg, rgba(43, 55, 60, 0.94), rgba(32, 42, 47, 0.96)),
+    linear-gradient(135deg, rgba(43, 55, 60, 0.94), rgba(35, 45, 48, 0.96)),
     var(--market-surface);
   --market-header-bg: linear-gradient(90deg, rgba(46, 58, 62, 0.96), rgba(31, 43, 49, 0.96));
   --market-sidebar-bg:
@@ -125,8 +153,9 @@ html[data-theme="night"] {
   --market-pin-border: rgba(243, 234, 219, 0.56);
   --market-menu-hover-bg: rgba(242, 163, 94, 0.16);
   --market-menu-active-bg: rgba(116, 198, 157, 0.18);
-  --market-topbar-bg: rgba(32, 42, 47, 0.88);
+  --market-topbar-bg: rgba(35, 45, 48, 0.88);
   --market-focus: 0 0 0 3px rgba(242, 163, 94, 0.34);
+  --market-grain-opacity: 0.22;
 
   --el-bg-color: var(--market-surface);
   --el-bg-color-overlay: #27343a;
@@ -134,7 +163,7 @@ html[data-theme="night"] {
   --el-text-color-regular: var(--market-muted);
   --el-border-color: var(--market-line);
   --el-border-color-light: rgba(243, 234, 219, 0.12);
-  --el-fill-color-blank: #202a2f;
+  --el-fill-color-blank: #232d30;
   --el-fill-color-light: #27343a;
   --el-color-primary: var(--market-green);
   --el-color-primary-light-3: #8fd5b0;
@@ -145,4 +174,79 @@ html[data-theme="night"] {
   --el-color-success: var(--market-green);
   --el-color-warning: var(--market-orange);
   --el-color-danger: var(--market-red);
+}
+
+// ------------------------------------------------------------
+// 材质 mixin（vue.config.js 会把本文件注入所有 scoped 样式）
+// ------------------------------------------------------------
+
+// 纸纹噪点（data-URI feTurbulence，4KB 内，纯本地）
+@mixin paper-grain($opacity: var(--market-grain-opacity)) {
+  position: relative;
+
+  &::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+    content: "";
+    opacity: $opacity;
+    pointer-events: none;
+  }
+}
+
+// 市集雨棚条纹（默认红/粉笔白）
+@mixin awning-strip($height: 10px, $color: var(--market-stamp-red)) {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #{$color},
+    #{$color} 12px,
+    var(--market-chalk) 12px,
+    var(--market-chalk) 24px
+  );
+  background-size: 100% $height;
+  background-repeat: no-repeat;
+  background-position: top left;
+}
+
+// 活页笔记本纸：横线 + 左侧红边线
+@mixin ruled-paper($line-height: 28px, $margin-left: 44px) {
+  background-image:
+    linear-gradient(90deg, transparent #{$margin-left - 5px}, rgba(192, 57, 43, 0.35) #{$margin-left - 5px}, rgba(192, 57, 43, 0.35) #{$margin-left - 3px}, transparent #{$margin-left - 3px}),
+    repeating-linear-gradient(
+      180deg,
+      transparent,
+      transparent #{$line-height - 1px},
+      var(--market-line) #{$line-height - 1px},
+      var(--market-line) #{$line-height}
+    );
+  background-color: var(--market-surface);
+}
+
+// 票根：左右半圆缺口 + 打孔（需配合锯齿边元素使用）
+@mixin ticket-notch($notch-color: var(--market-paper)) {
+  -webkit-mask-image:
+    radial-gradient(circle 9px at left center, transparent 8px, #000 8.5px),
+    radial-gradient(circle 9px at right center, transparent 8px, #000 8.5px);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(circle 9px at left center, transparent 8px, #000 8.5px),
+    radial-gradient(circle 9px at right center, transparent 8px, #000 8.5px);
+  mask-composite: intersect;
+}
+
+// 印章文字（盖戳观感：描边 + 微旋转 + 圆角框）
+@mixin stamp-text($color: var(--market-stamp-red)) {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 2px solid #{$color};
+  border-radius: 6px;
+  color: #{$color};
+  font-family: var(--market-font-display);
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  opacity: 0.92;
+  transform: rotate(-8deg);
 }

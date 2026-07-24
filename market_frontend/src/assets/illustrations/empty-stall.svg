@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 摊位立柱 -->
+  <line x1="34" y1="48" x2="34" y2="98"/>
+  <line x1="126" y1="48" x2="126" y2="98"/>
+  <!-- 雨棚 -->
+  <path d="M22 48 L32 26 H128 L138 48"/>
+  <path d="M22 48 q7.5 10 15 0 q7.5 10 15 0 q7.5 10 15 0 q7.5 10 15 0 q7.5 10 15 0 q7.5 10 15 0 q7.5 10 15 0 q7.5 10 15 0" stroke-width="2.6"/>
+  <line x1="38" y1="26" x2="34" y2="48" stroke-width="2"/>
+  <line x1="56" y1="26" x2="53" y2="48" stroke-width="2"/>
+  <line x1="74" y1="26" x2="73" y2="48" stroke-width="2"/>
+  <line x1="92" y1="26" x2="93" y2="48" stroke-width="2"/>
+  <line x1="110" y1="26" x2="112" y2="48" stroke-width="2"/>
+  <!-- 空台面 -->
+  <rect x="26" y="90" width="108" height="9" rx="3"/>
+  <line x1="36" y1="99" x2="40" y2="110" stroke-width="2.4"/>
+  <line x1="124" y1="99" x2="120" y2="110" stroke-width="2.4"/>
+  <!-- 空吊牌 -->
+  <line x1="80" y1="48" x2="80" y2="62" stroke-width="2"/>
+  <path d="M80 62 l-9 9 v14 a3 3 0 0 0 3 3 h12 a3 3 0 0 0 3 -3 v-14 z" stroke-width="2.6"/>
+  <circle cx="80" cy="69" r="2.4" stroke-width="2"/>
+  <line x1="75" y1="78" x2="85" y2="78" stroke-width="2"/>
+  <!-- 空空的虚线 -->
+  <line x1="46" y1="72" x2="66" y2="72" stroke-width="2" stroke-dasharray="3 6" opacity="0.55"/>
+  <line x1="94" y1="72" x2="114" y2="72" stroke-width="2" stroke-dasharray="3 6" opacity="0.55"/>
+</svg>

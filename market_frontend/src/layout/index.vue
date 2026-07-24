@@ -80,6 +80,16 @@ export default {
   box-shadow: 8px 0 28px rgba(62, 45, 24, 0.08);
   transition: flex-basis 0.24s ease, width 0.24s ease;
   z-index: 20;
+  @include paper-grain(0.3);
+
+  &::before {
+    height: 6px;
+    @include awning-strip(6px);
+    content: "";
+    display: block;
+    position: relative;
+    z-index: 1;
+  }
 
   &.fold {
     flex-basis: $base-menu-min-width;
@@ -87,7 +97,9 @@ export default {
   }
 
   .scrollbar {
-    height: calc(100dvh - $base-menu-logo-height);
+    height: calc(100dvh - $base-menu-logo-height - 6px);
+    position: relative;
+    z-index: 1;
   }
 
   :deep(.el-menu) {
@@ -97,20 +109,41 @@ export default {
 
   :deep(.el-menu-item),
   :deep(.el-sub-menu__title) {
+    position: relative;
     height: 46px;
     margin: 4px 0;
     border-radius: 8px;
     font-weight: 700;
+    transition: transform var(--market-dur-fast) ease;
   }
 
   :deep(.el-menu-item:hover),
   :deep(.el-sub-menu__title:hover) {
     background: var(--market-menu-hover-bg);
+    transform: translateY(-2px);
   }
 
+  // 激活项：左侧橙色邮票齿孔条 + 浅绿底
   :deep(.el-menu-item.is-active) {
     color: var(--market-green);
     background: var(--market-menu-active-bg);
+
+    &::before {
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 0;
+      width: 4px;
+      border-radius: 0 4px 4px 0;
+      background-image: radial-gradient(
+        circle 1.6px at 2px 3px,
+        var(--market-orange) 1.6px,
+        transparent 1.6px
+      );
+      background-size: 4px 7px;
+      background-color: rgba(224, 101, 31, 0.35);
+      content: "";
+    }
   }
 }
 
@@ -170,6 +203,7 @@ export default {
     position: fixed;
     left: 0;
     transform: translateX(-100%);
+    transition: transform 0.24s ease;
   }
 
   .layout_slider.fold {

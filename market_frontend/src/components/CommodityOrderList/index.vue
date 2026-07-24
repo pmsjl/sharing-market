@@ -6,15 +6,17 @@
       v-for="order in props.commodityOrderList"
       :key="order.id"
       class="order-item"
+      :class="`status-${order.payStatus}`"
     >
+      <i class="ticket-punch" aria-hidden="true"></i>
+      <i class="order-stamp" :class="`stamp-${order.payStatus}`">{{
+        getPayStatusText(order.payStatus)
+      }}</i>
       <div class="order-header">
         <div>
           <span class="order-kicker">ORDER #{{ order.id }}</span>
           <h3>{{ order.commodityName || "未命名商品" }}</h3>
         </div>
-        <el-tag :type="getPayStatusTagType(order.payStatus)">
-          {{ getPayStatusText(order.payStatus) }}
-        </el-tag>
       </div>
 
       <div class="order-body">
@@ -47,8 +49,9 @@
       </div>
 
       <div v-if="order.payStatus === 0" class="order-footer">
-        <el-button type="primary" @click="showPayDialog(order)">
-          立即支付
+        <el-button type="warning" @click="showPayDialog(order)">
+          <el-icon style="margin-right: 4px"><Scissor /></el-icon>
+          撕下副券 · 立即支付
         </el-button>
       </div>
     </article>
@@ -69,6 +72,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
+import { Scissor } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 type CommodityOrderItem = API.CommodityOrderVO & {
@@ -105,23 +109,10 @@ const formatTime = (time?: string) => {
   return time ? dayjs(time).format("YYYY-MM-DD HH:mm") : "未知时间";
 };
 
-const getPayStatusTagType = (payStatus?: number) => {
-  switch (payStatus) {
-    case 1:
-      return "success";
-    case 0:
-      return "danger";
-    case 2:
-      return "warning";
-    default:
-      return "info";
-  }
-};
-
 const getPayStatusText = (payStatus?: number) => {
   switch (payStatus) {
     case 1:
-      return "支付成功";
+      return "已成交";
     case 0:
       return "待支付";
     case 2:
@@ -182,13 +173,50 @@ watch(
   gap: 16px;
 }
 
+// 票根订单卡：左右半圆缺口 + 打孔
 .order-item {
   position: relative;
-  padding: 18px;
+  padding: 18px 26px;
   border: 1px solid var(--market-line);
-  border-radius: 8px;
+  border-radius: var(--market-radius-ticket);
   background: var(--market-surface);
   box-shadow: var(--market-shadow-soft);
+  @include ticket-notch(var(--market-paper));
+}
+
+// 左侧打孔
+.ticket-punch {
+  position: absolute;
+  top: 50%;
+  left: 9px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--market-line);
+  border-radius: 50%;
+  background: var(--market-body-bg);
+  transform: translateY(-50%);
+}
+
+// 支付状态印章
+.order-stamp {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 14px;
+  font-style: normal;
+
+  &.stamp-1 {
+    @include stamp-text(var(--market-green));
+  }
+
+  &.stamp-0 {
+    @include stamp-text(var(--market-orange));
+  }
+
+  &.stamp-2 {
+    @include stamp-text(var(--market-muted));
+    opacity: 0.6;
+  }
 }
 
 .order-header {
@@ -196,11 +224,13 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  padding-right: 96px;
   padding-bottom: 14px;
   border-bottom: 1px dashed rgba(35, 49, 63, 0.14);
 
   h3 {
     margin-top: 5px;
+    font-family: var(--market-font-display);
     font-size: 20px;
     font-weight: 900;
   }
@@ -208,8 +238,10 @@ watch(
 
 .order-kicker {
   color: var(--market-orange);
+  font-family: var(--market-font-mono);
   font-size: 12px;
   font-weight: 900;
+  letter-spacing: 1px;
 }
 
 .order-body {
@@ -239,12 +271,16 @@ watch(
 .price,
 .countdown {
   color: var(--market-orange);
+  font-family: var(--market-font-mono);
 }
 
+// 副券撕线 + 支付按钮
 .order-footer {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin: 16px -26px -18px;
+  padding: 14px 26px 16px;
+  border-top: 2px dashed rgba(224, 101, 31, 0.35);
 }
 
 .dialog-content {
@@ -273,6 +309,13 @@ watch(
 @media (max-width: 520px) {
   .order-header {
     flex-direction: column;
+    padding-right: 0;
+  }
+
+  .order-stamp {
+    position: static;
+    margin-top: 8px;
+    width: fit-content;
   }
 
   .order-body {

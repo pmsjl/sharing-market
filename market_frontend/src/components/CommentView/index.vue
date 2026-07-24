@@ -234,15 +234,16 @@ const cancelEvent = () => {
 
 .root-comment {
   padding: 18px 20px;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--market-line);
   border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
+  @include ruled-paper(28px, 28px);
 }
 
 .reply-comment {
   padding: 12px 0 0 16px;
-  border-left: 2px solid #ebeef5;
+  border-left: 2px solid var(--market-ticket-pink);
 }
 
 .avatar {
@@ -265,15 +266,17 @@ const cancelEvent = () => {
 
 .username {
   font-weight: bold;
+  color: var(--market-green);
 }
 
 .reply-target {
-  color: #606266;
+  color: var(--market-muted);
   font-size: 13px;
 }
 
 .create-time {
-  color: #999;
+  color: var(--market-muted);
+  font-family: var(--market-font-mono);
   font-size: 0.875rem;
 }
 
@@ -291,7 +294,7 @@ const cancelEvent = () => {
   flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px dashed #edf0f5;
+  border-top: 1px dashed var(--market-line);
 }
 
 .action-buttons-inline {
@@ -308,17 +311,17 @@ const cancelEvent = () => {
 }
 
 .action-buttons-inline :deep(.el-button:hover) {
-  background: #ecf5ff;
+  background: rgba(43, 110, 80, 0.1);
 }
 
 .action-buttons-inline :deep(.delete-button:hover) {
-  background: #fef0f0;
+  background: rgba(197, 75, 66, 0.12);
 }
 
 .reply-editor {
   margin-top: 14px;
   padding: 14px;
-  background-color: #f9f9f9;
+  background: var(--market-paper-deep);
   border-radius: 8px;
 }
 

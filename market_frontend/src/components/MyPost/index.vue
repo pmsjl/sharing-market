@@ -30,14 +30,13 @@
           <p>{{ truncateContent(post.content || "", 120) }}</p>
           <div class="post-footer">
             <div class="post-tags">
-              <el-tag
+              <span
                 v-for="tag in post.tagList || []"
                 :key="tag"
-                size="small"
-                type="info"
+                class="handwritten-tag"
               >
-                {{ tag }}
-              </el-tag>
+                <b>#</b>{{ tag }}
+              </span>
             </div>
             <div class="post-stats">
               <span>点赞 {{ post.thumbNum || 0 }}</span>
@@ -300,13 +299,31 @@ onMounted(() => {
 }
 
 .post-item {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 18px;
+  padding: 20px 18px 20px 42px;
   border: 1px solid var(--market-line);
   border-radius: 8px;
-  background: var(--market-surface);
+  overflow: hidden;
+  @include ruled-paper(28px, 34px);
+
+  &::before {
+    position: absolute;
+    top: 18px;
+    bottom: 18px;
+    left: 11px;
+    width: 13px;
+    background: radial-gradient(
+      circle,
+      var(--market-paper-deep) 0 4px,
+      rgba(35, 49, 63, 0.2) 4.5px 5.5px,
+      transparent 6px
+    );
+    background-size: 13px 34px;
+    content: "";
+  }
 }
 
 .post-main {
@@ -331,12 +348,25 @@ onMounted(() => {
     margin: 0;
     font-size: 18px;
     font-weight: 900;
+    font-family: var(--market-font-display);
   }
 
   span {
     flex: none;
     color: var(--market-muted);
     font-size: 13px;
+  }
+}
+
+.handwritten-tag {
+  color: var(--market-green);
+  font-family: var(--market-font-display);
+  font-size: 14px;
+  font-weight: 800;
+
+  b {
+    margin-right: 1px;
+    color: var(--market-orange);
   }
 }
 
@@ -390,6 +420,13 @@ onMounted(() => {
   height: calc(100vh - 260px);
   min-height: 420px;
   width: 100%;
+  border: 1px solid var(--market-line);
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 27px,
+    var(--market-line) 27px,
+    var(--market-line) 28px
+  );
 }
 
 @media (max-width: 760px) {

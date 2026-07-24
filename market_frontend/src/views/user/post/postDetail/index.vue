@@ -33,7 +33,11 @@
 
       <!-- 三个图标 -->
       <div class="icon-container">
-        <div class="icon-item" @click="doThumb">
+        <div
+          class="icon-item stamp-action"
+          :class="{ 'is-stamped': initLikeStatus === 1 }"
+          @click="doThumb"
+        >
           <template v-if="initLikeStatus === 0">
             <img src="@/assets/icons/dianzan.svg" width="17" height="17" />
           </template>
@@ -43,7 +47,11 @@
 
           <span>{{ likeCount }}</span>
         </div>
-        <div class="icon-item" @click="handleCollect">
+        <div
+          class="icon-item stamp-action"
+          :class="{ 'is-stamped': initCollectStatus === 1 }"
+          @click="handleCollect"
+        >
           <el-icon :size="20">
             <template v-if="initCollectStatus === 0">
               <Star />
@@ -312,10 +320,29 @@ onMounted(async () => {
   padding: 20px;
 
   .post-content {
-    background-color: #fff;
+    position: relative;
+    background: var(--market-surface);
     border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 28px 30px 34px 58px;
+    border: 1px solid var(--market-line);
+    box-shadow: var(--market-shadow-soft);
+    @include ruled-paper(28px, 44px);
+
+    &::before {
+      position: absolute;
+      top: 24px;
+      bottom: 24px;
+      left: 14px;
+      width: 14px;
+      background: radial-gradient(
+        circle,
+        var(--market-paper-deep) 0 4px,
+        rgba(35, 49, 63, 0.24) 4.5px 5.5px,
+        transparent 6px
+      );
+      background-size: 14px 38px;
+      content: "";
+    }
 
     .post-header {
       display: flex;
@@ -333,13 +360,14 @@ onMounted(async () => {
         .user-name {
           font-size: 16px;
           font-weight: bold;
-          color: #333;
+          color: var(--market-ink);
         }
 
         .post-time {
           font-size: 14px;
           margin-top: 10px;
-          color: #999;
+          color: var(--market-muted);
+          font-family: var(--market-font-mono);
         }
       }
 
@@ -351,13 +379,29 @@ onMounted(async () => {
     .post-title {
       font-size: 24px;
       font-weight: bold;
+      font-family: var(--market-font-display);
       margin-bottom: 16px;
     }
 
     .post-body {
       font-size: 16px;
-      color: #333;
-      line-height: 1.6;
+      color: var(--market-ink);
+      line-height: 28px;
+
+      :deep(.md-editor-preview-wrapper) {
+        padding-inline: 0;
+        background: transparent;
+      }
+
+      :deep(.md-editor-preview > p:first-of-type::first-letter) {
+        float: left;
+        margin: 8px 8px 0 0;
+        color: var(--market-orange);
+        font-family: var(--market-font-display);
+        font-size: 3.2em;
+        font-weight: 900;
+        line-height: 0.78;
+      }
     }
   }
 
@@ -417,16 +461,47 @@ onMounted(async () => {
       align-items: center;
       gap: 5px;
       cursor: pointer;
-      color: #666;
+      color: var(--market-muted);
       transition: color 0.3s;
 
       &:hover {
-        color: #409eff;
+        color: var(--market-orange);
       }
 
       span {
         font-size: 14px;
       }
+    }
+  }
+}
+
+.stamp-action {
+  min-width: 82px;
+  padding: 8px 14px;
+  border: 2px solid var(--market-muted);
+  border-radius: 6px;
+  color: var(--market-muted) !important;
+  font-family: var(--market-font-display);
+  transform: rotate(-3deg);
+
+  &.is-stamped {
+    border-color: var(--market-stamp-red);
+    color: var(--market-stamp-red) !important;
+    transform: rotate(-7deg);
+  }
+}
+
+@media (max-width: 600px) {
+  .post-detail {
+    padding: 10px;
+
+    .post-content {
+      padding: 22px 16px 26px 38px;
+    }
+
+    .icon-container {
+      flex-wrap: wrap;
+      gap: 12px;
     }
   }
 }

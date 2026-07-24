@@ -160,11 +160,15 @@ onMounted(() => {
   .comments-card {
     padding: 20px;
     position: relative; /* 用于定位头像 */
+    border: 1px solid var(--market-line);
+    background: var(--market-surface);
+    box-shadow: var(--market-shadow-soft);
   }
 
   .card-header {
     font-size: 18px;
     font-weight: bold;
+    font-family: var(--market-font-display);
   }
 
   /* 评论输入框的卡片 */
@@ -173,7 +177,8 @@ onMounted(() => {
     flex-direction: column;
     padding: 20px;
     position: relative;
-    background-color: #f9f9f9;
+    border: 1px dashed var(--market-line);
+    background: var(--market-paper-deep);
 
     /* 头像区域 */
     .avatar-container {
@@ -185,7 +190,7 @@ onMounted(() => {
       width: 100%;
       height: 120px;
       padding: 10px;
-      background-color: #fff;
+      background: var(--market-surface);
       border-radius: 4px;
     }
 
@@ -193,6 +198,9 @@ onMounted(() => {
     .submit-button {
       margin-top: 12px;
       align-self: flex-end; /* 按钮右对齐 */
+      border-color: var(--market-stamp-red);
+      background: var(--market-stamp-red);
+      transform: rotate(-2deg);
     }
   }
 

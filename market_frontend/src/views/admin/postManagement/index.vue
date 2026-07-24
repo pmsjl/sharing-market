@@ -1,5 +1,5 @@
 <template>
-  <div class="post-admin">
+  <div class="admin-page post-admin">
     <!-- 查询区域 -->
     <el-card style="margin-bottom: 10px">
       <el-row :gutter="10">

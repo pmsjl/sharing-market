@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 书封 -->
+  <path d="M12 10 h30 a6 6 0 0 1 6 6 v38 a4 4 0 0 0 -4 -4 H12 z"/>
+  <path d="M12 10 v40 a4 4 0 0 1 4 -4 h28" stroke-width="2.2"/>
+  <!-- 书脊弧线 -->
+  <path d="M16 14 v34" stroke-width="2"/>
+  <!-- 封面标题线 -->
+  <line x1="24" y1="22" x2="40" y2="22" stroke-width="2.2"/>
+  <line x1="24" y1="29" x2="36" y2="29" stroke-width="2"/>
+  <!-- 书签 -->
+  <path d="M40 46 v10 l4 -3.2 4 3.2 v-10" stroke-width="2.2"/>
+  <!-- 铅笔 -->
+  <line x1="50" y1="18" x2="57" y2="25" stroke-width="3.4"/>
+  <path d="M57 25 l2.6 2.6 -7 7 -3.4 -3.4 z" stroke-width="2.2"/>
+</svg>

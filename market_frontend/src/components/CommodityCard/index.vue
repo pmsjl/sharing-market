@@ -26,13 +26,13 @@
         </div>
 
         <div class="price-board">
-          <div>
+          <div class="price-cell">
             <span>价格</span>
-            <strong>￥{{ commodity.price }}</strong>
+            <strong><em>￥</em>{{ commodity.price }}</strong>
           </div>
-          <div>
+          <div class="stock-cell">
             <span>库存</span>
-            <strong>{{ commodity.commodityInventory }}</strong>
+            <i class="stock-stamp">余量 {{ commodity.commodityInventory }}</i>
           </div>
         </div>
 
@@ -56,12 +56,20 @@
             <el-icon><View /></el-icon>
             <span>{{ viewCount }} 浏览</span>
           </button>
-          <button type="button" class="metric-item" @click="handleCollect">
+          <button
+            type="button"
+            class="metric-item metric-favour"
+            :class="{ stamped: initStatus === 1 }"
+            @click="handleCollect"
+          >
             <el-icon>
               <Star v-if="initStatus === 0" />
-              <StarFilled v-if="initStatus === 1" color="#d96c2c" />
+              <StarFilled v-if="initStatus === 1" color="#e0651f" />
             </el-icon>
             <span>{{ favourCount }} 收藏</span>
+            <i v-if="initStatus === 1" ref="favourStamp" class="favour-stamp"
+              >已收藏</i
+            >
           </button>
         </div>
       </div>
@@ -145,7 +153,7 @@
 
 <script setup lang="ts">
 import { Coin } from "@element-plus/icons-vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Share, Star, StarFilled, View } from "@element-plus/icons-vue";
@@ -162,7 +170,7 @@ import {
 } from "@/api/userCommodityFavoritesController";
 import CommodityScore from "@/components/CommodityScore/index.vue";
 import CommodityScoreList from "@/components/CommodityScoreList/index.vue";
-import { animateIn } from "@/utils/motion";
+import { animateIn, stampIn } from "@/utils/motion";
 import { GET_ID } from "@/utils/token";
 
 const route = useRoute();
@@ -170,6 +178,7 @@ const router = useRouter();
 const commodityId = route.params.id as string;
 const currentUserId = String(GET_ID() || "");
 const pageRef = ref<HTMLElement | null>(null);
+const favourStamp = ref<HTMLElement | null>(null);
 const detailActiveName = ref("first");
 const commodity = ref({
   commodityName: "",
@@ -301,7 +310,12 @@ const handleCollect = async () => {
     });
   }
   syncFavourCount(!hadRecord || previousStatus !== 1 ? 1 : -1);
+  const willStamp = !hadRecord || previousStatus !== 1;
   await fetchInitFavour();
+  if (willStamp) {
+    await nextTick();
+    stampIn(favourStamp.value);
+  }
 };
 
 const handleShare = () => {
@@ -382,22 +396,26 @@ onMounted(async () => {
 
 .detail-hero {
   display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: 28px;
   padding: 28px;
 }
 
 .detail-media {
+  position: relative;
   aspect-ratio: 4 / 3;
+  padding: 14px;
   overflow: hidden;
-  border: 1px solid var(--market-line);
+  border: 1px solid rgba(143, 93, 51, 0.2);
   border-radius: 8px;
-  background: #f1dec0;
+  background: var(--market-paper-deep);
+  box-shadow: inset 0 2px 10px rgba(62, 45, 24, 0.08);
 
   img,
   .detail-placeholder {
     width: 100%;
     height: 100%;
+    border-radius: 4px;
     object-fit: cover;
   }
 }
@@ -405,7 +423,8 @@ onMounted(async () => {
 .detail-placeholder {
   display: grid;
   place-items: center;
-  color: rgba(35, 49, 63, 0.58);
+  color: var(--market-muted);
+  font-family: var(--market-font-display);
   font-size: 24px;
   font-weight: 900;
 }
@@ -416,6 +435,7 @@ onMounted(async () => {
   h1 {
     margin: 14px 0;
     color: var(--market-ink);
+    font-family: var(--market-font-display);
     font-size: clamp(30px, 4vw, 48px);
     font-weight: 900;
     line-height: 1.12;
@@ -434,14 +454,14 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 12px;
-  max-width: 420px;
+  max-width: 460px;
   margin: 22px 0;
 
-  div {
+  > div {
     padding: 16px;
     border: 1px dashed rgba(35, 49, 63, 0.18);
     border-radius: 8px;
-    background: #fff7e8;
+    background: var(--market-paper-deep);
   }
 
   span {
@@ -450,14 +470,31 @@ onMounted(async () => {
     font-size: 13px;
     font-weight: 800;
   }
+}
 
-  strong {
-    display: block;
-    margin-top: 6px;
-    color: var(--market-orange);
-    font-size: 28px;
-    font-weight: 900;
+.price-cell strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--market-orange);
+  font-family: var(--market-font-mono);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+
+  em {
+    margin-right: 2px;
+    font-size: 22px;
+    font-style: normal;
+    vertical-align: 8px;
   }
+}
+
+// 余量章
+.stock-cell .stock-stamp {
+  margin-top: 10px;
+  font-size: 15px;
+  font-style: normal;
+  @include stamp-text(var(--market-green));
 }
 
 .metric-strip {
@@ -465,6 +502,7 @@ onMounted(async () => {
 }
 
 .metric-item {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -474,8 +512,32 @@ onMounted(async () => {
   border-radius: 999px;
   color: var(--market-ink);
   font-weight: 800;
-  background: #fffdf8;
+  background: var(--market-surface);
   cursor: pointer;
+  transition: border-color var(--market-dur-fast) ease,
+    box-shadow var(--market-dur-fast) ease;
+
+  &:hover {
+    border-color: rgba(224, 101, 31, 0.4);
+    box-shadow: var(--market-shadow-soft);
+  }
+}
+
+// 已收藏态：橙色描边 + 盖章
+.metric-favour.stamped {
+  border-color: rgba(224, 101, 31, 0.55);
+  background: rgba(224, 101, 31, 0.08);
+}
+
+.favour-stamp {
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  font-size: 11px;
+  font-style: normal;
+  letter-spacing: 1px;
+  @include stamp-text(var(--market-stamp-red));
+  background: var(--market-surface);
 }
 
 .detail-tabs {
@@ -517,7 +579,7 @@ onMounted(async () => {
   padding: 12px;
   border: 1px dashed var(--market-line);
   border-radius: 8px;
-  background: #fff7e8;
+  background: var(--market-paper-deep);
 
   span {
     overflow: hidden;
@@ -529,6 +591,13 @@ onMounted(async () => {
 
 .qr-section {
   justify-items: center;
+}
+
+// 深色模式下的价格/库存纸底与按钮底
+html.dark .price-board > div,
+html.dark .metric-item,
+html.dark .link-container {
+  background: var(--market-paper-deep);
 }
 
 @media (max-width: 860px) {

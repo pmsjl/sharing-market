@@ -19,6 +19,9 @@
           showCodeRowNumber
           @on-change="handleContentChange"
         />
+        <div class="editor-folio">
+          {{ editForm.content.length }} 字 · 第 1 页
+        </div>
       </el-form-item>
       <el-form-item>
         <div class="editor-actions">
@@ -103,6 +106,11 @@ const validateTag = (tag) => {
   padding: 8px 0 0;
   display: flex;
   flex-direction: column;
+  padding: 24px 24px 18px 54px;
+  border: 1px solid var(--market-line);
+  border-radius: 8px;
+  box-shadow: var(--market-shadow-soft);
+  @include ruled-paper(28px, 42px);
 
   .el-form {
     flex: 1;
@@ -126,12 +134,22 @@ const validateTag = (tag) => {
         flex: 1;
         display: flex;
         flex-direction: column;
+        border: 1px solid var(--market-line);
+        background: var(--market-surface);
 
         .md-editor-content {
           flex: 1;
         }
       }
     }
+  }
+
+  .editor-folio {
+    align-self: flex-end;
+    margin-top: 8px;
+    color: var(--market-muted);
+    font-family: var(--market-font-mono);
+    font-size: 12px;
   }
 
   .el-input,
@@ -156,6 +174,7 @@ const validateTag = (tag) => {
 @media (max-width: 760px) {
   .post-editor {
     min-height: auto;
+    padding: 18px 14px 14px 34px;
 
     .editor-actions {
       flex-direction: column-reverse;

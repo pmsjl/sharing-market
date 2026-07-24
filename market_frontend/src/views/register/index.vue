@@ -21,6 +21,7 @@
         ref="registerForms"
         label-position="top"
       >
+        <div class="form-awning" aria-hidden="true"></div>
         <div class="form-brand">
           <img src="@/assets/logo.png" alt="平台标识" />
           <div>
@@ -67,6 +68,8 @@
             返回登录
           </el-button>
         </div>
+
+        <div class="form-stamp" aria-hidden="true">开摊预备 · 新同学</div>
       </el-form>
     </section>
   </div>
@@ -78,7 +81,7 @@ import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { userRegisterUsingPost } from "@/api/userController";
-import { animateIn } from "@/utils/motion";
+import { animateIn, pinOn } from "@/utils/motion";
 
 const authPage = ref<HTMLElement | null>(null);
 const registerForm = reactive({
@@ -158,6 +161,7 @@ const rules = {
 
 onMounted(() => {
   animateIn(authPage.value?.querySelectorAll(".auth-copy, .auth-form") || []);
+  pinOn(authPage.value?.querySelectorAll(".notice-note") || [], 0.15);
 });
 </script>
 <style scoped lang="scss">
@@ -182,6 +186,7 @@ onMounted(() => {
     max-width: 640px;
     margin: 18px 0;
     color: var(--market-ink);
+    font-family: var(--market-font-display);
     font-size: clamp(36px, 6vw, 60px);
     font-weight: 900;
     line-height: 1.08;
@@ -203,6 +208,7 @@ onMounted(() => {
 }
 
 .notice-note {
+  position: relative;
   width: fit-content;
   max-width: 100%;
   padding: 12px 16px;
@@ -210,6 +216,19 @@ onMounted(() => {
   border-radius: 8px;
   box-shadow: var(--market-shadow-soft);
   font-weight: 800;
+
+  &::before {
+    position: absolute;
+    top: -8px;
+    left: 18px;
+    width: 14px;
+    height: 14px;
+    border: 3px solid var(--market-pin-border);
+    border-radius: 50%;
+    background: var(--market-orange);
+    box-shadow: 0 3px 6px rgba(62, 45, 24, 0.25);
+    content: "";
+  }
 }
 
 .note-green {
@@ -231,7 +250,24 @@ onMounted(() => {
 }
 
 .auth-form {
+  position: relative;
   padding: 34px;
+  overflow: hidden;
+}
+
+.form-awning {
+  height: 10px;
+  margin: -34px -34px 26px;
+  @include awning-strip(10px);
+}
+
+.form-stamp {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  font-size: 13px;
+  @include stamp-text(var(--market-stamp-red));
+  pointer-events: none;
 }
 
 .form-brand {
@@ -251,6 +287,7 @@ onMounted(() => {
   h2 {
     margin: 0;
     color: var(--market-ink);
+    font-family: var(--market-font-display);
     font-size: 28px;
     font-weight: 900;
   }
@@ -271,6 +308,19 @@ onMounted(() => {
 .register_btn,
 .back_login_btn {
   width: 100%;
+}
+
+.back_login_btn {
+  border-color: var(--market-orange);
+  color: var(--market-orange);
+  background: transparent;
+
+  &:hover,
+  &:focus {
+    color: #fff;
+    background: var(--market-orange);
+    border-color: var(--market-orange);
+  }
 }
 
 @media (max-width: 860px) {

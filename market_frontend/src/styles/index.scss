@@ -61,6 +61,7 @@ a {
 .market-title {
   margin: 8px 0 0;
   color: var(--market-ink);
+  font-family: var(--market-font-display);
   font-size: 28px;
   font-weight: 800;
   line-height: 1.22;
@@ -162,6 +163,62 @@ a {
   overflow: hidden;
 }
 
+// 管理端统一登记簿外观（六个管理页共用，不改页面业务模板）
+.commodity-admin,
+.commodity-order-admin,
+.commodity-type-admin,
+.post-admin,
+.search_container,
+.admin-page {
+  > .el-card:first-child {
+    position: relative;
+    border: 6px solid #2d4059;
+    border-radius: 10px;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.035) 0 1px,
+        transparent 1px 5px
+      ),
+      var(--market-surface);
+    box-shadow: var(--market-shadow-soft);
+
+    &::before,
+    &::after {
+      position: absolute;
+      top: 9px;
+      width: 9px;
+      height: 9px;
+      border: 2px solid rgba(255, 246, 227, 0.54);
+      border-radius: 50%;
+      background: #b88746;
+      box-shadow: 0 2px 4px rgba(35, 49, 63, 0.28);
+      content: "";
+      z-index: 2;
+    }
+
+    &::before {
+      left: 9px;
+    }
+
+    &::after {
+      right: 9px;
+    }
+  }
+
+  .el-table .el-button {
+    min-height: 30px;
+    padding: 4px 8px;
+    border-color: transparent;
+    font-size: 12px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .el-table tr:nth-child(even) td.el-table__cell {
+    background: rgba(43, 110, 80, 0.025);
+  }
+}
+
 .ai-message-admin .el-table,
 .commodity-admin .el-table,
 .commodity-order-admin .el-table,
@@ -169,6 +226,140 @@ a {
 .post-admin .el-table,
 .search_container .el-table {
   font-size: 14px;
+}
+
+// 管理端第二轮统一：登记簿筛选区、可读表格与语义操作按钮。
+.admin-page {
+  color: var(--market-ink);
+
+  > .el-card:first-child {
+    border-color: #2d4059;
+    background: linear-gradient(
+        180deg,
+        rgba(45, 64, 89, 0.08),
+        transparent 54px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent 0 31px,
+        rgba(94, 160, 181, 0.055) 31px 32px
+      ),
+      var(--market-surface);
+    box-shadow: 0 14px 28px rgba(45, 64, 89, 0.13);
+
+    > .el-card__body {
+      padding: 26px 20px 18px;
+    }
+  }
+
+  .el-table {
+    --el-table-text-color: var(--market-ink);
+    --el-table-header-text-color: var(--market-chalk);
+    --el-table-bg-color: var(--market-surface);
+    --el-table-tr-bg-color: var(--market-surface);
+    --el-table-row-hover-bg-color: var(--market-note-green-bg);
+    --el-table-current-row-bg-color: var(--market-note-green-bg);
+    --el-table-fixed-box-shadow: -8px 0 16px rgba(35, 49, 63, 0.08);
+    border: 1px solid var(--market-line);
+    color: var(--market-ink);
+    box-shadow: var(--market-shadow-soft);
+  }
+
+  .el-table td.el-table__cell {
+    color: var(--market-ink);
+    background: var(--market-surface);
+  }
+
+  .el-table tr:nth-child(even) td.el-table__cell {
+    background: var(--market-paper-deep);
+  }
+
+  .el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+    color: var(--market-ink);
+    background: var(--market-note-green-bg) !important;
+  }
+
+  .el-table .cell {
+    color: inherit;
+    line-height: 1.55;
+  }
+
+  .el-table .el-button {
+    min-width: 44px;
+    min-height: 30px;
+    margin: 2px 1px;
+    padding: 4px 9px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    color: var(--market-ink) !important;
+    background: rgba(35, 49, 63, 0.055) !important;
+    opacity: 1;
+  }
+
+  .el-table .el-button--primary {
+    border-color: rgba(43, 110, 80, 0.2);
+    color: var(--market-green) !important;
+    background: rgba(43, 110, 80, 0.1) !important;
+  }
+
+  .el-table .el-button--danger {
+    border-color: rgba(192, 57, 43, 0.2);
+    color: var(--market-stamp-red) !important;
+    background: rgba(192, 57, 43, 0.08) !important;
+  }
+
+  .el-table .el-button--success {
+    border-color: rgba(43, 110, 80, 0.2);
+    color: var(--market-green) !important;
+    background: rgba(43, 110, 80, 0.1) !important;
+  }
+
+  .el-table .el-button--warning {
+    border-color: rgba(224, 101, 31, 0.22);
+    color: var(--market-orange) !important;
+    background: rgba(224, 101, 31, 0.09) !important;
+  }
+
+  .el-table .el-button:hover:not(.is-disabled) {
+    border-color: currentColor;
+    filter: saturate(1.08);
+    transform: translateY(-1px);
+  }
+
+  .el-table .el-button.is-disabled {
+    color: var(--market-muted) !important;
+    background: transparent !important;
+    opacity: 0.64;
+  }
+
+  .el-dialog {
+    color: var(--market-ink);
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0 31px,
+        rgba(94, 160, 181, 0.045) 31px 32px
+      ),
+      var(--market-surface);
+  }
+
+  .el-dialog__title,
+  .el-dialog__body,
+  .el-form-item__label {
+    color: var(--market-ink);
+  }
+}
+
+html.dark .admin-page {
+  .el-table .el-button--primary,
+  .el-table .el-button--success {
+    border-color: rgba(116, 198, 157, 0.32);
+    color: var(--market-green-dark) !important;
+    background: rgba(116, 198, 157, 0.12) !important;
+  }
+}
+
+html.dark .layout_slider .el-menu-item.is-active {
+  color: var(--market-green-dark) !important;
 }
 
 .ai-message-admin .el-image,
@@ -268,6 +459,13 @@ a {
   font-weight: 700;
 }
 
+.el-form-item.is-required:not(.is-no-asterisk) > .el-form-item__label::before,
+.el-form-item.is-required:not(.is-no-asterisk)
+  > .el-form-item__label-wrap
+  > .el-form-item__label::before {
+  color: var(--market-orange);
+}
+
 .el-tag {
   border-radius: 999px;
   font-weight: 700;
@@ -275,14 +473,41 @@ a {
 
 .el-table {
   --el-table-border-color: var(--market-line);
-  --el-table-header-bg-color: var(--market-soft-bg);
+  --el-table-header-bg-color: var(--market-green);
+  --el-table-row-hover-bg-color: var(--market-wash);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .el-table th.el-table__cell {
-  color: var(--market-ink);
+  color: var(--market-chalk);
   font-weight: 800;
+  background: var(--market-green) !important;
+  border-bottom: none;
+}
+
+// 管理端弹窗表单：标签顶部对齐，移动端友好
+.admin-page .el-dialog .el-form-item,
+.commodity-admin .el-dialog .el-form-item,
+.commodity-order-admin .el-dialog .el-form-item,
+.commodity-type-admin .el-dialog .el-form-item,
+.post-admin .el-dialog .el-form-item,
+.ai-message-admin .el-dialog .el-form-item,
+.search_container .el-dialog .el-form-item {
+  flex-direction: column;
+  align-items: stretch;
+
+  .el-form-item__label {
+    justify-content: flex-start;
+    width: auto !important;
+    height: auto;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+
+  .el-form-item__content {
+    margin-left: 0 !important;
+  }
 }
 
 .el-dialog {
@@ -304,6 +529,22 @@ a {
 
 .el-dialog__footer {
   padding: 14px 22px 22px;
+}
+
+// 分页器：纸底 + 当前页橙色章
+.el-pagination {
+  --el-pagination-button-bg-color: var(--market-surface);
+  --el-pagination-hover-color: var(--market-orange);
+
+  .el-pager li.is-active {
+    color: #fff;
+    background: var(--market-orange);
+  }
+}
+
+// 深色模式下分页器当前页保持可读
+html.dark .el-pagination .el-pager li.is-active {
+  color: #1a2328;
 }
 
 ::-webkit-scrollbar {
@@ -350,7 +591,11 @@ html.dark .el-table td.el-table__cell {
   color: var(--market-ink);
 }
 
-html.dark .el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+html.dark
+  .el-table--enable-row-hover
+  .el-table__body
+  tr:hover
+  > td.el-table__cell {
   background: #27343a;
 }
 
@@ -394,6 +639,25 @@ html.dark .el-popover.el-popper {
 
   .el-dialog {
     width: calc(100vw - 24px) !important;
+  }
+
+  .commodity-admin,
+  .commodity-order-admin,
+  .commodity-type-admin,
+  .post-admin,
+  .search_container,
+  .admin-page {
+    overflow-x: auto;
+
+    .el-row {
+      flex-direction: column;
+    }
+
+    .el-col {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-left: 0 !important;
+    }
   }
 }
 

@@ -23,6 +23,7 @@
         ref="loginForms"
         label-position="top"
       >
+        <div class="form-awning" aria-hidden="true"></div>
         <div class="form-brand">
           <img src="@/assets/logo.png" alt="平台标识" />
           <div>
@@ -57,10 +58,16 @@
           >
             登录平台
           </el-button>
-          <el-button :loading="loading" class="login_btn" @click="register">
+          <el-button
+            :loading="loading"
+            class="login_btn register-link"
+            @click="register"
+          >
             注册账号
           </el-button>
         </div>
+
+        <div class="form-stamp" aria-hidden="true">校园市集 · 已核验</div>
       </el-form>
     </section>
 
@@ -86,7 +93,7 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElNotification } from "element-plus";
 import { getTime } from "@/utils/time";
 import useUserStore from "@/store/modules/user";
-import { animateIn } from "@/utils/motion";
+import { animateIn, pinOn } from "@/utils/motion";
 import { getSafeRedirectPath } from "@/utils/roleHome";
 
 const authPage = ref<HTMLElement | null>(null);
@@ -137,6 +144,7 @@ const login = async () => {
 
 onMounted(() => {
   animateIn(authPage.value?.querySelectorAll(".auth-copy, .auth-form") || []);
+  pinOn(authPage.value?.querySelectorAll(".notice-note") || [], 0.15);
 });
 
 const register = () => {
@@ -189,6 +197,7 @@ const rules = {
   h1 {
     max-width: 640px;
     margin: 18px 0;
+    font-family: var(--market-font-display);
     font-size: clamp(36px, 6vw, 64px);
     font-weight: 900;
     line-height: 1.05;
@@ -210,6 +219,7 @@ const rules = {
 }
 
 .notice-note {
+  position: relative;
   width: fit-content;
   max-width: 100%;
   padding: 12px 16px;
@@ -218,6 +228,20 @@ const rules = {
   box-shadow: var(--market-shadow-soft);
   font-weight: 800;
   transform: rotate(-1.2deg);
+
+  // 图钉
+  &::before {
+    position: absolute;
+    top: -8px;
+    left: 18px;
+    width: 14px;
+    height: 14px;
+    border: 3px solid var(--market-pin-border);
+    border-radius: 50%;
+    background: var(--market-orange);
+    box-shadow: 0 3px 6px rgba(62, 45, 24, 0.25);
+    content: "";
+  }
 }
 
 .note-green {
@@ -238,7 +262,25 @@ const rules = {
 }
 
 .auth-form {
+  position: relative;
   padding: 34px;
+  overflow: hidden;
+}
+
+// 表单卡顶部雨棚条纹
+.form-awning {
+  height: 10px;
+  margin: -34px -34px 26px;
+  @include awning-strip(10px);
+}
+
+.form-stamp {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  font-size: 13px;
+  @include stamp-text(var(--market-stamp-red));
+  pointer-events: none;
 }
 
 .form-brand {
@@ -257,6 +299,7 @@ const rules = {
 
   h2 {
     margin: 0;
+    font-family: var(--market-font-display);
     font-size: 28px;
     font-weight: 900;
   }
@@ -278,6 +321,20 @@ const rules = {
   width: 100%;
 }
 
+// 注册按钮：描边橙，弱化层级
+.register-link {
+  border-color: var(--market-orange);
+  color: var(--market-orange);
+  background: transparent;
+
+  &:hover,
+  &:focus {
+    color: #fff;
+    background: var(--market-orange);
+    border-color: var(--market-orange);
+  }
+}
+
 .login_footer {
   position: absolute;
   bottom: 16px;
@@ -288,7 +345,8 @@ const rules = {
   width: min(680px, calc(100% - 28px));
   justify-content: center;
   color: rgba(35, 49, 63, 0.68);
-  font-size: 13px;
+  font-size: 12px;
+  opacity: 0.55;
   transform: translateX(-50%);
 
   img {

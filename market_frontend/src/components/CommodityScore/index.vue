@@ -128,9 +128,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 16px;
-  border: 1px solid #e4e5e9;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border: 1px solid var(--market-line);
   border-radius: 8px;
+  color: var(--market-ink);
+  background: repeating-linear-gradient(
+      -45deg,
+      rgba(43, 110, 80, 0.05) 0 5px,
+      transparent 5px 10px
+    ),
+    var(--market-surface);
 }
 
 .rating-left {
@@ -143,19 +151,31 @@ onMounted(() => {
 .rating-text {
   margin: 0;
   font-size: 14px;
-  color: #666;
+  color: var(--market-muted);
+  font-weight: 800;
 }
 
 .star-container {
   display: flex;
   gap: 4px;
   cursor: pointer;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--market-paper-deep);
 }
 
 .rating-right {
+  display: grid;
+  width: 96px;
+  height: 72px;
+  place-items: center;
+  border: 3px double var(--market-green);
+  border-radius: 50%;
   font-size: 16px;
   font-weight: bold;
-  color: #333;
+  color: var(--market-green);
+  font-family: var(--market-font-display);
+  transform: rotate(-5deg);
 }
 
 .average-rating {
@@ -170,6 +190,18 @@ onMounted(() => {
 .rated-text {
   margin: 0;
   font-size: 14px;
-  color: #666;
+  color: var(--market-green);
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .rating-component {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rating-right {
+    align-self: center;
+  }
 }
 </style>

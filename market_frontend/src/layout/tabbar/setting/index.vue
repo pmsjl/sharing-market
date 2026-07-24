@@ -149,16 +149,16 @@ const logout = async () => {
   $router.push({ path: "/login" });
 };
 
-const color = ref("rgba(47, 125, 92, 1)");
+const color = ref("rgba(43, 110, 80, 1)");
 const predefineColors = ref([
-  "#2f7d5c",
+  "#2b6e50",
   "#26547c",
-  "#d96c2c",
+  "#e0651f",
   "#f4c95d",
   "#c64545",
   "#8f5d33",
-  "rgba(217, 108, 44, 0.82)",
-  "rgba(47, 125, 92, 0.85)"
+  "rgba(224, 101, 31, 0.82)",
+  "rgba(43, 110, 80, 0.85)"
 ]);
 
 const changeThemeMode = () => {
@@ -185,10 +185,17 @@ export default {
   width: 34px;
   height: 34px;
   margin-left: 4px;
-  border: 2px solid #fff7e8;
-  border-radius: 50%;
+  padding: 2px;
+  border: 1px solid var(--market-line);
+  border-radius: 6px;
+  background: #fffdf8;
   object-fit: cover;
   box-shadow: var(--market-shadow-soft);
+  transform: rotate(-2deg);
+}
+
+html.dark .user-avatar {
+  background: #27343a;
 }
 
 .user-trigger {

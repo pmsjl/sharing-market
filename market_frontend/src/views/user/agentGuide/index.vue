@@ -234,6 +234,7 @@
                 </template>
                 <div v-else class="markdown-answer">
                   <MdPreview
+                    class="agent-markdown"
                     :model-value="message.content"
                     preview-theme="github"
                     code-theme="github"
@@ -324,7 +325,7 @@
             ref="composerRef"
             v-model="composer"
             type="textarea"
-            :autosize="{ minRows: 2, maxRows: 6 }"
+            :autosize="{ minRows: 1, maxRows: 5 }"
             maxlength="1000"
             resize="none"
             :disabled="sending"
@@ -339,12 +340,13 @@
             </span>
             <span v-else>Enter 发送 · Shift + Enter 换行</span>
             <el-button
+              class="stamp-send"
               type="primary"
               :loading="sending"
               :disabled="!composer.trim() || sending || messageLoadFailed"
               @click="sendMessage"
             >
-              发送
+              盖戳发送
             </el-button>
           </div>
         </div>
@@ -998,24 +1000,68 @@ button {
 }
 
 .conversation-ticket {
+  position: relative;
   width: 100%;
   margin-bottom: 8px;
-  padding: 13px 12px;
+  padding: 13px 12px 13px 20px;
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--market-ink);
   text-align: left;
-  background: transparent;
+  background: var(--market-surface);
   cursor: pointer;
   transition: 0.2s ease;
+
+  &::before {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 3px;
+    width: 8px;
+    background: radial-gradient(
+      circle,
+      transparent 0 2.5px,
+      var(--market-line) 3px 3.5px,
+      transparent 4px
+    );
+    background-size: 8px 13px;
+    content: "";
+  }
 }
 .conversation-ticket:hover {
-  border-color: var(--market-line);
+  border-color: rgba(47, 125, 92, 0.28);
   background: var(--market-card-bg);
+  box-shadow: 0 8px 18px rgba(62, 45, 24, 0.07);
+  transform: translateY(-1px);
+}
+.conversation-ticket:focus-visible {
+  border-color: rgba(47, 125, 92, 0.48);
+  box-shadow: var(--market-focus);
+  outline: none;
 }
 .conversation-ticket.active {
   border-color: rgba(47, 125, 92, 0.32);
   background: var(--market-menu-active-bg);
+
+  .ticket-main {
+    padding-right: 56px;
+  }
+
+  &::after {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    padding: 2px 5px;
+    border: 1.5px solid var(--market-stamp-red);
+    border-radius: 3px;
+    color: var(--market-stamp-red);
+    font-family: var(--market-font-display);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    content: "咨询中";
+    transform: rotate(-7deg);
+  }
 }
 .ticket-main {
   display: grid;
@@ -1124,15 +1170,23 @@ button {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  background: var(--market-paper);
+  background: radial-gradient(
+      ellipse at 52% -8%,
+      rgba(244, 201, 93, 0.16),
+      transparent 36%
+    ),
+    linear-gradient(rgba(35, 49, 63, 0.018), rgba(35, 49, 63, 0.018)),
+    var(--market-paper);
 }
 .chat-toolbar {
   flex: 0 0 auto;
   min-height: 72px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--market-line);
-  background: var(--market-topbar-bg);
+  background: linear-gradient(90deg, rgba(47, 125, 92, 0.05), transparent 28%),
+    var(--market-topbar-bg);
   backdrop-filter: blur(12px);
+  box-shadow: 0 5px 18px rgba(62, 45, 24, 0.04);
 }
 .chat-title {
   justify-content: flex-start;
@@ -1173,7 +1227,10 @@ button {
   width: 34px;
   height: 34px;
   margin-top: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
   font-size: 12px;
+  box-shadow: 0 0 0 3px rgba(47, 125, 92, 0.16);
+  transform: rotate(-6deg);
 }
 .icon-button,
 .context-trigger,
@@ -1249,7 +1306,7 @@ button {
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 34px clamp(20px, 5vw, 72px);
+  padding: 38px clamp(20px, 4vw, 64px);
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
@@ -1339,19 +1396,23 @@ button {
 
 .chat-message {
   display: flex;
-  max-width: 900px;
+  width: min(100%, 960px);
   gap: 12px;
-  margin: 0 auto 24px;
+  margin: 0 auto 28px;
 }
 .chat-message.user {
   justify-content: flex-end;
 }
 .message-column {
   min-width: 0;
-  max-width: min(760px, 84%);
+  max-width: min(780px, calc(100% - 48px));
+}
+.chat-message.assistant .message-column {
+  width: min(780px, calc(100% - 48px));
 }
 .chat-message.user .message-column {
   display: grid;
+  max-width: min(720px, 78%);
   justify-items: end;
 }
 .message-meta {
@@ -1367,22 +1428,58 @@ button {
   font-size: 12px;
 }
 .message-bubble {
+  position: relative;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  padding: 14px 17px;
+  padding: 15px 18px;
   border: 1px solid var(--market-line);
-  border-radius: 7px 14px 14px 14px;
+  border-radius: 6px 13px 13px;
   color: var(--market-ink);
   background: var(--market-surface);
   box-shadow: var(--market-shadow-soft);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+.chat-message.assistant .message-bubble:not(.failed) {
+  overflow: visible;
+  padding: 20px 22px;
+  border-color: rgba(253, 246, 227, 0.18);
+  border-radius: 5px 14px 14px 14px;
+  color: var(--market-chalk);
+  background: radial-gradient(
+        circle at 1px 1px,
+        rgba(253, 246, 227, 0.045) 1px,
+        transparent 1.2px
+      )
+      0 0 / 17px 17px,
+    linear-gradient(145deg, #285443, #1f4438);
+  box-shadow: 0 15px 30px rgba(27, 53, 44, 0.19),
+    inset 0 0 0 1px rgba(253, 246, 227, 0.035);
+
+  &::before {
+    position: absolute;
+    top: -9px;
+    left: 19px;
+    width: 9px;
+    height: 25px;
+    border: 2px solid var(--market-ticket-pink);
+    border-radius: 999px;
+    content: "";
+    transform: rotate(18deg);
+  }
+}
 .chat-message.user .message-bubble {
   border-color: rgba(47, 125, 92, 0.24);
   border-radius: 14px 7px 14px 14px;
-  background: var(--market-note-green-bg);
+  background: linear-gradient(
+      135deg,
+      transparent calc(100% - 15px),
+      rgba(47, 125, 92, 0.08) 0
+    ),
+    var(--market-paper-deep);
+  box-shadow: 0 8px 20px rgba(62, 45, 24, 0.08);
+  transform: rotate(-0.35deg);
 }
 .message-bubble p {
   margin: 0;
@@ -1406,14 +1503,18 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--market-muted);
+  padding: 9px 12px;
+  border-left: 3px solid var(--market-ticket-pink);
+  border-radius: 4px;
+  color: var(--market-chalk);
+  background: rgba(253, 246, 227, 0.08);
 }
 .thinking-line span,
 .stage-loading span {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--market-green);
+  background: var(--market-orange);
   animation: bounce 1s infinite ease-in-out;
 }
 .thinking-line span:nth-child(2),
@@ -1439,23 +1540,130 @@ button {
   background: transparent;
   cursor: pointer;
 }
-:deep(.md-editor-preview-wrapper) {
-  min-width: 0;
-  padding: 0;
-}
-:deep(.md-editor-preview) {
-  min-width: 0;
-  color: var(--market-ink);
-  font-size: 14px;
-  background: transparent;
-}
 .markdown-answer {
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  color: var(--market-chalk);
   overscroll-behavior-x: contain;
 }
+
+.markdown-answer :deep(.md-editor) {
+  --md-color: var(--market-chalk);
+  --md-hover-color: #fff4d6;
+  --md-bk-color: transparent;
+  --md-bk-color-outstand: rgba(253, 246, 227, 0.08);
+  --md-bk-hover-color: rgba(253, 246, 227, 0.1);
+  --md-border-color: rgba(253, 246, 227, 0.18);
+  --md-border-hover-color: rgba(253, 246, 227, 0.3);
+  --md-border-active-color: rgba(253, 246, 227, 0.42);
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  border: 0;
+  color: var(--market-chalk);
+  background: transparent;
+}
+
+.markdown-answer :deep(.md-editor-content) {
+  min-width: 0;
+  height: auto;
+}
+
+.markdown-answer :deep(.md-editor-preview-wrapper) {
+  min-width: 0;
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-answer :deep(.md-editor-preview) {
+  --md-theme-color: var(--market-chalk);
+  --md-theme-heading-color: #ffe0a3;
+  --md-theme-heading-1-color: #ffe0a3;
+  --md-theme-heading-2-color: #ffe0a3;
+  --md-theme-heading-3-color: #ffe8bb;
+  --md-theme-heading-4-color: #ffe8bb;
+  --md-theme-heading-5-color: var(--market-chalk);
+  --md-theme-heading-6-color: rgba(253, 246, 227, 0.78);
+  --md-theme-heading-1-border: 1px solid rgba(253, 246, 227, 0.14);
+  --md-theme-heading-2-border: 1px solid rgba(253, 246, 227, 0.12);
+  --md-theme-link-color: #ffc27a;
+  --md-theme-link-hover-color: #ffe0a3;
+  --md-theme-border-color: rgba(253, 246, 227, 0.18);
+  --md-theme-border-color-inset: rgba(253, 246, 227, 0.23);
+  --md-theme-code-inline-color: #ffe0a3;
+  --md-theme-code-inline-bg-color: rgba(15, 38, 31, 0.5);
+  --md-theme-code-block-color: #f4ead4;
+  --md-theme-code-block-bg-color: #162f28;
+  --md-theme-code-before-bg-color: #162f28;
+  --md-theme-quote-color: rgba(253, 246, 227, 0.88);
+  --md-theme-quote-border: 3px solid var(--market-ticket-pink);
+  --md-theme-quote-bg-color: rgba(253, 246, 227, 0.065);
+  --md-theme-table-stripe-color: rgba(253, 246, 227, 0.055);
+  --md-theme-table-tr-bg-color: transparent;
+  --md-theme-table-td-border-color: rgba(253, 246, 227, 0.18);
+  min-width: 0;
+  overflow: visible;
+  color: var(--market-chalk);
+  font-family: var(--market-font-body);
+  font-size: 14px;
+  line-height: 1.82;
+  background: transparent;
+}
+
+.markdown-answer :deep(.github-theme) {
+  color: var(--market-chalk);
+  background: transparent;
+}
+
+.markdown-answer :deep(h1),
+.markdown-answer :deep(h2),
+.markdown-answer :deep(h3),
+.markdown-answer :deep(h4),
+.markdown-answer :deep(h5),
+.markdown-answer :deep(h6) {
+  color: #ffe0a3;
+  font-family: var(--market-font-display);
+  letter-spacing: 0.02em;
+}
+
+.markdown-answer :deep(h1:first-child),
+.markdown-answer :deep(h2:first-child),
+.markdown-answer :deep(h3:first-child),
+.markdown-answer :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.markdown-answer :deep(p) {
+  margin: 0.7em 0;
+  color: var(--market-chalk);
+}
+
+.markdown-answer :deep(strong) {
+  color: #ffe4ad;
+}
+
+.markdown-answer :deep(a) {
+  color: #ffc27a;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 194, 122, 0.45);
+  text-underline-offset: 3px;
+}
+
+.markdown-answer :deep(blockquote) {
+  margin: 1em 0;
+  padding: 8px 13px;
+  border-left: 3px solid var(--market-ticket-pink);
+  border-radius: 0 5px 5px 0;
+  color: rgba(253, 246, 227, 0.88);
+  background: rgba(253, 246, 227, 0.065);
+}
+
+.markdown-answer :deep(ul),
+.markdown-answer :deep(ol) {
+  padding-left: 1.75em;
+}
+
 .markdown-answer :deep(p),
 .markdown-answer :deep(li),
 .markdown-answer :deep(blockquote),
@@ -1467,6 +1675,20 @@ button {
 .markdown-answer :deep(pre) {
   max-width: 100%;
   overflow-x: auto;
+}
+
+.markdown-answer :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown-answer :deep(th),
+.markdown-answer :deep(td) {
+  min-width: 110px;
+  padding: 7px 9px;
+  color: var(--market-chalk);
 }
 .markdown-answer :deep(img),
 .markdown-answer :deep(video),
@@ -1622,34 +1844,83 @@ button {
 .composer-dock {
   flex: 0 0 auto;
   min-width: 0;
-  padding: 12px clamp(20px, 5vw, 72px) max(18px, env(safe-area-inset-bottom));
+  padding: 11px clamp(20px, 4vw, 64px) max(16px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--market-line);
-  background: var(--market-topbar-bg);
+  background: radial-gradient(
+      ellipse at 50% 0,
+      rgba(244, 201, 93, 0.09),
+      transparent 52%
+    ),
+    var(--market-topbar-bg);
+  backdrop-filter: blur(12px);
 }
 .composer-shell {
-  max-width: 900px;
+  position: relative;
+  max-width: 960px;
   margin: auto;
-  padding: 9px 10px 8px 14px;
+  padding: 9px 10px 8px 15px;
   border: 1px solid var(--market-line);
-  border-radius: 12px;
-  background: var(--market-surface);
+  border-radius: 7px;
+  background: repeating-linear-gradient(
+      0deg,
+      transparent 0 27px,
+      rgba(94, 160, 181, 0.09) 27px 28px
+    ),
+    var(--market-surface);
   box-shadow: var(--market-shadow-soft);
   transition: 0.2s ease;
+  transform: rotate(-0.16deg);
+
+  &::before {
+    position: absolute;
+    top: -5px;
+    left: 24px;
+    width: 74px;
+    height: 12px;
+    background: rgba(217, 173, 101, 0.42);
+    content: "";
+    transform: rotate(-1deg);
+  }
+}
+.stamp-send {
+  min-width: 88px;
+  min-height: 34px;
+  border: 2px solid var(--market-stamp-red) !important;
+  border-radius: 5px !important;
+  color: var(--market-stamp-red) !important;
+  font-family: var(--market-font-display);
+  font-weight: 900;
+  letter-spacing: 1px;
+  background: transparent !important;
+  transform: rotate(-2.5deg);
+}
+.stamp-send:hover:not(.is-disabled) {
+  color: var(--market-chalk) !important;
+  background: var(--market-stamp-red) !important;
+}
+.stamp-send.is-disabled {
+  border-color: var(--market-line) !important;
+  color: var(--market-muted) !important;
+  opacity: 0.58;
+  transform: none;
 }
 .composer-shell.focused {
   border-color: rgba(47, 125, 92, 0.55);
   box-shadow: var(--market-focus);
+  transform: rotate(0);
 }
 .composer-shell :deep(.el-textarea__inner) {
-  max-height: min(132px, 32dvh) !important;
+  max-height: min(118px, 30dvh) !important;
   overflow-y: auto !important;
-  padding: 5px 0 8px;
+  padding: 7px 0 5px;
   color: var(--market-ink);
+  line-height: 1.7;
   background: transparent;
   box-shadow: none;
 }
 .composer-actions {
   gap: 15px;
+  margin-top: 2px;
 }
 .composer-actions > span {
   color: var(--market-muted);
@@ -1659,7 +1930,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto 7px;
   color: var(--market-muted);
   font-size: 11px;
@@ -1822,10 +2093,21 @@ button {
   .agent-seal {
     width: 28px;
     height: 28px;
+    margin-top: 18px;
     font-size: 10px;
   }
   .message-column {
     max-width: 88%;
+  }
+  .chat-message.assistant .message-column {
+    width: calc(100% - 35px);
+  }
+  .chat-message.assistant .message-bubble:not(.failed) {
+    padding: 17px 16px;
+  }
+  .markdown-answer :deep(.md-editor-preview) {
+    font-size: 13.5px;
+    line-height: 1.75;
   }
   .composer-dock {
     padding: 9px 10px max(12px, env(safe-area-inset-bottom));
@@ -1835,6 +2117,57 @@ button {
   }
   .composer-actions {
     justify-content: flex-end;
+  }
+  .composer-shell {
+    transform: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-title strong {
+    max-width: 148px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .message-stage {
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+  .chat-message {
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+  .agent-seal {
+    width: 25px;
+    height: 25px;
+    border-width: 1px;
+    font-size: 9px;
+  }
+  .chat-message.assistant .message-column {
+    width: calc(100% - 31px);
+    max-width: calc(100% - 31px);
+  }
+  .chat-message.user .message-column {
+    max-width: 88%;
+  }
+  .message-bubble {
+    padding: 13px 14px;
+  }
+  .chat-message.assistant .message-bubble:not(.failed) {
+    padding: 16px 14px;
+  }
+  .markdown-answer :deep(h1) {
+    font-size: 1.55em;
+  }
+  .markdown-answer :deep(h2) {
+    font-size: 1.3em;
+  }
+  .stamp-send {
+    min-width: 76px;
+    padding-right: 9px;
+    padding-left: 9px;
+    font-size: 12px;
   }
 }
 
