@@ -49,7 +49,9 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
         List<Long> categoryIds = commoditySearchToolRequest.getCategoryIds();
         List<Long> excludeCommodityIds = commoditySearchToolRequest.getExcludeCommodityIds();
         List<String> degrees = commoditySearchToolRequest.getDegrees();
-        String keyword = commoditySearchToolRequest.getKeyword();
+        List<String> keywords = normalizeKeywords(
+                commoditySearchToolRequest.getKeywords()
+        );
         BigDecimal maxPrice = commoditySearchToolRequest.getMaxPrice();
         BigDecimal minPrice = commoditySearchToolRequest.getMinPrice();
         int limit = commoditySearchToolRequest.getLimit() == null
@@ -71,19 +73,38 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
                         .eq(Commodity::getIsListed, 1)
                         .gt(Commodity::getCommodityInventory, 0)
 
-                        // 关键词匹配名称或描述
+                        // 每个关键词匹配名称或描述，关键词之间使用 OR
                         .and(
-                                StringUtils.isNotBlank(keyword),
-                                wrapper -> wrapper
-                                        .like(
-                                                Commodity::getCommodityName,
-                                                keyword
-                                        )
-                                        .or()
-                                        .like(
-                                                Commodity::getCommodityDescription,
-                                                keyword
-                                        )
+                                CollUtil.isNotEmpty(keywords),
+                                wrapper -> {
+                                    String firstKeyword = keywords.get(0);
+                                    wrapper.nested(term -> term
+                                            .like(
+                                                    Commodity::getCommodityName,
+                                                    firstKeyword
+                                            )
+                                            .or()
+                                            .like(
+                                                    Commodity::getCommodityDescription,
+                                                    firstKeyword
+                                            )
+                                    );
+
+                                    for (int i = 1; i < keywords.size(); i++) {
+                                        String keyword = keywords.get(i);
+                                        wrapper.or(term -> term
+                                                .like(
+                                                        Commodity::getCommodityName,
+                                                        keyword
+                                                )
+                                                .or()
+                                                .like(
+                                                        Commodity::getCommodityDescription,
+                                                        keyword
+                                                )
+                                        );
+                                    }
+                                }
                         )
 
                         // 分类筛选
@@ -158,6 +179,33 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
             return item;
         }).toList();
         return list;
+    }
+
+    private List<String> normalizeKeywords(List<String> keywords) {
+        if (CollUtil.isEmpty(keywords)) {
+            return List.of();
+        }
+
+        ThrowUtils.throwIf(
+                keywords.size() > 5,
+                ErrorCode.PARAMS_ERROR,
+                "搜索关键词最多 5 个"
+        );
+
+        List<String> normalizedKeywords = keywords.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+
+        ThrowUtils.throwIf(
+                normalizedKeywords.stream()
+                        .anyMatch(keyword -> keyword.length() > 30),
+                ErrorCode.PARAMS_ERROR,
+                "单个搜索关键词最多 30 个字符"
+        );
+        return normalizedKeywords;
     }
 
 

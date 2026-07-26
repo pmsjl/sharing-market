@@ -166,7 +166,7 @@ class AgentService:
             "type": "function",
             "function": {
               "name": "search_commodities",
-              "arguments": "{\"keyword\":\"手机\",\"maxPrice\":1000,\"sortBy\":\"PRICE_ASC\",\"limit\":5}"
+              "arguments": "{\"keywords\":[\"手机\"],\"maxPrice\":1000,\"sortBy\":\"PRICE_ASC\",\"limit\":5}"
             }
           }
         ]

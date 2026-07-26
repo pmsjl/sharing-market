@@ -5,6 +5,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    field_validator,
     model_validator,
 )
 
@@ -17,7 +18,9 @@ class CommoditySort(str, Enum):
 
 
 class CommoditySearchArguments(BaseModel):
-    keyword: str | None = Field(default=None, max_length=100)
+    model_config = ConfigDict(extra="forbid")
+
+    keywords: list[str] = Field(default_factory=list, max_length=5)
     categoryIds: list[int] = Field(default_factory=list, max_length=10)
     minPrice: float | None = Field(default=None, ge=0)
     maxPrice: float | None = Field(default=None, ge=0)
@@ -25,6 +28,24 @@ class CommoditySearchArguments(BaseModel):
     excludeCommodityIds: list[int] = Field(default_factory=list, max_length=20)
     sortBy: CommoditySort=CommoditySort.RELEVANCE
     limit: int = Field(default=10, ge=1, le=20)
+
+    @field_validator("keywords")
+    @classmethod
+    def normalize_keywords(cls, keywords: list[str]) -> list[str]:
+        normalized_keywords: list[str] = []
+        seen: set[str] = set()
+
+        for keyword in keywords:
+            normalized_keyword = keyword.strip()
+            if not normalized_keyword:
+                raise ValueError("keywords不能包含空字符串")
+            if len(normalized_keyword) > 30:
+                raise ValueError("单个keyword不能超过30个字符")
+            if normalized_keyword not in seen:
+                seen.add(normalized_keyword)
+                normalized_keywords.append(normalized_keyword)
+
+        return normalized_keywords
 
     @model_validator(mode="after")
     def validate_price_range(self):
