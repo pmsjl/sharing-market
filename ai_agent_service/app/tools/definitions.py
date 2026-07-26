@@ -6,10 +6,20 @@ SEARCH_COMMODITIES_TOOL = {
         "parameters": {
             "type": "object",
             "properties": {
-                "keyword": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "description": "商品名称或描述关键词",
+                "keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 30,
+                    },
+                    "maxItems": 5,
+                    "description": (
+                        "商品名称或描述的独立候选搜索词，最多5项。"
+                        "每项只填写一个核心词或一个完整商品短语，"
+                        "不同元素之间按OR匹配；"
+                        "不要把多个候选词用空格连接在同一个元素中。"
+                    ),
                 },
                 "categoryIds": {
                     "type": "array",

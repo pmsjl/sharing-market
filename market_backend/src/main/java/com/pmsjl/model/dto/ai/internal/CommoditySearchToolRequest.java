@@ -11,8 +11,8 @@ import java.util.List;
 /** Filters accepted by the internal search_commodities tool. */
 @Data
 public class CommoditySearchToolRequest implements Serializable {
-    /** 商品名称或描述的检索关键词。 */
-    private String keyword;
+    /** 商品名称或描述的独立候选检索词；不同元素之间按 OR 匹配。 */
+    private List<String> keywords = new ArrayList<>();
 
     /** 限定检索的商品分类 ID 列表；为空表示不限制分类。 */
     private List<Long> categoryIds = new ArrayList<>();
