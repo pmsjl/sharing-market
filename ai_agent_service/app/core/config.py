@@ -13,6 +13,18 @@ class Settings:
     deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     deepseek_model: str = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     deepseek_timeout_seconds: float = float(os.getenv("DEEPSEEK_TIMEOUT_SECONDS", "30"))
+    java_backend_base_url: str = os.getenv(
+        "JAVA_BACKEND_BASE_URL",
+        "http://127.0.0.1:8102",
+    )
+
+    java_backend_timeout_seconds: float = float(
+        os.getenv("JAVA_BACKEND_TIMEOUT_SECONDS", "10")
+    )
+
+    max_tool_rounds: int = int(
+        os.getenv("AI_MAX_TOOL_ROUNDS", "4")
+    )
 
 
 settings = Settings()

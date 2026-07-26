@@ -32,7 +32,9 @@ public class AuthInterceptorConfig implements WebMvcConfigurer {
                         "/user/login",          // 注意：根据你真实的 Controller 路径写，别写 //login
                         "/user/register",
                         "/user/register_verify",
-
+                        // Python Agent 调用的内部工具接口，
+                        // 不使用普通用户登录态，由 X-Internal-Token 自行鉴权
+                        "/internal/ai/tools/**",
                         // Knife4j / Swagger 接口文档相关路径必须全部放行
                         "/doc.html",
                         "/webjars/**",

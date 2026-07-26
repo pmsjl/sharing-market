@@ -23,6 +23,7 @@ import com.pmsjl.model.vo.AiChatVO;
 import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiMessageVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
+import com.pmsjl.service.AiAgentTraceService;
 import com.pmsjl.service.AiChatService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
@@ -62,6 +63,9 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Autowired
     private AiAgentClient aiAgentClient;
+
+    @Autowired
+    private AiAgentTraceService aiAgentTraceService;
 
     /**
      * 先在短事务中写入会话、USER 和 PENDING ASSISTANT 消息；事务提交后才调用 Python。
@@ -132,6 +136,13 @@ public class AiChatServiceImpl implements AiChatService {
             assistantMessage.setUpdateTime(now);
             ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 回复失败");
+
+            aiAgentTraceService.saveAgentTraces(
+                    pendingChat.requestId(),
+                    pendingChat.conversation().getId(),
+                    assistantMessage.getId(),
+                    agentRunResponse.getTraces()
+            );
 
             AiConversation conversation = pendingChat.conversation();
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
