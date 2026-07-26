@@ -33,6 +33,7 @@ import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiMessageVO;
 import com.pmsjl.model.vo.AiPageVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
+import com.pmsjl.service.AiAgentTraceService;
 import com.pmsjl.service.AiChatService;
 import com.pmsjl.service.AiConversationService;
 import com.pmsjl.service.AiMessageService;
@@ -70,6 +71,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     private ObjectMapper objectMapper;
     @Autowired
     private AiAgentClient aiAgentClient;
+    @Autowired
+    private AiAgentTraceService aiAgentTraceService;
 
     @Override
     public AiPageVO<AiMessageVO> listConversationMessages(Long conversationId,
@@ -291,6 +294,13 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             assistantMessage.setUpdateTime(now);
             ThrowUtils.throwIf(!updateAssistantMessageIfPending(assistantMessage), ErrorCode.CONFLICT_ERROR,
                     "更新 AI 回复失败");
+
+            aiAgentTraceService.saveAgentTraces(
+                    pendingMessage.requestId(),
+                    conversation.getId(),
+                    assistantMessage.getId(),
+                    agentRunResponse.getTraces()
+            );
 
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
             conversation.setLastMessageTime(now);

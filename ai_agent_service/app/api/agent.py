@@ -11,7 +11,7 @@ from app.models.agent import AgentErrorResponse, AgentRunRequest, AgentRunRespon
 from app.services.agent_service import AgentService, AgentServiceError
 
 
-router = APIRouter(tags=["agent"])
+router = APIRouter(tags=["agent"]) 
 agent_service = AgentService(settings)
 
 

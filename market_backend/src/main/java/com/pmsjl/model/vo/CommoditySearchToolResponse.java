@@ -1,5 +1,6 @@
-package com.pmsjl.model.dto.ai.internal;
+package com.pmsjl.model.vo;
 
+import com.pmsjl.model.dto.ai.internal.AiCommodityItem;
 import lombok.Data;
 
 import java.io.Serializable;
