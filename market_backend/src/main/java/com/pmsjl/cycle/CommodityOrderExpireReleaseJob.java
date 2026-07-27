@@ -1,4 +1,4 @@
-package com.pmsjl.job.cycle;
+package com.pmsjl.cycle;
 
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.model.entity.Commodity;

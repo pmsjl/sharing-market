@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiMessageQueryRequest;
 import com.pmsjl.model.entity.AiConversation;
@@ -28,10 +29,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Date;
 import java.util.List;
 
+import static com.pmsjl.constant.AiChatConstant.PENDING_TIMEOUT_ERROR_KEY;
+import static com.pmsjl.constant.AiChatConstant.PENDING_TIMEOUT_MESSAGE;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -44,6 +50,12 @@ class AiMessageServiceImplTest {
 
     @Mock
     private AiConversationService conversationService;
+
+    @Mock
+    private AiConversationMapper conversationMapper;
+
+    @Mock
+    private TransactionTemplate transactionTemplate;
 
     @Mock
     private UserService userService;
@@ -63,6 +75,8 @@ class AiMessageServiceImplTest {
         messageService = new AiMessageServiceImpl();
         ReflectionTestUtils.setField(messageService, "baseMapper", messageMapper);
         ReflectionTestUtils.setField(messageService, "aiConversationService", conversationService);
+        ReflectionTestUtils.setField(messageService, "aiConversationMapper", conversationMapper);
+        ReflectionTestUtils.setField(messageService, "transactionTemplate", transactionTemplate);
         ReflectionTestUtils.setField(messageService, "userService", userService);
         ReflectionTestUtils.setField(messageService, "objectMapper", new ObjectMapper());
     }
@@ -172,6 +186,65 @@ class AiMessageServiceImplTest {
         assertFalse(pageCaptor.getValue().orders().get(0).isAsc());
         assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
         assertFalse(pageCaptor.getValue().orders().get(1).isAsc());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void expireStalePendingMessagesUsesConversationLockAndPendingCas() {
+        Date expireBefore = new Date(System.currentTimeMillis() - 60_000L);
+        AiMessage candidate = new AiMessage();
+        candidate.setId(700L);
+        candidate.setConversationId(500L);
+        candidate.setCreateTime(new Date(expireBefore.getTime() - 1_000L));
+        when(messageMapper.selectStalePendingMessages(expireBefore, 100))
+                .thenReturn(List.of(candidate));
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        when(conversationMapper.selectByIdForUpdate(500L)).thenReturn(conversation);
+        when(messageMapper.markPendingMessageTimedOut(
+                eq(700L), eq(expireBefore), eq(PENDING_TIMEOUT_MESSAGE),
+                eq(PENDING_TIMEOUT_ERROR_KEY), any(Date.class))).thenReturn(1);
+        when(conversationMapper.updateById(conversation)).thenReturn(1);
+        when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+            TransactionCallback<Boolean> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(TransactionStatus.class));
+        });
+
+        int expiredCount = messageService.expireStalePendingMessages(expireBefore, 100);
+
+        assertEquals(1, expiredCount);
+        assertEquals(PENDING_TIMEOUT_MESSAGE, conversation.getLastMessagePreview());
+        assertNotNull(conversation.getLastMessageTime());
+        verify(conversationMapper).selectByIdForUpdate(500L);
+        verify(conversationMapper).updateById(conversation);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void expireStalePendingMessagesIgnoresCandidateAlreadyCompletedByAgent() {
+        Date expireBefore = new Date(System.currentTimeMillis() - 60_000L);
+        AiMessage candidate = new AiMessage();
+        candidate.setId(700L);
+        candidate.setConversationId(500L);
+        when(messageMapper.selectStalePendingMessages(expireBefore, 100))
+                .thenReturn(List.of(candidate));
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        when(conversationMapper.selectByIdForUpdate(500L)).thenReturn(conversation);
+        when(messageMapper.markPendingMessageTimedOut(
+                eq(700L), eq(expireBefore), eq(PENDING_TIMEOUT_MESSAGE),
+                eq(PENDING_TIMEOUT_ERROR_KEY), any(Date.class))).thenReturn(0);
+        when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+            TransactionCallback<Boolean> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(TransactionStatus.class));
+        });
+
+        int expiredCount = messageService.expireStalePendingMessages(expireBefore, 100);
+
+        assertEquals(0, expiredCount);
+        verify(conversationMapper, never()).updateById(any(AiConversation.class));
     }
 
     private static AiMessage message(Long id, int sequenceNo, String role, String content, Date createTime) {

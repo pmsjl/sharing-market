@@ -1,4 +1,4 @@
-package com.pmsjl.job.cycle;
+package com.pmsjl.cycle;
 
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.service.CommodityService;

@@ -8,9 +8,10 @@ public interface AiChatConstant {
     int MAX_AVOIDANCE_COUNT = 8;
     int MAX_AVOIDANCE_LENGTH = 64;
     int TITLE_LENGTH = 24;
-    long PENDING_TIMEOUT_MILLIS = 60_000L;
     String PENDING_MESSAGE = "正在为你整理建议…";
     String FAILED_MESSAGE = "AI 服务暂不可用，请稍后重试。";
+    String PENDING_TIMEOUT_MESSAGE = "上一条咨询等待超时，请重新发送。";
+    String PENDING_TIMEOUT_ERROR_KEY = "AI_AGENT_PENDING_TIMEOUT";
 
 
 }

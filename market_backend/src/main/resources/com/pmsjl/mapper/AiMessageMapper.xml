@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pmsjl.mapper.AiMessageMapper">
+    <update id="markPendingMessageTimedOut">
+
+        UPDATE ai_message
+        SET content = #{content},
+        status = 'FAILED',
+        agentErrorKey = #{agentErrorKey},
+        retryable = 1,
+        updateTime = #{updateTime}
+        WHERE id = #{messageId}
+        AND role = 'ASSISTANT'
+        AND status = 'PENDING'
+        AND isDelete = 0
+        AND createTime &lt; #{expireBefore}
+
+    </update>
+
+    <select id="selectStalePendingMessages" resultType="com.pmsjl.model.entity.AiMessage">
+
+        SELECT m.id, m.conversationId
+        FROM ai_message m
+        INNER JOIN ai_conversation c
+        ON c.id = m.conversationId
+        AND c.isDelete = 0
+        WHERE m.role = 'ASSISTANT'
+        AND m.status = 'PENDING'
+        AND m.isDelete = 0
+        AND m.createTime &lt; #{expireBefore}
+        ORDER BY m.createTime ASC, m.id ASC
+        LIMIT #{batchSize}
+
+    </select>
+</mapper>
