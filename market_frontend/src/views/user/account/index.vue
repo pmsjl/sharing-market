@@ -140,6 +140,12 @@
         </section>
       </el-tab-pane>
 
+      <el-tab-pane label="已归档对话" name="archivedAi" lazy>
+        <section class="tab-panel market-panel">
+          <ArchivedAiConversations />
+        </section>
+      </el-tab-pane>
+
       <el-tab-pane
         v-if="showPrivateMessageTab"
         :label="chatTabLabel"
@@ -169,6 +175,7 @@ import MyComment from "@/components/MyComment/index.vue";
 import CommodityList from "@/components/CommodityList/index.vue";
 import CommodityOrderList from "@/components/CommodityOrderList/index.vue";
 import HeatmapChart from "@/components/CalendarChart/index.vue";
+import ArchivedAiConversations from "@/components/ArchivedAiConversations/index.vue";
 import {
   getUserVoByIdUsingGet,
   updateMyUserUsingPost

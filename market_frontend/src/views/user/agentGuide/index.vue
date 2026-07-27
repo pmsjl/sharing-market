@@ -44,15 +44,32 @@
           </span>
           <span class="ticket-foot">
             <time>{{ formatConversationTime(item.lastMessageTime) }}</time>
-            <span
-              class="ticket-delete"
-              role="button"
-              tabindex="0"
-              aria-label="删除会话"
-              @click.stop="confirmDeleteConversation(item)"
-              @keydown.enter.stop="confirmDeleteConversation(item)"
-            >
-              删除
+            <span class="ticket-actions">
+              <span
+                class="ticket-archive"
+                role="button"
+                :tabindex="sending && item.id === activeConversationId ? -1 : 0"
+                :aria-disabled="
+                  sending && item.id === activeConversationId ? 'true' : 'false'
+                "
+                aria-label="归档会话"
+                @click.stop="archiveConversation(item)"
+                @keydown.enter.stop="archiveConversation(item)"
+                @keydown.space.prevent.stop="archiveConversation(item)"
+              >
+                归档
+              </span>
+              <span
+                class="ticket-delete"
+                role="button"
+                tabindex="0"
+                aria-label="删除会话"
+                @click.stop="confirmDeleteConversation(item)"
+                @keydown.enter.stop="confirmDeleteConversation(item)"
+                @keydown.space.prevent.stop="confirmDeleteConversation(item)"
+              >
+                删除
+              </span>
             </span>
           </span>
         </button>
@@ -458,6 +475,7 @@ import {
   AiConversationVO,
   AiMessageVO,
   AiShoppingContext,
+  archiveAiConversation,
   createAiConversation,
   deleteAiConversation,
   listAiConversationMessages,
@@ -493,6 +511,7 @@ const messages = ref<AiMessageVO[]>([]);
 const activeConversationId = ref<string | null>(null);
 const conversationPage = ref(1);
 const conversationTotal = ref(0);
+const archivingConversationId = ref<string | null>(null);
 const messagePage = ref(1);
 const messageTotal = ref(0);
 
@@ -661,7 +680,13 @@ const handleMessageStageKeydown = (event: KeyboardEvent) => {
 const loadConversations = async (append = false) => {
   conversationLoading.value = true;
   try {
-    const res = await listAiConversations(conversationPage.value, 10);
+    const res = await listAiConversations(
+      conversationPage.value,
+      10,
+      "lastMessageTime",
+      "desc",
+      "ACTIVE"
+    );
     if (res.code !== 200 || !res.data)
       throw new Error(res.message || "会话加载失败");
     conversations.value = append
@@ -769,6 +794,35 @@ const selectConversation = async (item: AiConversationVO) => {
   normalizeContext(item.shoppingContext);
   historyDrawerOpen.value = false;
   await loadMessages(item.id);
+};
+
+const archiveConversation = async (item: AiConversationVO) => {
+  if (
+    archivingConversationId.value ||
+    (sending.value && item.id === activeConversationId.value)
+  ) {
+    if (sending.value && item.id === activeConversationId.value) {
+      ElMessage.warning("当前会话正在回复中，回复完成后再归档");
+    }
+    return;
+  }
+  archivingConversationId.value = item.id;
+  try {
+    const res = await archiveAiConversation(item.id);
+    if (res.code !== 200 || res.data !== true) {
+      throw new Error(res.message || "归档失败");
+    }
+    conversations.value = conversations.value.filter(
+      (record) => record.id !== item.id
+    );
+    conversationTotal.value = Math.max(0, conversationTotal.value - 1);
+    if (activeConversationId.value === item.id) startNewChat();
+    ElMessage.success("会话已归档");
+  } catch (error: any) {
+    ElMessage.error(error?.message || "归档失败");
+  } finally {
+    archivingConversationId.value = null;
+  }
 };
 
 const confirmDeleteConversation = async (item: AiConversationVO) => {
@@ -1082,15 +1136,41 @@ button {
   font-style: normal;
 }
 .ticket-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 9px;
   color: var(--market-muted);
   font-size: 11px;
 }
+.ticket-actions {
+  display: inline-flex;
+  gap: 10px;
+}
+.ticket-archive,
 .ticket-delete {
   opacity: 0;
-  color: var(--market-red);
   transition: opacity 0.2s ease;
 }
+.ticket-archive {
+  color: var(--market-green);
+}
+.ticket-archive[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+.ticket-archive:focus-visible,
+.ticket-delete:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--market-green);
+  outline-offset: 2px;
+}
+.ticket-delete {
+  color: var(--market-red);
+}
+.conversation-ticket:hover .ticket-archive,
+.conversation-ticket.active .ticket-archive,
 .conversation-ticket:hover .ticket-delete,
 .conversation-ticket.active .ticket-delete {
   opacity: 1;

@@ -43,10 +43,6 @@ public class UserVO implements Serializable {
      */
     private BigDecimal balance;
     /**
-     * 用户 AI 剩余可使用次数
-     */
-    private Integer aiRemainNumber;
-    /**
      * 创建时间
      */
     private Date createTime;

@@ -1,8 +1,6 @@
 package com.pmsjl.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -19,6 +17,8 @@ import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.enums.AiConversationSceneEnum;
 import com.pmsjl.model.enums.AiConversationStatusEnum;
+import com.pmsjl.model.enums.AiMessageRoleEnum;
+import com.pmsjl.model.enums.AiMessageStatusEnum;
 import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiPageVO;
 import com.pmsjl.service.AiConversationService;
@@ -51,6 +51,28 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
 
     @Autowired
     private AiMessageMapper aiMessageMapper;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean archiveConversation(Long conversationId, HttpServletRequest request) {
+        return changeConversationStatus(
+                conversationId,
+                AiConversationStatusEnum.ARCHIVED,
+                true,
+                request
+        );
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean restoreConversation(Long conversationId, HttpServletRequest request) {
+        return changeConversationStatus(
+                conversationId,
+                AiConversationStatusEnum.ACTIVE,
+                false,
+                request
+        );
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -98,13 +120,15 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
         } else {
             page.addOrder(OrderItem.desc("lastMessageTime"), OrderItem.desc("id"));
         }
-        Page<AiConversation> entityPage = this.lambdaQuery()
+        AiConversationStatusEnum status = queryRequest.getStatus() == null
+                ? AiConversationStatusEnum.ACTIVE
+                : queryRequest.getStatus();
+        LambdaQueryWrapper<AiConversation> queryWrapper = new LambdaQueryWrapper<AiConversation>()
                 .eq(AiConversation::getUserId, loginUser.getId())
                 .eq(queryRequest.getScene() != null, AiConversation::getScene,
                         queryRequest.getScene() == null ? null : queryRequest.getScene().getValue())
-                .eq(queryRequest.getStatus() != null, AiConversation::getStatus,
-                        queryRequest.getStatus() == null ? null : queryRequest.getStatus().getValue())
-                .page(page);
+                .eq(AiConversation::getStatus, status.getValue());
+        Page<AiConversation> entityPage = baseMapper.selectPage(page, queryWrapper);
 
 
         List<AiConversationVO> records = entityPage.getRecords().stream()
@@ -117,6 +141,38 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
         result.setTotal(entityPage.getTotal());
         result.setRecords(records);
         return result;
+    }
+
+    private Boolean changeConversationStatus(Long conversationId,
+                                             AiConversationStatusEnum targetStatus,
+                                             boolean rejectPendingMessage,
+                                             HttpServletRequest request) {
+        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+                "conversationId 必须为正整数");
+        User loginUser = userService.getLoginUser(request);
+        AiConversation conversation = baseMapper.selectOwnedByIdForUpdate(conversationId, loginUser.getId());
+        ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
+                "会话不存在或已删除");
+
+        if (StringUtils.equals(conversation.getStatus(), targetStatus.getValue())) {
+            return true;
+        }
+        if (rejectPendingMessage) {
+            Long pendingCount = aiMessageMapper.selectCount(
+                    new LambdaQueryWrapper<AiMessage>()
+                            .eq(AiMessage::getConversationId, conversationId)
+                            .eq(AiMessage::getUserId, loginUser.getId())
+                            .eq(AiMessage::getRole, AiMessageRoleEnum.ASSISTANT.getValue())
+                            .eq(AiMessage::getStatus, AiMessageStatusEnum.PENDING.getValue())
+            );
+            ThrowUtils.throwIf(pendingCount != null && pendingCount > 0,
+                    ErrorCode.CONFLICT_ERROR, "当前会话正在回复中，暂时无法归档");
+        }
+
+        conversation.setStatus(targetStatus.getValue());
+        ThrowUtils.throwIf(baseMapper.updateById(conversation) != 1,
+                ErrorCode.OPERATION_ERROR, "更新 AI 会话状态失败");
+        return true;
     }
 
     private AiConversationVO toConversationVO(AiConversation conversation) {

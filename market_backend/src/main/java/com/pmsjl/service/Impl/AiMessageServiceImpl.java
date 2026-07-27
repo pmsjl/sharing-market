@@ -104,10 +104,10 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         } else {
             page.addOrder(OrderItem.desc("sequenceNo"), OrderItem.desc("id"));
         }
-        Page<AiMessage> entityPage = this.lambdaQuery()
+        LambdaQueryWrapper<AiMessage> queryWrapper = new LambdaQueryWrapper<AiMessage>()
                 .eq(AiMessage::getConversationId, conversationId)
-                .eq(AiMessage::getUserId, loginUser.getId())
-                .page(page);
+                .eq(AiMessage::getUserId, loginUser.getId());
+        Page<AiMessage> entityPage = baseMapper.selectPage(page, queryWrapper);
         List<AiMessageVO> records = entityPage.getRecords().stream()
                 .sorted(Comparator.comparing(AiMessage::getSequenceNo)
                         .thenComparing(AiMessage::getId))
@@ -151,6 +151,15 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     conversation == null,
                     ErrorCode.NOT_FOUND_ERROR,
                     "会话不存在"
+            );
+            ThrowUtils.throwIf(
+                    !ObjectUtil.equals(loginUser.getId(), conversation.getUserId())
+                            || !StringUtils.equals(
+                            conversation.getStatus(),
+                            AiConversationStatusEnum.ACTIVE.getValue()
+                    ),
+                    ErrorCode.NOT_FOUND_ERROR,
+                    "会话不存在，无法继续对话"
             );
             //1.检查pendingMessage，原则上我们当前所发的消息之前不应该有其他pending的消息，否则要做相应处理
             // 因为锁释放了，可能还在获取agent消息，这时候其他请求再次涌入可能出现多个pending情况，

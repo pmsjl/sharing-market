@@ -40,10 +40,6 @@ public class UserQueryRequest extends PageRequest implements Serializable {
      */
     private BigDecimal balance;
     /**
-     * 用户 AI 剩余可使用次数
-     */
-    private Integer aiRemainNumber;
-    /**
      * 用户角色：user/admin/ban
      */
     private String userRole;

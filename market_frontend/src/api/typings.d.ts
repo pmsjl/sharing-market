@@ -1152,7 +1152,6 @@ declare namespace API {
   };
 
   type User = {
-    aiRemainNumber?: number;
     balance?: number;
     createTime?: string;
     editTime?: string;
@@ -1230,7 +1229,6 @@ declare namespace API {
   };
 
   type UserQueryRequest = {
-    aiRemainNumber?: number;
     balance?: number;
     current?: number;
     id?: string;
@@ -1257,7 +1255,6 @@ declare namespace API {
   };
 
   type UserUpdateRequest = {
-    aiRemainNumber?: number;
     balance?: number;
     id?: string;
     userAvatar?: string;
@@ -1267,7 +1264,6 @@ declare namespace API {
   };
 
   type UserVO = {
-    aiRemainNumber?: number;
     balance?: number;
     createTime?: string;
     id?: string;

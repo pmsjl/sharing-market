@@ -46,7 +46,7 @@ public class AiAgentTraceServiceImpl
                 .toList();
 
         ThrowUtils.throwIf(
-                !saveBatch(traceEntities),
+                !this.saveBatch(traceEntities),
                 ErrorCode.OPERATION_ERROR,
                 "保存 AI 工具调用轨迹失败"
         );

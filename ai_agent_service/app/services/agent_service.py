@@ -152,35 +152,35 @@ class AgentService:
         )
 
     """deepseek输出格式response_data[choices][0][message]
-{
-  "model": "deepseek-chat",
-  "choices": [
     {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": null,
-        "tool_calls": [
-          {
-            "id": "call_123",
-            "type": "function",
-            "function": {
-              "name": "search_commodities",
-              "arguments": "{\"keywords\":[\"手机\"],\"maxPrice\":1000,\"sortBy\":\"PRICE_ASC\",\"limit\":5}"
-            }
-          }
-        ]
-      },
+    "model": "deepseek-chat",
+    "choices": [
+        {
+        "index": 0,
+        "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+            {
+                "id": "call_123",
+                "type": "function",
+                "function": {
+                "name": "search_commodities",
+                "arguments": "{\"keywords\":[\"手机\"],\"maxPrice\":1000,\"sortBy\":\"PRICE_ASC\",\"limit\":5}"
+                        }
+                    }
+                ]
+            },
+        }
+    ],
+    "usage": {
+        "prompt_tokens": 1250,
+        "completion_tokens": 38,
+        "total_tokens": 1288,
+        "prompt_cache_hit_tokens": 1000,
+        "prompt_cache_miss_tokens": 250
+        }
     }
-  ],
-  "usage": {
-    "prompt_tokens": 1250,
-    "completion_tokens": 38,
-    "total_tokens": 1288,
-    "prompt_cache_hit_tokens": 1000,
-    "prompt_cache_miss_tokens": 250
-  }
-}
     """
 
     async def _execute_tool_calls(

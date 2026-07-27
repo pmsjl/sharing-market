@@ -78,31 +78,16 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
                                 CollUtil.isNotEmpty(keywords),
                                 wrapper -> {
                                     String firstKeyword = keywords.get(0);
-                                    wrapper.nested(term -> term
-                                            .like(
-                                                    Commodity::getCommodityName,
-                                                    firstKeyword
-                                            )
-                                            .or()
-                                            .like(
-                                                    Commodity::getCommodityDescription,
-                                                    firstKeyword
-                                            )
-                                    );
-
-                                    for (int i = 1; i < keywords.size(); i++) {
-                                        String keyword = keywords.get(i);
-                                        wrapper.or(term -> term
-                                                .like(
-                                                        Commodity::getCommodityName,
-                                                        keyword
-                                                )
-                                                .or()
-                                                .like(
-                                                        Commodity::getCommodityDescription,
-                                                        keyword
-                                                )
-                                        );
+                                    wrapper.nested(lambdaQueryWrapper->{
+                                        lambdaQueryWrapper.like(Commodity::getCommodityName,firstKeyword)
+                                                .or().like(Commodity::getCommodityDescription,firstKeyword);
+                                    });
+                                    for(int i=1;i<keywords.size();i++){
+                                        String keyword=keywords.get(i);
+                                        wrapper.or(lambdaQueryWrapper->{
+                                            lambdaQueryWrapper.like(Commodity::getCommodityName,keyword)
+                                                .or().like(Commodity::getCommodityDescription,keyword);
+                                        });
                                     }
                                 }
                         )

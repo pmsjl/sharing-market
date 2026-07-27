@@ -119,11 +119,13 @@ class AiConversationServiceImplTest {
         assertEquals("createTime", pageCaptor.getValue().orders().get(0).getColumn());
         assertTrue(pageCaptor.getValue().orders().get(0).isAsc());
         assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
-        assertTrue(pageCaptor.getValue().orders().get(1).isAsc());
+        assertFalse(pageCaptor.getValue().orders().get(1).isAsc());
         Wrapper<AiConversation> wrapper = wrapperCaptor.getValue();
         String sqlSegment = wrapper.getSqlSegment();
         assertTrue(((AbstractWrapper<?, ?, ?>) wrapper).getParamNameValuePairs().containsValue(101L));
+        assertTrue(((AbstractWrapper<?, ?, ?>) wrapper).getParamNameValuePairs().containsValue("ACTIVE"));
         assertTrue(sqlSegment.contains("userId"));
+        assertTrue(sqlSegment.contains("status"));
     }
 
     @Test
@@ -151,6 +153,120 @@ class AiConversationServiceImplTest {
         assertFalse(pageCaptor.getValue().orders().get(0).isAsc());
         assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
         assertFalse(pageCaptor.getValue().orders().get(1).isAsc());
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void listMyConversationsSupportsArchivedStatus() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(conversationMapper.selectPage(any(Page.class), any(Wrapper.class))).thenAnswer(invocation ->
+                invocation.getArgument(0));
+
+        AiConversationQueryRequest queryRequest = new AiConversationQueryRequest();
+        queryRequest.setCurrent(1);
+        queryRequest.setPageSize(10);
+        queryRequest.setStatus(AiConversationStatusEnum.ARCHIVED);
+
+        conversationService.listMyConversations(queryRequest, request);
+
+        ArgumentCaptor<Wrapper<AiConversation>> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(conversationMapper).selectPage(any(Page.class), wrapperCaptor.capture());
+        AbstractWrapper<?, ?, ?> wrapper = (AbstractWrapper<?, ?, ?>) wrapperCaptor.getValue();
+        assertTrue(wrapper.getSqlSegment().contains("status"));
+        assertTrue(wrapper.getParamNameValuePairs().containsValue("ARCHIVED"));
+        assertFalse(wrapper.getParamNameValuePairs().containsValue("ACTIVE"));
+    }
+
+    @Test
+    void archiveConversationChangesOwnedActiveConversationOnly() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        conversation.setUserId(101L);
+        conversation.setStatus(AiConversationStatusEnum.ACTIVE.getValue());
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(conversation);
+        when(messageMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
+        when(conversationMapper.updateById(conversation)).thenReturn(1);
+
+        assertTrue(conversationService.archiveConversation(500L, request));
+        assertEquals(AiConversationStatusEnum.ARCHIVED.getValue(), conversation.getStatus());
+        verify(conversationMapper).updateById(conversation);
+    }
+
+    @Test
+    void archiveConversationIsIdempotent() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        conversation.setStatus(AiConversationStatusEnum.ARCHIVED.getValue());
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(conversation);
+
+        assertTrue(conversationService.archiveConversation(500L, request));
+        verify(messageMapper, never()).selectCount(any());
+    }
+
+    @Test
+    void archiveConversationRejectsPendingAssistantMessage() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        conversation.setStatus(AiConversationStatusEnum.ACTIVE.getValue());
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(conversation);
+        when(messageMapper.selectCount(any(Wrapper.class))).thenReturn(1L);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> conversationService.archiveConversation(500L, request));
+
+        assertEquals(ErrorCode.CONFLICT_ERROR.getCode(), exception.getCode());
+        assertEquals(AiConversationStatusEnum.ACTIVE.getValue(), conversation.getStatus());
+    }
+
+    @Test
+    void restoreConversationChangesArchivedConversationAndIsIdempotentAfterward() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        conversation.setStatus(AiConversationStatusEnum.ARCHIVED.getValue());
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(conversation);
+        when(conversationMapper.updateById(conversation)).thenReturn(1);
+
+        assertTrue(conversationService.restoreConversation(500L, request));
+        assertEquals(AiConversationStatusEnum.ACTIVE.getValue(), conversation.getStatus());
+        assertTrue(conversationService.restoreConversation(500L, request));
+        verify(conversationMapper, times(2)).selectOwnedByIdForUpdate(500L, 101L);
+        verify(conversationMapper, times(1)).updateById(conversation);
+        verifyNoInteractions(messageMapper);
+    }
+
+    @Test
+    void archiveAndRestoreHideMissingDeletedAndOtherUsersConversations() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(null);
+
+        BusinessException archiveException = assertThrows(BusinessException.class,
+                () -> conversationService.archiveConversation(500L, request));
+        BusinessException restoreException = assertThrows(BusinessException.class,
+                () -> conversationService.restoreConversation(500L, request));
+
+        assertEquals(ErrorCode.NOT_FOUND_ERROR.getCode(), archiveException.getCode());
+        assertEquals(ErrorCode.NOT_FOUND_ERROR.getCode(), restoreException.getCode());
+        verifyNoInteractions(messageMapper);
     }
 
     @Test
