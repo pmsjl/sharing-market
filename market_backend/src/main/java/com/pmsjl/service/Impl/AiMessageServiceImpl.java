@@ -4,12 +4,12 @@ import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
+import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.manager.AiAgentClient;
 import com.pmsjl.manager.AiAgentClientException;
@@ -40,6 +40,7 @@ import com.pmsjl.service.AiMessageService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,7 @@ import static com.pmsjl.constant.AiChatConstant.*;
 import static com.pmsjl.constant.AiChatConstant.FAILED_MESSAGE;
 
 @Service
+@Slf4j
 public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage> implements AiMessageService {
     private static final int MAX_MESSAGE_PAGE_SIZE = 50;
     private static final Set<String> ALLOWED_MESSAGE_SORT_FIELDS = Set.of("sequenceNo");
@@ -73,6 +75,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     private AiAgentClient aiAgentClient;
     @Autowired
     private AiAgentTraceService aiAgentTraceService;
+    @Autowired
+    private AiAgentProperties aiAgentProperties;
 
     @Override
     public AiPageVO<AiMessageVO> listConversationMessages(Long conversationId,
@@ -211,44 +215,86 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
     private void checkPendingMessage(Long conversationId) {
         AiMessage oldPendingMessage = this.lambdaQuery().
-                select(AiMessage::getCreateTime,AiMessage::getId).
+                select(AiMessage::getCreateTime, AiMessage::getId).
                 eq(AiMessage::getRole, AiMessageRoleEnum.ASSISTANT.getValue()).
                 eq(AiMessage::getStatus, AiMessageStatusEnum.PENDING.getValue()).
-                eq(AiMessage::getConversationId,conversationId).
+                eq(AiMessage::getConversationId, conversationId).
                 orderByDesc(AiMessage::getSequenceNo).
                 last("LIMIT 1").
                 one();
         if (oldPendingMessage != null) {
-            boolean stale = oldPendingMessage.getCreateTime()
-                    .before(new Date(
-                            System.currentTimeMillis() - PENDING_TIMEOUT_MILLIS
-                    ));
-            if(stale){
-                oldPendingMessage.setStatus(AiMessageStatusEnum.FAILED.getValue());
-                oldPendingMessage.setUpdateTime(new Date());
-                oldPendingMessage.setRetryable(Boolean.FALSE);
-                oldPendingMessage.setContent(
-                        "上一条咨询等待超时，请重新发送。"
+            Date expireBefore = new Date(
+                    System.currentTimeMillis() - aiAgentProperties.getPendingTimeoutMs());
+            if (oldPendingMessage.getCreateTime().before(expireBefore)) {
+                int changed = baseMapper.markPendingMessageTimedOut(
+                        oldPendingMessage.getId(),
+                        expireBefore,
+                        PENDING_TIMEOUT_MESSAGE,
+                        PENDING_TIMEOUT_ERROR_KEY,
+                        new Date()
                 );
-                oldPendingMessage.setAgentErrorKey(
-                        "AI_AGENT_PENDING_TIMEOUT"
-                );
-                boolean changed = this.lambdaUpdate()
-                        .eq(AiMessage::getId, oldPendingMessage.getId())
-                        .eq(AiMessage::getStatus, AiMessageStatusEnum.PENDING.getValue())
-                        .set(AiMessage::getStatus, oldPendingMessage.getStatus())
-                        .set(AiMessage::getUpdateTime, oldPendingMessage.getUpdateTime())
-                        .set(AiMessage::getRetryable, oldPendingMessage.getRetryable())
-                        .set(AiMessage::getContent, oldPendingMessage.getContent())
-                        .set(AiMessage::getAgentErrorKey, oldPendingMessage.getAgentErrorKey())
-                        .update();
-                ThrowUtils.throwIf(!changed, ErrorCode.CONFLICT_ERROR,
+                ThrowUtils.throwIf(changed != 1, ErrorCode.CONFLICT_ERROR,
                         "Pending message state has already changed");
-            }else{
-                throw new BusinessException(ErrorCode.CONFLICT_ERROR,"上一条消息正在回复中，无法发送新消息");
+            } else {
+                throw new BusinessException(ErrorCode.CONFLICT_ERROR, "上一条消息正在回复中，无法发送新消息");
             }
 
         }
+    }
+
+    @Override
+    public int expireStalePendingMessages(Date expireBefore, int batchSize) {
+        ThrowUtils.throwIf(expireBefore == null, ErrorCode.PARAMS_ERROR, "expireBefore 不能为空");
+        ThrowUtils.throwIf(batchSize <= 0 || batchSize > 1000, ErrorCode.PARAMS_ERROR,
+                "batchSize 必须在 1 到 1000 之间");
+
+        List<AiMessage> candidates = baseMapper.selectStalePendingMessages(expireBefore, batchSize);
+        if (candidates == null || candidates.isEmpty()) {
+            return 0;
+        }
+
+        int expiredCount = 0;
+        for (AiMessage candidate : candidates) {
+            try {
+                Boolean expired = transactionTemplate.execute(
+                        status -> expireOnePendingMessage(candidate, expireBefore));
+                if (Boolean.TRUE.equals(expired)) {
+                    expiredCount++;
+                }
+            } catch (Exception exception) {
+                log.error("清理超时 AI 消息失败，messageId={}, conversationId={}",
+                        candidate.getId(), candidate.getConversationId(), exception);
+            }
+        }
+        return expiredCount;
+    }
+
+    private Boolean expireOnePendingMessage(AiMessage candidate, Date expireBefore) {
+        AiConversation conversation = aiConversationMapper.selectByIdForUpdate(candidate.getConversationId());
+        if (conversation == null) {
+            log.warn("超时 AI 消息对应会话不存在，跳过清理，messageId={}, conversationId={}",
+                    candidate.getId(), candidate.getConversationId());
+            return false;
+        }
+
+        Date now = new Date();
+        int changed = baseMapper.markPendingMessageTimedOut(
+                candidate.getId(),
+                expireBefore,
+                PENDING_TIMEOUT_MESSAGE,
+                PENDING_TIMEOUT_ERROR_KEY,
+                now
+        );
+        if (changed != 1) {
+            return false;
+        }
+
+        conversation.setLastMessagePreview(PENDING_TIMEOUT_MESSAGE);
+        conversation.setLastMessageTime(now);
+        conversation.setUpdateTime(now);
+        ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1,
+                ErrorCode.OPERATION_ERROR, "更新超时 AI 会话失败");
+        return true;
     }
 
     private AiChatVO persistAgentFailure(PendingMessage pendingMessage, AiAgentClientException e) {
