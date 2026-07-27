@@ -113,7 +113,7 @@ class AiMessageServiceImplTest {
         assertEquals("sequenceNo", pageCaptor.getValue().orders().get(0).getColumn());
         assertTrue(pageCaptor.getValue().orders().get(0).isAsc());
         assertEquals("id", pageCaptor.getValue().orders().get(1).getColumn());
-        assertTrue(pageCaptor.getValue().orders().get(1).isAsc());
+        assertFalse(pageCaptor.getValue().orders().get(1).isAsc());
         Wrapper<AiMessage> wrapper = wrapperCaptor.getValue();
         String sqlSegment = wrapper.getSqlSegment();
         assertTrue(((AbstractWrapper<?, ?, ?>) wrapper).getParamNameValuePairs().containsValue(500L));

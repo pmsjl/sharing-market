@@ -35,9 +35,5 @@ public class UserUpdateRequest implements Serializable {
      * 用户余额
      */
     private BigDecimal balance;
-    /**
-     * 用户 AI 剩余可使用次数
-     */
-    private Integer aiRemainNumber;
     private static final long serialVersionUID = 1L;
 }

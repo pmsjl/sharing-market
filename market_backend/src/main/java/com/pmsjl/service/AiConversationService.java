@@ -19,4 +19,14 @@ public interface AiConversationService extends IService<AiConversation> {
      * 逻辑删除当前登录用户自己的会话和所属消息，保留 Agent 审计轨迹。
      */
     Boolean deleteConversation(Long conversationId, HttpServletRequest request);
+
+    /**
+     * 归档当前登录用户自己的会话。
+     */
+    Boolean archiveConversation(Long conversationId, HttpServletRequest request);
+
+    /**
+     * 恢复当前登录用户自己的已归档会话。
+     */
+    Boolean restoreConversation(Long conversationId, HttpServletRequest request);
 }

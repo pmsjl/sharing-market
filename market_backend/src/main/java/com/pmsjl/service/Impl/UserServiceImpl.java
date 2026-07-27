@@ -47,7 +47,7 @@ import static com.pmsjl.constant.RedisConstant.*;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
     public static final String SALT = "pmsjl";
     private static final Set<String> ALLOWED_USER_SORT_FIELDS = Set.of(
-            "id", "userName", "userRole", "balance", "aiRemainNumber", "editTime", "createTime", "updateTime"
+            "id", "userName", "userRole", "balance", "editTime", "createTime", "updateTime"
     );
     public final StringRedisTemplate stringRedisTemplate;
 
@@ -176,11 +176,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .eq(StringUtils.isNotBlank(userQueryRequest.getMpOpenId()), User::getMpOpenId, userQueryRequest.getMpOpenId())
                 .eq(StringUtils.isNotBlank(userQueryRequest.getUnionId()), User::getUnionId, userQueryRequest.getUnionId())
 
-                // 余额和AI次数一般不做模糊搜索，这里用精确匹配（也可以改成范围查询）
+                // 余额不做模糊搜索，这里用精确匹配
                 .eq(userQueryRequest.getBalance() != null && userQueryRequest.getBalance().compareTo(BigDecimal.ZERO) > 0,
                         User::getBalance, userQueryRequest.getBalance())
-                .eq(userQueryRequest.getAiRemainNumber() != null && userQueryRequest.getAiRemainNumber() > 0,
-                        User::getAiRemainNumber, userQueryRequest.getAiRemainNumber())
 
                 // 执行分页
                 .page(page);

@@ -2,9 +2,11 @@ package com.pmsjl.controller;
 
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
 import com.pmsjl.model.dto.ai.AiConversationQueryRequest;
 import com.pmsjl.model.dto.ai.AiMessageQueryRequest;
+import com.pmsjl.model.enums.AiConversationStatusEnum;
 import com.pmsjl.model.vo.AiChatVO;
 import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiMessageVO;
@@ -50,12 +52,14 @@ public class AiChatController {
             @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(value = "sortField", defaultValue = "lastMessageTime") String sortField,
             @RequestParam(value = "sortOrder", defaultValue = "desc") String sortOrder,
+            @RequestParam(value = "status", defaultValue = "ACTIVE") String status,
             HttpServletRequest request) {
         AiConversationQueryRequest queryRequest = new AiConversationQueryRequest();
         queryRequest.setCurrent(current);
         queryRequest.setPageSize(pageSize);
         queryRequest.setSortField(sortField);
         queryRequest.setSortOrder(sortOrder);
+        queryRequest.setStatus(parseConversationStatus(status));
         AiPageVO<AiConversationVO> page = aiConversationService.listMyConversations(queryRequest, request);
         return ResultUtils.success(page);
     }
@@ -94,6 +98,28 @@ public class AiChatController {
         return ResultUtils.success(aiConversationService.deleteConversation(conversationId, request));
     }
 
+    /**
+     * 归档当前登录用户自己的 AI 会话。
+     */
+    @PostMapping("/{conversationId}/archive")
+    public Result<Boolean> archiveConversation(@PathVariable("conversationId") Long conversationId,
+                                               HttpServletRequest request) {
+        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+                "conversationId 必须为正整数");
+        return ResultUtils.success(aiConversationService.archiveConversation(conversationId, request));
+    }
+
+    /**
+     * 将当前登录用户自己的已归档 AI 会话恢复为活跃状态。
+     */
+    @PostMapping("/{conversationId}/restore")
+    public Result<Boolean> restoreConversation(@PathVariable("conversationId") Long conversationId,
+                                               HttpServletRequest request) {
+        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+                "conversationId 必须为正整数");
+        return ResultUtils.success(aiConversationService.restoreConversation(conversationId, request));
+    }
+
     @PostMapping("/{conversationId}/messages")
     public Result<AiChatVO> sendMessage(@PathVariable("conversationId") Long conversationId,
                                         @RequestBody AiChatMessageRequest aiChatMessageRequest,
@@ -103,6 +129,15 @@ public class AiChatController {
         AiChatVO aiChatVO=aiMessageService.sendMessage(conversationId,aiChatMessageRequest,request);
         return ResultUtils.success(aiChatVO);
 
+    }
+
+    private AiConversationStatusEnum parseConversationStatus(String status) {
+        try {
+            return AiConversationStatusEnum.fromValue(status);
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,
+                    "status 仅支持 ACTIVE 或 ARCHIVED");
+        }
     }
 
 }

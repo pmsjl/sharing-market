@@ -2,6 +2,7 @@ import request from "@/utils/request";
 
 export type AiMessageRoleEnum = "USER" | "ASSISTANT";
 export type AiMessageStatusEnum = "PENDING" | "SUCCESS" | "FAILED";
+export type AiConversationStatusEnum = "ACTIVE" | "ARCHIVED";
 
 export interface AiShoppingContext {
   budgetMin?: number;
@@ -75,7 +76,7 @@ export interface AiConversationVO {
   title: string;
   scene: string;
   shoppingContext?: AiShoppingContext | null;
-  status: string;
+  status: AiConversationStatusEnum;
   lastMessagePreview?: string;
   lastMessageTime: string;
   createTime: string;
@@ -128,12 +129,13 @@ export const listAiConversations = (
   current = 1,
   pageSize = 10,
   sortField = "lastMessageTime",
-  sortOrder = "desc"
+  sortOrder = "desc",
+  status: AiConversationStatusEnum = "ACTIVE"
 ) =>
   request<unknown, Result<AiPageVO<AiConversationVO>>>({
     url: "/api/ai/conversations",
     method: "GET",
-    params: { current, pageSize, sortField, sortOrder }
+    params: { current, pageSize, sortField, sortOrder, status }
   });
 
 export const listAiConversationMessages = (
@@ -153,4 +155,16 @@ export const deleteAiConversation = (conversationId: string) =>
   request<unknown, Result<boolean>>({
     url: `/api/ai/conversations/${conversationId}`,
     method: "DELETE"
+  });
+
+export const archiveAiConversation = (conversationId: string) =>
+  request<unknown, Result<boolean>>({
+    url: `/api/ai/conversations/${conversationId}/archive`,
+    method: "POST"
+  });
+
+export const restoreAiConversation = (conversationId: string) =>
+  request<unknown, Result<boolean>>({
+    url: `/api/ai/conversations/${conversationId}/restore`,
+    method: "POST"
   });

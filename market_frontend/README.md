@@ -262,229 +262,19 @@ npm config set registry https://registry.npmmirror.com/
 
 ## ☀️核心设计
 
-### AI 旅游推荐官对话功能
+### 多轮 AI Agent 会话
 
-```java
-/**
-     * 创建用户对话表
-     *
-     * @param userAiMessageAddRequest
-     * @param request
-     * @return UserAiMessage
-     */
-    @PostMapping("/add")
-    public BaseResponse<UserAiMessage> addUserAiMessage(@RequestBody UserAiMessageAddRequest userAiMessageAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(userAiMessageAddRequest == null, ErrorCode.PARAMS_ERROR);
-        String userInputText = userAiMessageAddRequest.getUserInputText();
-        if (WordUtils.containsForbiddenWords(userInputText)) {
-            ThrowUtils.throwIf(WordUtils.containsForbiddenWords(userInputText), ErrorCode.WORD_FORBIDDEN_ERROR, "包含违禁词");
-        }
-        UserAiMessage userAiMessage = new UserAiMessage();
-        // 填充默认值
-        User loginUser = userService.getLoginUser(request);
-        Integer aiRemainNumber = loginUser.getAiRemainNumber();
-        // 检查用户剩余 AI 调用次数是否足够，如果不足，直接返回错误信息
-        ThrowUtils.throwIf(aiRemainNumber <= 0, ErrorCode.USER_BALANCE_NOT_ENOUGH);
-        userAiMessage.setUserId(loginUser.getId());
-        userAiMessage.setUserInputText(userInputText);
-        String presetInformation = "你是一个二手商品交易推荐官，你需要根据数据库的商品名称、价格、新旧程度、库存、用户的现有余额、用户的偏好等多方面进行适配性推荐，并给出相关的理由。\n";
-        String userText = "用户偏好信息：" + userInputText+"\n";
-        // 使用 Stream 处理数据
-        String commodityList = commodityService.list().stream()
-                .filter(commodity -> commodity.getIsListed() == 1) // 过滤出已上架的商品
-                .map(commodity -> String.format(
-                        "商品名称: %s, 新旧程度: %s, 库存: %d, 价格: %.2f",
-                        commodity.getCommodityName(),
-                        commodity.getDegree(),
-                        commodity.getCommodityInventory(),
-                        commodity.getPrice()
-                ))
-                .collect(Collectors.joining("\n")); // 用换行符拼接每条商品信息
-        String commodityInfo = "数据库商品信息如下："+commodityList+"\n";
-        BigDecimal balance = loginUser.getBalance();
-        String userInfo = "用户相关信息如下，"+"用户余额："+balance+"\n";
-        List<SparkMessage> messages = new ArrayList<>();
-        messages.add(SparkMessage.userContent(presetInformation + userText+commodityInfo+userInfo));
-        String response = "";
-        int timeout = 35; // 超时时间，单位为秒
-        // 构造请求
-        SparkRequest sparkRequest = SparkRequest.builder()
-                // 模型回答的tokens的最大长度,非必传，默认为2048。
-                // V1.5取值为[1,4096]
-                // V2.0取值为[1,8192]
-                // V3.0取值为[1,8192]
-                .maxTokens(2048)
-                .messages(messages)
-                // 核采样阈值。用于决定结果随机性,取值越高随机性越强即相同的问题得到的不同答案的可能性越高 非必传,取值为[0,1],默认为0.5
-                .temperature(0.2)
-                .build();
-        Future<String> future = threadPoolExecutor.submit(() -> {
-            try {
-                // 同步调用
-                StopWatch stopWatch = new StopWatch();
-                stopWatch.start();
-                SparkSyncChatResponse chatResponse = sparkClient.chatSync(sparkRequest);
-                SparkTextUsage textUsage = chatResponse.getTextUsage();
-                stopWatch.stop();
-                long total = stopWatch.getTotal(TimeUnit.SECONDS);
-                System.out.println("本次接口调用耗时:" + total + "秒");
-                System.out.println("\n回答：" + chatResponse.getContent());
-                System.out.println("\n提问tokens：" + textUsage.getPromptTokens()
-                        + "，回答tokens：" + textUsage.getCompletionTokens()
-                        + "，总消耗tokens：" + textUsage.getTotalTokens());
-                return chatResponse.getContent();
-//                return AlibabaAIModel.doChatWithHistory(stringBuilder.toString(),recentHistory);
-            } catch (Exception exception) {
-                throw new RuntimeException("遇到异常");
-            }
-        });
-        try {
-            response = future.get(timeout, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.info("服务器接口调用超时");
-        }
-        System.out.println(response);
-        userAiMessageAddRequest.setAiGenerateText(response);
+当前 AI 能力采用多轮会话模型，不再使用旧的单轮接口，也不检查或扣减用户 AI 次数。所有已登录用户均可直接使用 Agent。
 
-        // 复制属性
-        BeanUtils.copyProperties(userAiMessageAddRequest, userAiMessage);
+- 前端通过 `/api/ai/conversations` 及其消息、归档、恢复接口管理会话。
+- Java 服务负责登录鉴权、会话与消息持久化，并调用 Python Agent 服务完成编排。
+- `ai_conversation` 保存会话，`ai_message` 保存多轮消息，`ai_agent_trace` 保存可审计的 Agent 执行轨迹。
+- 商品购买余额 `balance` 只用于商品下单与支付，不作为 Agent 调用额度。
 
-        // 校验数据
-        userAiMessageService.validUserAiMessage(userAiMessage, true);
-
-
-        // 插入数据库
-        boolean result = userAiMessageService.save(userAiMessage);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        // 更新用户余额
-        loginUser.setAiRemainNumber(aiRemainNumber - 1);
-        boolean update = userService.updateById(loginUser);
-        ThrowUtils.throwIf(!update, ErrorCode.OPERATION_ERROR);
-        long newUserAiMessageId = userAiMessage.getId();
-        UserAiMessage generateAnswer = userAiMessageService.getById(newUserAiMessageId);
-        return ResultUtils.success(generateAnswer);
-    }
-```
-
-## **代码解释**
-
-### **方法定义**
-
-- **方法名**：`addUserAiMessage`
-- **作用**：处理用户提交的二手商品偏好信息，生成 AI 推荐的二手商品列表。
-- **注解**：
-  - `@PostMapping("/add")`：表示这是一个 POST 请求接口，路径为 `/add`。
-- **参数**：
-  - `UserAiMessageAddRequest userAiMessageAddRequest`：用户提交的请求体，包含用户输入的偏好信息。
-  - `HttpServletRequest request`：HTTP 请求对象，用于获取当前登录用户信息。
-- **返回值**：`BaseResponse<UserAiMessage>`，封装了 AI 生成的推荐结果。
-
-------
-
-### **参数校验**
-
-1. **空值校验**：
-   - 使用 `ThrowUtils.throwIf` 方法检查 `userAiMessageAddRequest` 是否为空。
-   - 如果为空，抛出 `PARAMS_ERROR` 异常。
-2. **违禁词校验**：
-   - 使用 `WordUtils.containsForbiddenWords` 方法检查用户输入的文本是否包含违禁词。
-   - 如果包含违禁词，抛出 `WORD_FORBIDDEN_ERROR` 异常。
-
-------
-
-### **用户余额检查**
-
-1. **获取用户信息**：
-   - 通过 `userService.getLoginUser(request)` 获取当前登录用户信息。
-   - 获取用户的 AI 调用余额 `aiRemainNumber`。
-2. **余额不足校验**：
-   - 如果 `aiRemainNumber <= 0`，抛出 `USER_BALANCE_NOT_ENOUGH` 异常，提示用户余额不足。
-
-------
-
-### **AI 推荐生成**
-
-1. **构造 AI 输入信息**：
-   - **预设提示信息**：告诉 AI 模型它是一个二手商品交易推荐官，需要根据商品名称、价格、新旧程度、库存、用户余额和偏好进行推荐。
-   - **用户偏好信息**：将用户输入的偏好信息附加到预设提示信息中。
-   - **商品信息**：
-     - 使用 `commodityService.list()` 获取所有商品列表。
-     - 使用 `Stream` 过滤出已上架的商品（`isListed == 1`）。
-     - 将商品信息格式化为字符串，包括商品名称、新旧程度、库存和价格。
-   - **用户余额信息**：将用户的余额信息附加到输入中。
-2. **构造 AI 请求**：
-   - 使用 `SparkRequest.builder()` 构造 AI 请求，设置以下参数：
-     - `maxTokens`：模型回答的最大 tokens 长度，默认为 2048。
-     - `messages`：包含预设提示信息、用户偏好信息、商品信息和用户余额信息的消息列表。
-     - `temperature`：核采样阈值，控制结果的随机性，设置为 0.2。
-3. **异步调用 AI 模型**：
-   - 使用线程池 `threadPoolExecutor` 异步调用 AI 模型。
-   - 设置超时时间为 35 秒。
-   - 如果调用超时，记录日志并返回空响应。
-4. **处理 AI 响应**：
-   - 获取 AI 生成的推荐结果 `response`。
-   - 将结果保存到 `userAiMessageAddRequest` 中。
-
-------
-
-### **保存结果到数据库**
-
-1. **复制属性**：
-   - 使用 `BeanUtils.copyProperties` 将 `userAiMessageAddRequest` 的属性复制到 `userAiMessage` 对象中。
-2. **数据校验**：
-   - 调用 `userAiMessageService.validUserAiMessage` 对 `userAiMessage` 进行校验，确保数据合法性。
-3. **插入数据库**：
-   - 调用 `userAiMessageService.save` 将 `userAiMessage` 插入数据库。
-   - 如果插入失败，抛出 `OPERATION_ERROR` 异常。
-4. **更新用户余额**：
-   - 将用户的 AI 调用余额减 1。
-   - 调用 `userService.updateById` 更新用户信息。
-   - 如果更新失败，抛出 `OPERATION_ERROR` 异常。
-
-------
-
-### **返回结果**
-
-- 返回生成的 AI 推荐结果，封装在 `BaseResponse` 中。
-
-------
-
-### **注意事项**
-
-1. **参数校验**：
-   - 确保 `userAiMessageAddRequest` 和 `userInputText` 不为空，避免空指针异常。
-   - 使用违禁词过滤功能，防止用户输入不当内容。
-2. **用户余额管理**：
-   - 在调用 AI 模型之前，检查用户的 AI 调用余额，避免无效调用。
-   - 调用成功后，及时更新用户的余额信息。
-3. **AI 模型调用**：
-   - 使用异步调用（`Future`）和超时机制，避免因 AI 模型响应过慢导致接口阻塞。
-   - 设置合理的超时时间（如 35 秒），并根据实际需求调整。
-4. **线程池管理**：
-   - 确保线程池 `threadPoolExecutor` 已正确配置，避免资源耗尽或线程泄漏。
-   - 在异步任务中捕获异常，避免因异常导致线程池崩溃。
-5. **数据校验与保存**：
-   - 在保存数据之前，调用 `validUserAiMessage` 方法进行校验，确保数据合法性。
-   - 使用事务管理（如果需要），确保数据插入和用户余额更新的原子性。
-6. **日志记录**：
-   - 在关键步骤（如 AI 调用、数据库操作）中添加日志记录，便于排查问题。
-   - 记录 AI 调用的耗时和 tokens 使用情况，便于性能分析和优化。
-7. **性能优化**：
-   - 如果 AI 调用频率较高，考虑使用缓存机制（如 Redis）存储常用推荐结果，减少重复调用。
-   - 对数据库查询（如 `commodityService.list()`）进行优化，避免全表扫描。
-8. **异常处理**：
-   - 在异步任务中捕获所有异常，避免因未捕获异常导致接口崩溃。
-   - 返回明确的错误码和错误信息，便于前端处理。
-9. **安全性**：
-   - 确保用户输入的文本经过安全过滤，防止 SQL 注入或 XSS 攻击。
-   - 对敏感操作（如余额更新）进行权限校验，确保只有合法用户才能调用。
-10. **扩展性**：
-    - 如果需要支持多种 AI 模型，可以将 AI 调用逻辑抽象为独立的服务，便于切换和扩展。
-    - 如果需要支持多语言推荐，可以在预设提示信息中增加语言参数。
-
+完整接口、状态流转和错误语义见 [AI Agent API 文档](../AI_AGENT_API.md)。
 ## ☀️学完这个项目你能得到什么
 
-1）简单地调用 AI 模型（讯飞星火）获取自定义文本内容，支持 Websocket 形式，也可以获取全部数据后返回。
+1）实现带持久化消息、执行轨迹和商品工具调用的多轮 AI Agent。
 
 2）简单的 JWT 权限校验 ，利用后端拦截器进行登录校验。
 
@@ -752,8 +542,7 @@ npm config set registry https://registry.npmmirror.com/
 | userProfile    | varchar(512)     | 用户简介                        |
 | userRole       | varchar(256)     | 用户角色：user/admin/ban        |
 | userPhone      | varchar(255)     | 联系电话                        |
-| aiRemainNumber | int(11)          | 用户 AI 剩余可使用次数          |
-| balance        | decimal(10, 2)   | 用户余额（仅 AI 接口调用）      |
+| balance        | decimal(10, 2)   | 商品订单支付余额                |
 | editTime       | datetime         | 编辑时间                        |
 | createTime     | datetime         | 创建时间                        |
 | updateTime     | datetime         | 更新时间                        |
@@ -761,17 +550,9 @@ npm config set registry https://registry.npmmirror.com/
 
 ------
 
-### **user_ai_message 表**
+### **AI Agent 会话表**
 
-| 列名           | 数据类型以及长度 | 备注                            |
-| :------------- | :--------------- | :------------------------------ |
-| id             | bigint(20)       | 主键 非空 自增 消息表的唯一标识 |
-| userInputText  | varchar(4096)    | 用户输入 非空                   |
-| aiGenerateText | varchar(4096)    | AI 生成结果 非空                |
-| userId         | bigint(20)       | 用户 ID 非空                    |
-| createTime     | datetime         | 创建时间 非空                   |
-| updateTime     | datetime         | 更新时间 非空                   |
-| isDelete       | tinyint(4)       | 是否删除（1 删除，0 未删除）    |
+当前多轮 Agent 使用 `ai_conversation`、`ai_message` 和 `ai_agent_trace`。详细字段及接口契约见 [AI Agent API 文档](../AI_AGENT_API.md)。
 
 ------
 
