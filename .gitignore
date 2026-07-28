@@ -180,6 +180,10 @@ pnpm-debug.log*
 # TypeScript 增量构建缓存
 *.tsbuildinfo
 
+### Python ###
+__pycache__/
+*.py[cod]
+
 ### Claude Code ###
 .claude/
 

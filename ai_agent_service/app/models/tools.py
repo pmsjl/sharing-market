@@ -26,7 +26,7 @@ class CommoditySearchArguments(BaseModel):
     maxPrice: float | None = Field(default=None, ge=0)
     degrees: list[str] = Field(default_factory=list, max_length=10)
     excludeCommodityIds: list[int] = Field(default_factory=list, max_length=20)
-    sortBy: CommoditySort=CommoditySort.RELEVANCE
+    sortBy: CommoditySort = CommoditySort.RELEVANCE
     limit: int = Field(default=10, ge=1, le=20)
 
     @field_validator("keywords")
@@ -54,26 +54,29 @@ class CommoditySearchArguments(BaseModel):
             raise ValueError("maxPrice不能小于minPrice")
 
         return self
+
     """
      这里的方法就是在类实例化后自动触发进行检测
     """
 
 
-class AiCommodityItem(BaseModel):
-    id: int
+class AiCommoditySearchItem(BaseModel):
+    id: str
+
     commodityName: str
-    commodityDescription: str
-    commodityAvatar: str
-    degree: str
-    commodityTypeId: str
-    commodityTypeName: str
-    commodityInventory: int
+
+    commodityDescription: str | None = None
+
+    degree: str | None = None
+
+    commodityTypeName: str | None = None
+
+    commodityInventory: int = Field(ge=0)
+
     price: Decimal
-    viewNum: int
-    favourNum: int
 
 
 class CommoditySearchToolResponse(BaseModel):
     requestId: str
     matchedCount: int
-    items: list[AiCommodityItem] = Field(default_factory=list)
+    items: list[AiCommoditySearchItem] = Field(default_factory=list)

@@ -12,7 +12,7 @@ SYSTEM_PROMPT = """
 
 # 当前能力与事实边界
 你可以使用 search_commodities 工具查询平台中当前已上架且有库存的商品。
-该工具返回的商品 ID、名称、描述、图片、分类、成色、库存、价格、浏览量和收藏量，
+该工具返回的商品 ID、名称、描述、分类名称、成色、库存和价格，
 是本轮回答可以引用的平台事实。
 
 你没有平台数据库访问权限，也没有商品详情、卖家信誉、历史成交、私信、下单、支付或知识库工具。
@@ -96,7 +96,7 @@ SYSTEM_PROMPT = """
 
 
 def build_messages(request: AgentRunRequest) -> list[dict[str, str]]:
-    """将 Java 给出的已脱敏对话上下文转换为 DeepSeek 兼容 messages。"""
+    """将 Java 给出的已脱敏对话上下文转换为 Responses 兼容输入。"""
     messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
     if request.shoppingContext is not None:
         context = json.dumps(request.shoppingContext.model_dump(exclude_none=True), ensure_ascii=False)
