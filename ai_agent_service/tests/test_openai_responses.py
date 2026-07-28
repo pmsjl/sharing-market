@@ -11,6 +11,7 @@ from app.clients.openai_responses import (
 )
 from app.core.config import Settings
 from app.models.agent import AgentRunRequest
+from app.prompts.shopping_guide import build_messages
 from app.services.agent_service import AgentService, AgentServiceError
 
 
@@ -21,7 +22,8 @@ def make_settings(**overrides) -> Settings:
         "openai_base_url": "https://relay.example/v1",
         "openai_model": "gpt-5.6-terra",
         "openai_timeout_seconds": 30,
-        "openai_reasoning_effort": "low",
+        "openai_reasoning_effort": "medium",
+        "openai_text_verbosity": "medium",
         "java_backend_base_url": "http://127.0.0.1:8102",
         "java_backend_timeout_seconds": 10,
         "max_tool_rounds": 4,
@@ -104,7 +106,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             "application/json",
         )
         self.assertEqual(captured["payload"]["model"], "gpt-5.6-terra")
-        self.assertEqual(captured["payload"]["reasoning"], {"effort": "low"})
+        self.assertEqual(captured["payload"]["reasoning"], {"effort": "medium"})
+        self.assertEqual(captured["payload"]["text"], {"verbosity": "medium"})
         self.assertIs(captured["payload"]["store"], False)
         self.assertIs(captured["payload"]["stream"], False)
         self.assertNotIn("temperature", captured["payload"])
@@ -328,6 +331,23 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.usage.inputTokens, 20)
         self.assertEqual(result.usage.outputTokens, 8)
 
+    async def test_invalid_text_verbosity_is_rejected_before_model_call(self):
+        openai_client = StubOpenAIClient([])
+        service = AgentService(
+            make_settings(openai_text_verbosity="verbose"),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        with self.assertRaises(AgentServiceError) as invalid_config:
+            await service.run("request-1", self.make_request())
+
+        self.assertEqual(
+            invalid_config.exception.agent_error_key,
+            "AI_AGENT_CONFIG_INVALID",
+        )
+        self.assertEqual(openai_client.calls, [])
+
     async def test_function_call_output_is_replayed(self):
         function_call = {
             "type": "function_call",
@@ -522,6 +542,49 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             empty_answer.exception.agent_error_key,
             "AI_MODEL_RESPONSE_INVALID",
         )
+
+
+class ShoppingGuidePromptTests(unittest.TestCase):
+    def test_build_messages_preserves_context_history_and_current_turn_order(self):
+        request = AgentRunRequest(
+            userId=1,
+            conversationId=2,
+            message="再多找找，可以放宽一点要求",
+            shoppingContext={
+                "budgetMax": 100,
+                "usageScene": "寝室",
+            },
+            memorySummary="用户想找寝室可用的生活用品",
+            history=[
+                {
+                    "role": "USER",
+                    "content": "我想看看100元内的生活用品",
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "当前找到风扇和台灯。",
+                },
+            ],
+        )
+
+        messages = build_messages(request)
+
+        self.assertEqual(
+            [message["role"] for message in messages],
+            ["system", "system", "system", "user", "assistant", "user"],
+        )
+        self.assertIn("根据问题复杂度调整详略", messages[0]["content"])
+        self.assertIn("新候选优先", messages[0]["content"])
+        self.assertEqual(
+            messages[1]["content"],
+            '当前购买条件：{"budgetMax": 100.0, "usageScene": "寝室", '
+            '"preferenceTags": [], "avoidances": []}',
+        )
+        self.assertEqual(
+            messages[2]["content"],
+            "较早对话摘要：用户想找寝室可用的生活用品",
+        )
+        self.assertEqual(messages[-1]["content"], request.message)
 
 
 class HealthTests(unittest.IsolatedAsyncioTestCase):
