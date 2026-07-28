@@ -1,10 +1,20 @@
 """与 Java internal AgentRunRequest / AgentRunResponse 一一对应的 Pydantic 模型。"""
-
-from decimal import Decimal
-from turtle import st
+from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    model_validator,
+)
+
+
+class AgentIntent(str, Enum):
+    COMMODITY_RECOMMENDATION = "COMMODITY_RECOMMENDATION"
+    PURCHASE_ADVICE = "PURCHASE_ADVICE"
+    RISK_CHECK = "RISK_CHECK"
+    GENERAL_GUIDE = "GENERAL_GUIDE"
 
 
 class ShoppingContext(BaseModel):
@@ -21,10 +31,23 @@ class AgentHistoryMessage(BaseModel):
 
 
 class AgentRecommendation(BaseModel):
-    commodityId: int
-    matchScore: int | None = None
-    reason: str | None = None
-    riskTip: str | None = None
+    model_config = ConfigDict(extra="forbid")
+    #这里的是对类的配置约束，不允许出现规定以外的属性
+
+    commodityId: str
+    matchScore: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+    reason: str | None = Field(
+        default=None,
+        max_length=500,
+    )
+    riskTip: str | None = Field(
+        default=None,
+        max_length=500,
+    )
 
 
 class AgentSuggestedAction(BaseModel):
@@ -42,15 +65,73 @@ class AgentSource(BaseModel):
 
 
 class AgentOutput(BaseModel):
-    intent: str = "GENERAL_GUIDE"
-    summary: str | None = None
-    recommendations: list[AgentRecommendation] = Field(default_factory=list)
-    purchaseAdvice: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-    searchKeywords: list[str] = Field(default_factory=list)
-    suggestedActions: list[AgentSuggestedAction] = Field(default_factory=list)
-    # 第一阶段不实现 RAG，该数组必须返回空。
-    sources: list[AgentSource] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
+
+    intent: AgentIntent
+
+    summary: str = Field(
+        min_length=1,
+        max_length=300,
+    )
+
+    recommendations: list[AgentRecommendation] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
+    purchaseAdvice: list[str] = Field(
+        default_factory=list,
+        max_length=10,
+    )
+
+    warnings: list[str] = Field(
+        default_factory=list,
+        max_length=10,
+    )
+
+    searchKeywords: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
+    suggestedActions: list[AgentSuggestedAction] = Field(
+        default_factory=list,
+    )
+
+    sources: list[AgentSource] = Field(
+        default_factory=list,
+    )
+
+    @model_validator(mode="after")
+    def validate_recommendations(self):
+        commodity_ids = [
+            recommendation.commodityId
+            for recommendation in self.recommendations
+        ]
+
+        if len(commodity_ids) != len(set(commodity_ids)):
+            raise ValueError("recommendations 不能包含重复商品")
+
+        if (
+            self.recommendations
+            and self.intent != AgentIntent.COMMODITY_RECOMMENDATION
+        ):
+            raise ValueError(
+                "存在商品推荐时 intent 必须为 COMMODITY_RECOMMENDATION"
+            )
+
+        return self
+
+
+class AgentFinalResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    answer: str = Field(
+        min_length=1,
+        max_length=8000,
+    )
+
+    output: AgentOutput
 
 
 class AgentModelInfo(BaseModel):
@@ -97,5 +178,3 @@ class AgentErrorResponse(BaseModel):
     agentErrorKey: str
     message: str
     retryable: bool
-
-

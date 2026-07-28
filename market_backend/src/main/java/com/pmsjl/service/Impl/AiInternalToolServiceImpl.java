@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.config.AiAgentProperties;
-import com.pmsjl.model.dto.ai.internal.AiCommodityItem;
+import com.pmsjl.model.dto.ai.internal.AiCommoditySearchItem;
 import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.Commodity;
@@ -134,14 +134,14 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
 
         response.setRequestId(requestId);
         response.setMatchedCount(commodityPage.getTotal());
-        response.setItems(buildAiCommodityItems(records));
+        response.setItems(buildAiCommoditySearchItems(records));
 
         return response;
 
 
     }
 
-    private List<AiCommodityItem> buildAiCommodityItems(List<Commodity> records) {
+    private List<AiCommoditySearchItem> buildAiCommoditySearchItems(List<Commodity> records) {
         Set<Long> commodityTypeIds = records.stream()
                 .map(Commodity::getCommodityTypeId)
                 .filter(Objects::nonNull)
@@ -155,8 +155,8 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
                         CommodityType::getTypeName
                 ));
 
-        List<AiCommodityItem> list = records.stream().map(commodity -> {
-            AiCommodityItem item = new AiCommodityItem();
+        List<AiCommoditySearchItem> list = records.stream().map(commodity -> {
+            AiCommoditySearchItem item = new AiCommoditySearchItem();
             BeanUtils.copyProperties(commodity, item);
             item.setCommodityTypeName(
                     commodityTypeNameMap.get(commodity.getCommodityTypeId())

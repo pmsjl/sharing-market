@@ -1,6 +1,6 @@
 package com.pmsjl.model.vo;
 
-import com.pmsjl.model.dto.ai.internal.AiCommodityItem;
+import com.pmsjl.model.dto.ai.internal.AiCommoditySearchItem;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -17,7 +17,7 @@ public class CommoditySearchToolResponse implements Serializable {
     private Long matchedCount;
 
     /** 当前返回给 Agent 的商品结果列表。 */
-    private List<AiCommodityItem> items = new ArrayList<>();
+    private List<AiCommoditySearchItem> items = new ArrayList<>();
 
     private static final long serialVersionUID = 1L;
 }
