@@ -16,6 +16,7 @@ class Settings:
         os.getenv("OPENAI_TIMEOUT_SECONDS", "30"))
     openai_reasoning_effort: str = os.getenv("OPENAI_REASONING_EFFORT",
                                              "medium")
+    openai_text_verbosity: str = os.getenv("OPENAI_TEXT_VERBOSITY", "high")
     java_backend_base_url: str = os.getenv(
         "JAVA_BACKEND_BASE_URL",
         "http://127.0.0.1:8102",

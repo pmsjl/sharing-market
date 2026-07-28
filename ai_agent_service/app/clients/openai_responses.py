@@ -49,6 +49,9 @@ class OpenAIResponsesClient:
             "reasoning": {
                 "effort": self.settings.openai_reasoning_effort,
             },
+            "text": {
+                "verbosity": self.settings.openai_text_verbosity,
+            },
             "store": False,
             # OpenAI 官方默认非流式，但部分兼容中转在省略时会返回 SSE。
             # 本服务只实现同步 JSON 契约，因此必须显式关闭流式输出。

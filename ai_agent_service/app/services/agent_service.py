@@ -91,6 +91,15 @@ class AgentService:
                 "模型推理强度配置不合法",
                 False,
             )
+        if self.settings.openai_text_verbosity not in {
+            "low", "medium", "high"
+        }:
+            raise AgentServiceError(
+                503,
+                "AI_AGENT_CONFIG_INVALID",
+                "模型回答详细度配置不合法",
+                False,
+            )
 
         traces: list[AgentToolTrace] = []
         input_items: list[dict[str, Any]] = build_messages(request)
