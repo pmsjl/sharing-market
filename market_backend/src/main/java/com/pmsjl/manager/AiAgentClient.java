@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.model.dto.ai.internal.AgentErrorResponse;
+import com.pmsjl.model.dto.ai.internal.AgentOutput;
 import com.pmsjl.model.dto.ai.internal.AgentRunRequest;
 import com.pmsjl.model.dto.ai.internal.AgentRunResponse;
 import okhttp3.MediaType;
@@ -68,6 +69,17 @@ public class AiAgentClient {
             }
             if (StringUtils.isBlank(agentRunResponse.getAnswer())) {
                 throw new AiAgentClientException("AI_AGENT_RESPONSE_INVALID", "AI 服务没有返回回答内容", true);
+            }
+            AgentOutput output = agentRunResponse.getOutput();
+            if (output == null
+                    || output.getIntent() == null
+                    || StringUtils.isBlank(output.getSummary())
+                    || StringUtils.isBlank(output.getMemorySummary())) {
+                throw new AiAgentClientException(
+                        "AI_AGENT_RESPONSE_INVALID",
+                        "AI 服务返回的结构化结果不完整",
+                        true
+                );
             }
             return agentRunResponse;
         } catch (AiAgentClientException e) {

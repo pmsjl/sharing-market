@@ -28,9 +28,6 @@ public class AiStructuredContentVO implements Serializable {
     /** 可用于继续检索平台商品的关键词。 */
     private List<String> searchKeywords = new ArrayList<>();
 
-    /** 前端可安全展示和执行的后续操作建议。 */
-    private List<AiSuggestedActionVO> suggestedActions = new ArrayList<>();
-
     /** 已由 Java 校验并生成安全跳转地址的 RAG 来源。 */
     private List<AiRagSourceVO> sources = new ArrayList<>();
 

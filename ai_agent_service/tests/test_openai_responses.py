@@ -1,8 +1,10 @@
 import copy
 import json
 import unittest
+from unittest.mock import patch
 
 import httpx
+from pydantic import ValidationError
 
 from app.api import health as health_module
 from app.clients.openai_responses import (
@@ -10,7 +12,10 @@ from app.clients.openai_responses import (
     OpenAIResponsesClientError,
 )
 from app.core.config import Settings
-from app.models.agent import AgentRunRequest
+from app.models.agent import (
+    AGENT_FINAL_RESULT_TEXT_FORMAT,
+    AgentRunRequest,
+)
 from app.prompts.shopping_guide import build_messages
 from app.services.agent_service import AgentService, AgentServiceError
 
@@ -32,28 +37,57 @@ def make_settings(**overrides) -> Settings:
     return Settings(**values)
 
 
+async def create_response_with_handler(
+    client: OpenAIResponsesClient,
+    handler,
+    input_items=None,
+    tools=None,
+):
+    async_client = httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+    )
+    with patch(
+        "app.clients.openai_responses.httpx.AsyncClient",
+        return_value=async_client,
+    ):
+        return await client.create_response(
+            input_items or [],
+            tools or [],
+            AGENT_FINAL_RESULT_TEXT_FORMAT,
+        )
+
+
 class StubOpenAIClient:
     def __init__(self, responses):
         self.responses = list(responses)
         self.calls = []
 
-    async def create_response(self, input_items, tools):
+    async def create_response(self, input_items, tools, text_format):
         self.calls.append({
             "input_items": copy.deepcopy(input_items),
             "tools": copy.deepcopy(tools),
+            "text_format": copy.deepcopy(text_format),
         })
         return self.responses.pop(0)
 
 
+class StubCommodityItem:
+    def __init__(self, commodity_id):
+        self.id = commodity_id
+
+
 class StubToolResult:
     matchedCount = 1
-    items = [{"id": "1001"}]
+    items = [StubCommodityItem("1001")]
 
     def model_dump_json(self):
         return json.dumps({
             "requestId": "request-1",
             "matchedCount": self.matchedCount,
-            "items": self.items,
+            "items": [
+                {"id": item.id}
+                for item in self.items
+            ],
         })
 
 
@@ -64,6 +98,45 @@ class StubJavaBackendClient:
     async def search_commodities(self, request_id, arguments):
         self.calls.append((request_id, arguments))
         return StubToolResult()
+
+
+def structured_output_message(
+    answer="可以先确认预算和主要用途。",
+    commodity_ids=None,
+):
+    commodity_ids = commodity_ids or []
+    payload = {
+        "answer": answer,
+        "output": {
+            "intent": (
+                "COMMODITY_RECOMMENDATION"
+                if commodity_ids
+                else "GENERAL_GUIDE"
+            ),
+            "summary": "本轮回答摘要",
+            "memorySummary": "用户正在咨询校园二手商品",
+            "recommendations": [
+                {
+                    "commodityId": commodity_id,
+                    "matchScore": 90,
+                    "reason": "符合用户当前需求",
+                    "riskTip": None,
+                }
+                for commodity_id in commodity_ids
+            ],
+            "purchaseAdvice": [],
+            "warnings": [],
+            "searchKeywords": [],
+        },
+    }
+    return {
+        "type": "message",
+        "role": "assistant",
+        "content": [{
+            "type": "output_text",
+            "text": json.dumps(payload, ensure_ascii=False),
+        }],
+    }
 
 
 class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
@@ -79,11 +152,10 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 request=request,
             )
 
-        client = OpenAIResponsesClient(
-            make_settings(),
-            transport=httpx.MockTransport(handler),
-        )
-        result = await client.create_response(
+        client = OpenAIResponsesClient(make_settings())
+        result = await create_response_with_handler(
+            client,
+            handler,
             [{"role": "user", "content": "推荐一台电脑"}],
             [{"type": "function", "name": "search_commodities"}],
         )
@@ -107,7 +179,42 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(captured["payload"]["model"], "gpt-5.6-terra")
         self.assertEqual(captured["payload"]["reasoning"], {"effort": "medium"})
-        self.assertEqual(captured["payload"]["text"], {"verbosity": "medium"})
+        text_config = captured["payload"]["text"]
+        self.assertEqual(text_config["verbosity"], "medium")
+        self.assertEqual(text_config["format"]["type"], "json_schema")
+        self.assertEqual(text_config["format"]["name"], "agent_final_result")
+        self.assertIs(text_config["format"]["strict"], True)
+        self.assertEqual(
+            set(text_config["format"]["schema"]["required"]),
+            {"answer", "output"},
+        )
+        self.assertIs(
+            text_config["format"]["schema"]["additionalProperties"],
+            False,
+        )
+        schema_text = json.dumps(
+            text_config["format"]["schema"],
+            ensure_ascii=False,
+        )
+        self.assertNotIn('"$defs"', schema_text)
+        self.assertNotIn('"$ref"', schema_text)
+        output_schema = (
+            text_config["format"]["schema"]
+            ["properties"]["output"]
+        )
+        self.assertEqual(
+            set(output_schema["required"]),
+            {
+                "intent",
+                "summary",
+                "memorySummary",
+                "recommendations",
+                "purchaseAdvice",
+                "warnings",
+                "searchKeywords",
+            },
+        )
+        self.assertIs(output_schema["additionalProperties"], False)
         self.assertIs(captured["payload"]["store"], False)
         self.assertIs(captured["payload"]["stream"], False)
         self.assertNotIn("temperature", captured["payload"])
@@ -164,11 +271,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 request=request,
             )
 
-        client = OpenAIResponsesClient(
-            make_settings(),
-            transport=httpx.MockTransport(handler),
-        )
-        result = await client.create_response([], [])
+        client = OpenAIResponsesClient(make_settings())
+        result = await create_response_with_handler(client, handler)
         self.assertEqual(result["output"], [completed_item])
         self.assertEqual(result["status"], "completed")
 
@@ -212,11 +316,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 request=request,
             )
 
-        client = OpenAIResponsesClient(
-            make_settings(),
-            transport=httpx.MockTransport(handler),
-        )
-        result = await client.create_response([], [])
+        client = OpenAIResponsesClient(make_settings())
+        result = await create_response_with_handler(client, handler)
         self.assertEqual(result["output"], [function_call])
 
     async def test_incomplete_sse_is_rejected(self):
@@ -232,12 +333,9 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 request=request,
             )
 
-        client = OpenAIResponsesClient(
-            make_settings(),
-            transport=httpx.MockTransport(handler),
-        )
+        client = OpenAIResponsesClient(make_settings())
         with self.assertRaises(OpenAIResponsesClientError) as raised:
-            await client.create_response([], [])
+            await create_response_with_handler(client, handler)
         self.assertEqual(
             raised.exception.agent_error_key,
             "AI_MODEL_RESPONSE_INVALID",
@@ -257,12 +355,9 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 def handler(request, response_status=status):
                     return httpx.Response(response_status, request=request)
 
-                client = OpenAIResponsesClient(
-                    make_settings(),
-                    transport=httpx.MockTransport(handler),
-                )
+                client = OpenAIResponsesClient(make_settings())
                 with self.assertRaises(OpenAIResponsesClientError) as raised:
-                    await client.create_response([], [])
+                    await create_response_with_handler(client, handler)
                 self.assertEqual(raised.exception.agent_error_key, expected_key)
                 self.assertEqual(raised.exception.retryable, retryable)
 
@@ -270,23 +365,17 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         def timeout_handler(request):
             raise httpx.ReadTimeout("timeout", request=request)
 
-        timeout_client = OpenAIResponsesClient(
-            make_settings(),
-            transport=httpx.MockTransport(timeout_handler),
-        )
+        timeout_client = OpenAIResponsesClient(make_settings())
         with self.assertRaises(OpenAIResponsesClientError) as timeout_error:
-            await timeout_client.create_response([], [])
+            await create_response_with_handler(timeout_client, timeout_handler)
         self.assertEqual(timeout_error.exception.agent_error_key, "AI_MODEL_TIMEOUT")
 
         def invalid_json_handler(request):
             return httpx.Response(200, content=b"not-json", request=request)
 
-        invalid_client = OpenAIResponsesClient(
-            make_settings(),
-            transport=httpx.MockTransport(invalid_json_handler),
-        )
+        invalid_client = OpenAIResponsesClient(make_settings())
         with self.assertRaises(OpenAIResponsesClientError) as invalid_error:
-            await invalid_client.create_response([], [])
+            await create_response_with_handler(invalid_client, invalid_json_handler)
         self.assertEqual(
             invalid_error.exception.agent_error_key,
             "AI_MODEL_RESPONSE_INVALID",
@@ -304,14 +393,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
     async def test_direct_answer_returns_usage_and_model(self):
         openai_client = StubOpenAIClient([{
             "model": "gpt-5.6-terra",
-            "output": [{
-                "type": "message",
-                "role": "assistant",
-                "content": [{
-                    "type": "output_text",
-                    "text": "可以先确认预算和主要用途。",
-                }],
-            }],
+            "output": [structured_output_message()],
             "usage": {
                 "input_tokens": 20,
                 "output_tokens": 8,
@@ -365,13 +447,12 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 "usage": {"input_tokens": 10, "output_tokens": 3},
             },
             {
-                "output": [{
-                    "type": "message",
-                    "content": [{
-                        "type": "output_text",
-                        "text": "找到一件符合预算的商品。",
-                    }],
-                }],
+                "output": [
+                    structured_output_message(
+                        answer="找到一件符合预算的商品。",
+                        commodity_ids=["1001"],
+                    )
+                ],
                 "usage": {"input_tokens": 15, "output_tokens": 6},
             },
         ])
@@ -413,13 +494,12 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             {"output": [first_call], "usage": {}},
             {"output": [second_call], "usage": {}},
             {
-                "output": [{
-                    "type": "message",
-                    "content": [{
-                        "type": "output_text",
-                        "text": "已完成两轮筛选。",
-                    }],
-                }],
+                "output": [
+                    structured_output_message(
+                        answer="已完成两轮筛选。",
+                        commodity_ids=["1001"],
+                    )
+                ],
                 "usage": {},
             },
         ])
@@ -543,8 +623,87 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "AI_MODEL_RESPONSE_INVALID",
         )
 
+    async def test_rejects_recommendation_not_returned_by_tool(self):
+        function_call = {
+            "type": "function_call",
+            "call_id": "call-1",
+            "name": "search_commodities",
+            "arguments": "{}",
+        }
+        openai_client = StubOpenAIClient([
+            {"output": [function_call], "usage": {}},
+            {
+                "output": [
+                    structured_output_message(
+                        commodity_ids=["9999"],
+                    )
+                ],
+                "usage": {},
+            },
+        ])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        with self.assertRaises(AgentServiceError) as raised:
+            await service.run("request-1", self.make_request())
+
+        self.assertEqual(
+            raised.exception.agent_error_key,
+            "AI_MODEL_RESPONSE_INVALID",
+        )
+        self.assertFalse(raised.exception.retryable)
+
+    async def test_model_refusal_is_mapped(self):
+        openai_client = StubOpenAIClient([{
+            "output": [{
+                "type": "message",
+                "content": [{
+                    "type": "refusal",
+                    "refusal": "无法处理当前请求",
+                }],
+            }],
+            "usage": {},
+        }])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        with self.assertRaises(AgentServiceError) as raised:
+            await service.run("request-1", self.make_request())
+
+        self.assertEqual(
+            raised.exception.agent_error_key,
+            "AI_MODEL_REFUSED",
+        )
+        self.assertFalse(raised.exception.retryable)
+
 
 class ShoppingGuidePromptTests(unittest.TestCase):
+    def test_system_prompt_defines_out_of_scope_behavior(self):
+        request = AgentRunRequest(
+            userId=1,
+            conversationId=2,
+            message="在 Python 中 Literal 是什么意思",
+        )
+
+        system_prompt = build_messages(request)[0]["content"]
+
+        self.assertIn("编程教学、数学、翻译、写作、新闻和闲聊", system_prompt)
+        self.assertIn("完全超出范围时，只回复", system_prompt)
+        self.assertIn("回复后立即结束，不调用商品搜索工具", system_prompt)
+        self.assertIn("混合问题只回答其中与二手购买或交易相关的部分", system_prompt)
+        self.assertIn("answer 面向用户并包含完整回答", system_prompt)
+        self.assertIn("summary 只概括本轮结论", system_prompt)
+        self.assertIn(
+            "memorySummary 只保留对后续对话有用的累计事实",
+            system_prompt,
+        )
+
     def test_build_messages_preserves_context_history_and_current_turn_order(self):
         request = AgentRunRequest(
             userId=1,
@@ -577,14 +736,41 @@ class ShoppingGuidePromptTests(unittest.TestCase):
         self.assertIn("新候选优先", messages[0]["content"])
         self.assertEqual(
             messages[1]["content"],
-            '当前购买条件：{"budgetMax": 100.0, "usageScene": "寝室", '
-            '"preferenceTags": [], "avoidances": []}',
+            '当前购买条件：{"budgetMax":100.0,"usageScene":"寝室",'
+            '"preferenceTags":[],"avoidances":[]}',
         )
         self.assertEqual(
             messages[2]["content"],
             "较早对话摘要：用户想找寝室可用的生活用品",
         )
         self.assertEqual(messages[-1]["content"], request.message)
+
+    def test_history_rejects_invalid_role_and_more_than_ten_messages(self):
+        with self.assertRaises(ValidationError):
+            AgentRunRequest(
+                userId=1,
+                conversationId=2,
+                message="继续推荐",
+                history=[{
+                    "role": "SYSTEM",
+                    "content": "非法历史消息",
+                }],
+            )
+
+        history = [
+            {
+                "role": "USER" if index % 2 == 0 else "ASSISTANT",
+                "content": f"历史消息 {index}",
+            }
+            for index in range(11)
+        ]
+        with self.assertRaises(ValidationError):
+            AgentRunRequest(
+                userId=1,
+                conversationId=2,
+                message="继续推荐",
+                history=history,
+            )
 
 
 class HealthTests(unittest.IsolatedAsyncioTestCase):

@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Any, Protocol
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -16,33 +16,17 @@ from app.core.config import Settings
 from app.models.agent import (
     AgentIntent,
     AgentModelInfo,
-    AgentOutput,
     AgentRunRequest,
     AgentRunResponse,
     AgentToolTrace,
     AgentUsage,
+    AGENT_FINAL_RESULT_TEXT_FORMAT,
+    AgentFinalResult,
+    AgentOutput,
 )
 from app.models.tools import CommoditySearchArguments
 from app.prompts.shopping_guide import build_messages
 from app.tools.definitions import SEARCH_COMMODITIES_TOOL
-
-
-class ResponsesClient(Protocol):
-    async def create_response(
-        self,
-        input_items: list[dict[str, Any]],
-        tools: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        ...
-
-
-class JavaToolClient(Protocol):
-    async def search_commodities(
-        self,
-        request_id: str,
-        arguments: CommoditySearchArguments,
-    ) -> Any:
-        ...
 
 
 class AgentServiceError(Exception):
@@ -63,12 +47,13 @@ class AgentService:
     def __init__(
         self,
         settings: Settings,
-        openai_client: ResponsesClient | None = None,
-        java_backend_client: JavaToolClient | None = None,
+        openai_client: OpenAIResponsesClient | None = None,
+        java_backend_client: JavaBackendClient | None = None,
     ) -> None:
         self.settings = settings
         self.openai_client = openai_client or OpenAIResponsesClient(settings)
-        self.java_backend_client = java_backend_client or JavaBackendClient(settings)
+        self.java_backend_client = java_backend_client or JavaBackendClient(
+            settings)
 
     async def run(self, request_id: str,
                   request: AgentRunRequest) -> AgentRunResponse:
@@ -83,7 +68,7 @@ class AgentService:
                 False,
             )
         if self.settings.openai_reasoning_effort not in {
-            "none", "low", "medium", "high", "xhigh", "max"
+                "none", "low", "medium", "high", "xhigh", "max"
         }:
             raise AgentServiceError(
                 503,
@@ -92,7 +77,7 @@ class AgentService:
                 False,
             )
         if self.settings.openai_text_verbosity not in {
-            "low", "medium", "high"
+                "low", "medium", "high"
         }:
             raise AgentServiceError(
                 503,
@@ -105,7 +90,8 @@ class AgentService:
         input_items: list[dict[str, Any]] = build_messages(request)
         input_tokens = 0
         output_tokens = 0
-        answer: str = ""
+        final_result: AgentFinalResult | None = None
+        allowed_commodity_ids: set[str] = set()
         model_name = self.settings.openai_model
         started_at = time.perf_counter()
         for tool_rounds in range(self.settings.max_tool_rounds + 1):
@@ -113,6 +99,7 @@ class AgentService:
                 response_data = await self.openai_client.create_response(
                     input_items=input_items,
                     tools=[SEARCH_COMMODITIES_TOOL],
+                    text_format=AGENT_FINAL_RESULT_TEXT_FORMAT,
                 )
             except OpenAIResponsesClientError as exception:
                 raise AgentServiceError(
@@ -142,7 +129,11 @@ class AgentService:
                 model_name = returned_model
 
             if not tool_calls:
-                answer = self._extract_answer(output_items)
+                final_result = self._extract_final_result(output_items)
+                self._validate_model_references(
+                    final_result.output,
+                    allowed_commodity_ids,
+                )
                 break
 
             if tool_rounds >= self.settings.max_tool_rounds:
@@ -153,25 +144,30 @@ class AgentService:
                     True,
                 )
 
-            # store=false 时，下一次请求要重新带上本次 response.output
-            # （包括可能存在的 reasoning/function_call 项），再追加与
-            # call_id 对应的 function_call_output。
             input_items.extend(output_items)
             for tool_call in tool_calls:
-                tool_message, trace = await self._execute_tool_calls(
-                    request_id, tool_call)
+                tool_message, trace, returned_ids = (await
+                                                     self._execute_tool_calls(
+                                                         request_id,
+                                                         tool_call,
+                                                     ))
                 input_items.append(tool_message)
                 traces.append(trace)
+                allowed_commodity_ids.update(returned_ids)
 
+        if final_result is None:
+            raise AgentServiceError(
+                502,
+                "AI_MODEL_RESPONSE_INVALID",
+                "模型没有返回最终结构化结果",
+                True,
+            )
         latency_ms = int((time.perf_counter() - started_at) * 1000)
 
         return AgentRunResponse(
             requestId=request_id,
-            answer=answer,
-            output=AgentOutput(
-                intent=AgentIntent.GENERAL_GUIDE,
-                summary=self._build_summary(request.message),
-            ),
+            answer=final_result.answer,
+            output=final_result.output,
             model=AgentModelInfo(
                 provider="openai",
                 name=model_name,
@@ -185,8 +181,10 @@ class AgentService:
         )
 
     async def _execute_tool_calls(
-            self, request_id: str,
-            tool_call: dict) -> tuple[dict, AgentToolTrace]:
+        self,
+        request_id: str,
+        tool_call: dict,
+    ) -> tuple[dict, AgentToolTrace, set[str]]:
         call_id = tool_call.get("call_id")
 
         if not isinstance(call_id, str) or not call_id:
@@ -243,7 +241,8 @@ class AgentService:
             raise AgentServiceError(503 if exception.retryable else 502,
                                     exception.agent_error_key,
                                     exception.message, exception.retryable)
-
+        returned_commodity_ids = {str(item.id) for item in result.items}
+        #查找到的所有商品id
         tool_latency_ms = int((time.perf_counter() - tool_started_at) * 1000)
         tool_message = {
             "type": "function_call_output",
@@ -263,7 +262,7 @@ class AgentService:
             status="SUCCESS",
             latencyMs=tool_latency_ms,
         )
-        return tool_message, trace
+        return tool_message, trace, returned_commodity_ids
 
     @staticmethod
     def _extract_output_items(response_data: dict) -> list[dict[str, Any]]:
@@ -306,22 +305,22 @@ class AgentService:
         }
 
         需要调用工具时，output 中会出现 function_call（reasoning 项可能存在）：
-        [
-            {
-              "id": "rs_...",
-              "type": "reasoning",
-              "content": [],
-              "summary": []
-            },
-            {
-              "id": "fc_...",
-              "type": "function_call",
-              "status": "completed",
-              "call_id": "call_...",
-              "name": "search_commodities",
-              "arguments": "{\"keywords\":[\"手机\"]}"
-            }
-        ]
+        "output":[
+                    {
+                    "id": "rs_...",
+                    "type": "reasoning",
+                    "content": [],
+                    "summary": []
+                    },
+                    {
+                    "id": "fc_...",
+                    "type": "function_call",
+                    "status": "completed",
+                    "call_id": "call_...",
+                    "name": "search_commodities",
+                    "arguments": "{\"keywords\":[\"手机\"]}"
+                    }
+                ]
 
         模型的整个 output 会加入下一次 input，工具执行结果再作为新 item 追加：
         {
@@ -331,10 +330,8 @@ class AgentService:
         } 
         """
         output_items = response_data.get("output")
-        if (
-            not isinstance(output_items, list)
-            or not all(isinstance(item, dict) for item in output_items)
-        ):
+        if (not isinstance(output_items, list)
+                or not all(isinstance(item, dict) for item in output_items)):
             raise AgentServiceError(
                 502,
                 "AI_MODEL_RESPONSE_INVALID",
@@ -344,45 +341,86 @@ class AgentService:
         return output_items
 
     @staticmethod
-    def _extract_answer(output_items: list[dict[str, Any]]) -> str:
+    def _extract_final_result(
+        output_items: list[dict[str, Any]], ) -> AgentFinalResult:
         text_parts: list[str] = []
+
         for item in output_items:
             if item.get("type") != "message":
                 continue
+
             content = item.get("content")
             if not isinstance(content, list):
                 raise AgentServiceError(
                     502,
                     "AI_MODEL_RESPONSE_INVALID",
-                    "模型返回内容格式异常",
+                    "模型消息内容格式异常",
                     True,
                 )
+
             for part in content:
                 if not isinstance(part, dict):
                     raise AgentServiceError(
                         502,
                         "AI_MODEL_RESPONSE_INVALID",
-                        "模型返回内容格式异常",
+                        "模型消息内容格式异常",
                         True,
                     )
+
+                if part.get("type") == "refusal":
+                    raise AgentServiceError(
+                        502,
+                        "AI_MODEL_REFUSED",
+                        "模型拒绝生成当前回答",
+                        False,
+                    )
+
                 if part.get("type") == "output_text":
                     text = part.get("text")
                     if not isinstance(text, str):
                         raise AgentServiceError(
                             502,
                             "AI_MODEL_RESPONSE_INVALID",
-                            "模型返回内容格式异常",
+                            "模型文本内容格式异常",
                             True,
                         )
                     text_parts.append(text)
 
-        answer = "".join(text_parts).strip()
-        if not answer:
-            raise AgentServiceError(502, "AI_MODEL_RESPONSE_INVALID",
-                                    "模型没有返回回答内容", True)
-        return answer
+        raw_text = "".join(text_parts).strip()
+        if not raw_text:
+            raise AgentServiceError(
+                502,
+                "AI_MODEL_RESPONSE_INVALID",
+                "模型没有返回回答内容",
+                True,
+            )
+
+        try:
+            response_object = json.loads(raw_text)
+            return AgentFinalResult.model_validate(response_object)
+        except (json.JSONDecodeError, ValidationError, TypeError) as exception:
+            raise AgentServiceError(
+                502,
+                "AI_MODEL_RESPONSE_INVALID",
+                "模型返回的结构化结果不符合约定",
+                True,
+            ) from exception
 
     @staticmethod
-    def _build_summary(message: str) -> str:
-        normalized_message = " ".join(message.split())
-        return normalized_message[:80]
+    def _validate_model_references(
+        output: AgentOutput,
+        allowed_commodity_ids: set[str],
+    ) -> None:
+        referenced_ids = {
+            recommendation.commodityId
+            for recommendation in output.recommendations
+        }
+
+        invalid_ids = referenced_ids - allowed_commodity_ids
+        if invalid_ids:
+            raise AgentServiceError(
+                502,
+                "AI_MODEL_RESPONSE_INVALID",
+                "模型引用了商品工具未返回的商品",
+                False,
+            )

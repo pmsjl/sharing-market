@@ -23,4 +23,9 @@ public interface AiMessageMapper extends BaseMapper<AiMessage> {
                                    @Param("content") String content,
                                    @Param("agentErrorKey") String agentErrorKey,
                                    @Param("updateTime") Date updateTime);
+
+    List<AiMessage> selectRecentSuccessfulHistory(
+            @Param("conversationId") Long conversationId,
+            @Param("turnLimit") int turnLimit
+    );
 }
