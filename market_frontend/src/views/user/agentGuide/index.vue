@@ -139,6 +139,42 @@
             购买条件
             <b v-if="contextFieldCount">{{ contextFieldCount }}</b>
           </button>
+          <el-popover
+            placement="bottom-end"
+            :width="208"
+            trigger="click"
+            popper-class="typing-speed-popover"
+          >
+            <template #reference>
+              <button
+                type="button"
+                class="typing-speed-trigger"
+                :title="`回复显示速度：${currentTypingSpeedOption.label}`"
+                :aria-label="`调整回复显示速度，当前${currentTypingSpeedOption.label}`"
+              >
+                {{ currentTypingSpeedOption.marker }}
+              </button>
+            </template>
+            <div
+              class="typing-speed-menu"
+              role="radiogroup"
+              aria-label="AI 回复显示速度"
+            >
+              <span>回复显示速度</span>
+              <button
+                v-for="option in typingSpeedOptions"
+                :key="option.value"
+                type="button"
+                role="radio"
+                :aria-checked="typingSpeed === option.value"
+                :class="{ active: typingSpeed === option.value }"
+                @click="setTypingSpeed(option.value)"
+              >
+                <strong>{{ option.label }}</strong>
+                <small>{{ option.description }}</small>
+              </button>
+            </div>
+          </el-popover>
           <button
             type="button"
             class="focus-toggle"
@@ -171,8 +207,10 @@
         role="log"
         aria-label="咨询消息记录"
         aria-live="polite"
+        :aria-busy="Boolean(typingMessageId)"
         tabindex="0"
         @keydown="handleMessageStageKeydown"
+        @scroll="handleMessageStageScroll"
       >
         <button
           v-if="hasOlderMessages"
@@ -249,19 +287,31 @@
                     重新发送
                   </el-button>
                 </template>
-                <div v-else class="markdown-answer">
+                <div
+                  v-else
+                  class="markdown-answer"
+                  :class="{ typing: isMessageTyping(message.id) }"
+                >
                   <MdPreview
                     class="agent-markdown"
-                    :model-value="message.content"
+                    :model-value="getDisplayedContent(message)"
                     preview-theme="github"
                     code-theme="github"
                   />
+                  <span
+                    v-if="isMessageTyping(message.id)"
+                    class="typing-caret"
+                    aria-hidden="true"
+                  ></span>
                 </div>
               </template>
             </div>
 
             <div
-              v-if="message.structuredContent?.recommendations?.length"
+              v-if="
+                !isMessageTyping(message.id) &&
+                message.structuredContent?.recommendations?.length
+              "
               class="recommendation-block"
             >
               <div class="recommendation-heading">
@@ -304,7 +354,10 @@
             </div>
 
             <div
-              v-if="message.structuredContent?.sources?.length"
+              v-if="
+                !isMessageTyping(message.id) &&
+                message.structuredContent?.sources?.length
+              "
               class="source-block"
             >
               <div class="recommendation-heading">
@@ -463,7 +516,8 @@ import {
   onBeforeUnmount,
   onMounted,
   reactive,
-  ref
+  ref,
+  watch
 } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -490,6 +544,58 @@ type Starter = {
   prompt: string;
 };
 
+type TypingSpeed = "relaxed" | "standard" | "fast" | "instant";
+
+type TypingSpeedOption = {
+  value: TypingSpeed;
+  label: string;
+  marker: string;
+  description: string;
+  charactersPerSecond: number;
+};
+
+const TYPING_SPEED_STORAGE_KEY = "market-ai-typing-speed";
+const typingSpeedOptions: TypingSpeedOption[] = [
+  {
+    value: "relaxed",
+    label: "舒缓",
+    marker: "0.6×",
+    description: "约 70 字/秒",
+    charactersPerSecond: 70
+  },
+  {
+    value: "standard",
+    label: "标准",
+    marker: "1×",
+    description: "约 120 字/秒",
+    charactersPerSecond: 120
+  },
+  {
+    value: "fast",
+    label: "快速",
+    marker: "1.8×",
+    description: "约 220 字/秒",
+    charactersPerSecond: 220
+  },
+  {
+    value: "instant",
+    label: "立即显示",
+    marker: "∞",
+    description: "关闭打字效果",
+    charactersPerSecond: Number.POSITIVE_INFINITY
+  }
+];
+
+const getInitialTypingSpeed = (): TypingSpeed => {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return "instant";
+  }
+  const stored = localStorage.getItem(TYPING_SPEED_STORAGE_KEY);
+  return typingSpeedOptions.some((option) => option.value === stored)
+    ? (stored as TypingSpeed)
+    : "standard";
+};
+
 const router = useRouter();
 const layoutSettingStore = useLayOutSettingStore();
 const pageRef = ref<HTMLElement | null>(null);
@@ -514,6 +620,14 @@ const conversationTotal = ref(0);
 const archivingConversationId = ref<string | null>(null);
 const messagePage = ref(1);
 const messageTotal = ref(0);
+const typingSpeed = ref<TypingSpeed>(getInitialTypingSpeed());
+const typingMessageId = ref<string | null>(null);
+const typingBuffers = reactive<Record<string, string>>({});
+const shouldFollowOutput = ref(true);
+
+let typingAnimationFrame: number | null = null;
+let messageResizeObserver: ResizeObserver | null = null;
+let resizeFollowFrame: number | null = null;
 
 const shoppingContext = reactive<{
   budgetMin?: number;
@@ -569,6 +683,11 @@ const contextDrawerSize = computed(() =>
 );
 const hasOlderMessages = computed(
   () => messages.value.length < messageTotal.value
+);
+const currentTypingSpeedOption = computed(
+  () =>
+    typingSpeedOptions.find((option) => option.value === typingSpeed.value) ||
+    typingSpeedOptions[1]
 );
 
 const handleResize = () => {
@@ -633,15 +752,152 @@ const formatMessageTime = (value?: string) => {
   }).format(date);
 };
 
-const scrollToBottom = async () => {
-  await nextTick();
+const scrollStageToBottom = () => {
   const messageStage = messageListRef.value;
   if (!messageStage) return;
-  messageStage.scrollTo({
-    top: messageStage.scrollHeight,
-    behavior: "smooth"
-  });
+  messageStage.scrollTop = messageStage.scrollHeight;
 };
+
+const scrollToBottom = async () => {
+  shouldFollowOutput.value = true;
+  await nextTick();
+  scrollStageToBottom();
+};
+
+const handleMessageStageScroll = () => {
+  const messageStage = messageListRef.value;
+  if (!messageStage) return;
+  const distanceFromBottom =
+    messageStage.scrollHeight -
+    messageStage.scrollTop -
+    messageStage.clientHeight;
+  shouldFollowOutput.value = distanceFromBottom <= 96;
+};
+
+const refreshMessageResizeTargets = async () => {
+  await nextTick();
+  const messageStage = messageListRef.value;
+  if (!messageStage || typeof ResizeObserver === "undefined") return;
+
+  if (!messageResizeObserver) {
+    messageResizeObserver = new ResizeObserver(() => {
+      if (!shouldFollowOutput.value || resizeFollowFrame != null) return;
+      resizeFollowFrame = window.requestAnimationFrame(() => {
+        resizeFollowFrame = null;
+        scrollStageToBottom();
+      });
+    });
+  }
+
+  messageResizeObserver.disconnect();
+  messageStage
+    .querySelectorAll(
+      ".chat-message, .welcome-card, .stage-loading, .history-load-state"
+    )
+    .forEach((element) => messageResizeObserver?.observe(element));
+};
+
+const splitGraphemes = (content: string): string[] => {
+  const Segmenter = (Intl as any).Segmenter;
+  if (!Segmenter) return Array.from(content);
+  const segmenter = new Segmenter("zh-CN", { granularity: "grapheme" });
+  return Array.from(
+    segmenter.segment(content),
+    (entry: { segment: string }) => entry.segment
+  );
+};
+
+const isMessageTyping = (messageId: string) =>
+  typingMessageId.value === messageId;
+
+const getDisplayedContent = (message: AiMessageVO) =>
+  Object.prototype.hasOwnProperty.call(typingBuffers, message.id)
+    ? typingBuffers[message.id]
+    : message.content;
+
+const finishActiveTyping = () => {
+  if (typingAnimationFrame != null) {
+    window.cancelAnimationFrame(typingAnimationFrame);
+    typingAnimationFrame = null;
+  }
+  const messageId = typingMessageId.value;
+  if (messageId) delete typingBuffers[messageId];
+  typingMessageId.value = null;
+  if (shouldFollowOutput.value) {
+    window.requestAnimationFrame(scrollStageToBottom);
+  }
+};
+
+const setTypingSpeed = (value: TypingSpeed) => {
+  typingSpeed.value = value;
+  localStorage.setItem(TYPING_SPEED_STORAGE_KEY, value);
+  if (value === "instant") finishActiveTyping();
+};
+
+const startTypingMessage = (message: AiMessageVO) => {
+  finishActiveTyping();
+  if (
+    message.role !== "ASSISTANT" ||
+    message.status !== "SUCCESS" ||
+    !message.content ||
+    !Number.isFinite(currentTypingSpeedOption.value.charactersPerSecond)
+  ) {
+    return;
+  }
+
+  const units = splitGraphemes(message.content);
+  if (units.length <= 1) return;
+
+  typingBuffers[message.id] = "";
+  typingMessageId.value = message.id;
+  shouldFollowOutput.value = true;
+
+  let index = 0;
+  let characterBudget = 0;
+  let previousTime = performance.now();
+  let previousPaint = previousTime;
+
+  const renderFrame = (currentTime: number) => {
+    if (typingMessageId.value !== message.id) return;
+    const charactersPerSecond =
+      currentTypingSpeedOption.value.charactersPerSecond;
+    if (!Number.isFinite(charactersPerSecond)) {
+      finishActiveTyping();
+      return;
+    }
+
+    characterBudget +=
+      ((currentTime - previousTime) * charactersPerSecond) / 1000;
+    previousTime = currentTime;
+
+    if (currentTime - previousPaint >= 30) {
+      const revealCount = Math.floor(characterBudget);
+      if (revealCount > 0) {
+        const nextIndex = Math.min(units.length, index + revealCount);
+        typingBuffers[message.id] += units.slice(index, nextIndex).join("");
+        index = nextIndex;
+        characterBudget -= revealCount;
+      }
+      previousPaint = currentTime;
+    }
+
+    if (index >= units.length) {
+      finishActiveTyping();
+      return;
+    }
+    typingAnimationFrame = window.requestAnimationFrame(renderFrame);
+  };
+
+  typingAnimationFrame = window.requestAnimationFrame(renderFrame);
+};
+
+watch(
+  () => messages.value.map((message) => message.id).join("|"),
+  () => {
+    void refreshMessageResizeTargets();
+  },
+  { flush: "post" }
+);
 
 const handleMessageStageKeydown = (event: KeyboardEvent) => {
   if (event.currentTarget !== event.target || !messageListRef.value) return;
@@ -775,6 +1031,7 @@ const reloadMessages = async () => {
 };
 
 const startNewChat = () => {
+  finishActiveTyping();
   activeConversationId.value = null;
   messages.value = [];
   messagePage.value = 1;
@@ -786,6 +1043,7 @@ const startNewChat = () => {
 };
 
 const selectConversation = async (item: AiConversationVO) => {
+  finishActiveTyping();
   activeConversationId.value = item.id;
   messagePage.value = 1;
   messageTotal.value = 0;
@@ -878,6 +1136,7 @@ const applyServerResponse = async (data: AiChatVO, localIds: string[]) => {
   normalizeContext(data.conversation.shoppingContext || getShoppingContext());
   agentUnavailable.value = false;
   conversationLoadFailed.value = false;
+  startTypingMessage(data.assistantMessage);
   await scrollToBottom();
 };
 
@@ -887,6 +1146,7 @@ const submitContent = async (
     appendUser: true
   }
 ) => {
+  finishActiveTyping();
   const localIds: string[] = [];
   if (options.failedMessageId) {
     messages.value = messages.value.filter(
@@ -978,6 +1238,13 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  finishActiveTyping();
+  messageResizeObserver?.disconnect();
+  messageResizeObserver = null;
+  if (resizeFollowFrame != null) {
+    window.cancelAnimationFrame(resizeFollowFrame);
+    resizeFollowFrame = null;
+  }
   layoutSettingStore.focusMode = false;
   window.removeEventListener("resize", handleResize);
 });
@@ -1245,8 +1512,10 @@ button {
 }
 
 .chat-workspace {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  max-height: 100%;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -1277,6 +1546,24 @@ button {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+.typing-speed-trigger {
+  min-width: 34px;
+  height: 32px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--market-muted);
+  font-family: var(--market-font-display);
+  font-size: 11px;
+  font-weight: 800;
+  background: transparent;
+  cursor: pointer;
+}
+.typing-speed-trigger:hover,
+.typing-speed-trigger:focus-visible {
+  border-bottom-color: var(--market-orange);
+  color: var(--market-green);
 }
 .chat-title strong {
   display: block;
@@ -1381,7 +1668,7 @@ button {
 }
 
 .message-stage {
-  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
   min-width: 0;
   overflow-x: hidden;
@@ -1390,6 +1677,7 @@ button {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
+  contain: size layout;
   outline: none;
 }
 .message-stage:focus-visible {
@@ -1654,6 +1942,22 @@ button {
   overflow: visible;
   padding: 0;
   background: transparent;
+}
+
+.markdown-answer.typing {
+  position: relative;
+  padding-bottom: 9px;
+}
+
+.typing-caret {
+  position: absolute;
+  right: 3px;
+  bottom: 0;
+  width: 7px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--market-ticket-pink);
+  animation: typing-blink 0.75s steps(1, end) infinite;
 }
 
 .markdown-answer :deep(.md-editor-preview) {
@@ -1922,7 +2226,8 @@ button {
 }
 
 .composer-dock {
-  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
   min-width: 0;
   padding: 11px clamp(20px, 4vw, 64px) max(16px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--market-line);
@@ -2066,6 +2371,59 @@ button {
   display: none;
 }
 
+:global(.typing-speed-popover.el-popper) {
+  padding: 10px;
+  border-color: var(--market-line);
+  border-radius: 9px;
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow);
+}
+
+:global(.typing-speed-menu) {
+  display: grid;
+  gap: 4px;
+}
+
+:global(.typing-speed-menu > span) {
+  padding: 3px 7px 7px;
+  color: var(--market-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+:global(.typing-speed-menu button) {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--market-ink);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+:global(.typing-speed-menu button:hover) {
+  background: var(--market-soft-bg);
+}
+
+:global(.typing-speed-menu button.active) {
+  color: var(--market-green);
+  background: var(--market-note-green-bg);
+}
+
+:global(.typing-speed-menu strong) {
+  font-size: 12px;
+}
+
+:global(.typing-speed-menu small) {
+  color: var(--market-muted);
+  font-size: 11px;
+}
+
 @keyframes bounce {
   0%,
   80%,
@@ -2079,6 +2437,17 @@ button {
   }
 }
 
+@keyframes typing-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2086,6 +2455,45 @@ button {
     scroll-behavior: auto !important;
     transition: none !important;
     animation: none !important;
+  }
+}
+
+@media (max-height: 720px) {
+  .chat-toolbar {
+    min-height: 64px;
+    padding: 8px 18px;
+  }
+
+  .message-stage {
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .welcome-card {
+    margin-top: 0;
+    padding: 24px 28px;
+  }
+
+  .welcome-card h2 {
+    margin-top: 8px;
+    font-size: clamp(26px, 3vw, 36px);
+  }
+
+  .welcome-card > p {
+    line-height: 1.55;
+  }
+
+  .starter-grid {
+    margin-top: 16px;
+  }
+
+  .starter-card {
+    padding: 14px 16px;
+  }
+
+  .composer-dock {
+    padding-top: 8px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
 }
 
@@ -2267,6 +2675,14 @@ button {
   .composer-dock {
     padding-top: 6px;
     padding-bottom: max(7px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 901px) {
+  .composer-dock {
+    // Windows 任务栏可能覆盖浏览器仍计入可视高度的底部区域。
+    // 独立预留桌面避让区，确保输入框操作行始终位于系统覆盖层上方。
+    padding-bottom: max(64px, env(safe-area-inset-bottom));
   }
 }
 </style>

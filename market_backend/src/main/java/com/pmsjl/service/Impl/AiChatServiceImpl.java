@@ -6,6 +6,7 @@ import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.manager.AiAgentClient;
 import com.pmsjl.manager.AiAgentClientException;
+import com.pmsjl.manager.AiStructuredContentAssembler;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
@@ -67,6 +68,9 @@ public class AiChatServiceImpl implements AiChatService {
     @Autowired
     private AiAgentTraceService aiAgentTraceService;
 
+    @Autowired
+    private AiStructuredContentAssembler aiStructuredContentAssembler;
+
     /**
      * 先在短事务中写入会话、USER 和 PENDING ASSISTANT 消息；事务提交后才调用 Python。
      * 网络请求完成后，再使用另一段短事务把同一条 ASSISTANT 消息更新成 SUCCESS 或 FAILED。
@@ -123,9 +127,11 @@ public class AiChatServiceImpl implements AiChatService {
     private AiChatVO persistAgentSuccess(PendingChat pendingChat, AgentRunResponse agentRunResponse) {
         return transactionTemplate.execute(status -> {
             Date now = new Date();
+            AiStructuredContentVO structuredContent = aiStructuredContentAssembler.assemble(
+                    agentRunResponse.getOutput());
             AiMessage assistantMessage = pendingChat.assistantMessage();
             assistantMessage.setContent(agentRunResponse.getAnswer().trim());
-            assistantMessage.setStructuredContent(serializeObject(agentRunResponse.getOutput(), "AI 结构化结果"));
+            assistantMessage.setStructuredContent(serializeObject(structuredContent, "AI 结构化结果"));
             assistantMessage.setModelName(agentRunResponse.getModel() == null ? null : agentRunResponse.getModel().getName());
             assistantMessage.setInputTokens(agentRunResponse.getUsage() == null ? null : agentRunResponse.getUsage().getInputTokens());
             assistantMessage.setOutputTokens(agentRunResponse.getUsage() == null ? null : agentRunResponse.getUsage().getOutputTokens());
@@ -145,12 +151,10 @@ public class AiChatServiceImpl implements AiChatService {
             );
 
             AiConversation conversation = pendingChat.conversation();
+            conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
             conversation.setLastMessageTime(now);
             conversation.setUpdateTime(now);
-            if (agentRunResponse.getOutput() != null) {
-                conversation.setMemorySummary(agentRunResponse.getOutput().getSummary());
-            }
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
             return buildChatVO(pendingChat.requestId(), conversation, pendingChat.shoppingContext(),

@@ -31,15 +31,14 @@ class OpenAIResponsesClient:
     def __init__(
         self,
         settings: Settings,
-        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.settings = settings
-        self.transport = transport
 
     async def create_response(
         self,
         input_items: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        text_format: dict[str, Any],
     ) -> dict[str, Any]:
         payload = {
             "model": self.settings.openai_model,
@@ -51,6 +50,8 @@ class OpenAIResponsesClient:
             },
             "text": {
                 "verbosity": self.settings.openai_text_verbosity,
+                "format": text_format,
+                #利用json schema实现结构化输出
             },
             "store": False,
             # OpenAI 官方默认非流式，但部分兼容中转在省略时会返回 SSE。
@@ -60,9 +61,7 @@ class OpenAIResponsesClient:
 
         try:
             async with httpx.AsyncClient(
-                    timeout=self.settings.openai_timeout_seconds,
-                    transport=self.transport,
-            ) as client:
+                    timeout=self.settings.openai_timeout_seconds, ) as client:
                 response = await client.post(
                     f"{self.settings.openai_base_url.rstrip('/')}/responses",
                     headers={

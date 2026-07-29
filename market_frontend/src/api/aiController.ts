@@ -32,13 +32,6 @@ export interface AiRecommendationVO {
   riskTip?: string;
 }
 
-export interface AiSuggestedActionVO {
-  type: "VIEW_COMMODITY" | "SEARCH_COMMODITY";
-  label: string;
-  commodityId?: string;
-  keyword?: string;
-}
-
 export interface AiRagSourceVO {
   sourceType: "COMMODITY" | "POST" | "COMMENT" | "NOTICE" | "GUIDE";
   sourceId: string;
@@ -54,7 +47,6 @@ export interface AiStructuredContentVO {
   purchaseAdvice?: string[];
   warnings?: string[];
   searchKeywords?: string[];
-  suggestedActions?: AiSuggestedActionVO[];
   sources?: AiRagSourceVO[];
 }
 

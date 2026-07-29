@@ -13,6 +13,7 @@ import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.manager.AiAgentClient;
 import com.pmsjl.manager.AiAgentClientException;
+import com.pmsjl.manager.AiStructuredContentAssembler;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
@@ -57,6 +58,7 @@ import static com.pmsjl.constant.AiChatConstant.FAILED_MESSAGE;
 @Slf4j
 public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage> implements AiMessageService {
     private static final int MAX_MESSAGE_PAGE_SIZE = 50;
+    private static final int RECENT_HISTORY_TURN_LIMIT = 5;
     private static final Set<String> ALLOWED_MESSAGE_SORT_FIELDS = Set.of("sequenceNo");
 
     @Autowired
@@ -75,6 +77,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     private AiAgentClient aiAgentClient;
     @Autowired
     private AiAgentTraceService aiAgentTraceService;
+    @Autowired
+    private AiStructuredContentAssembler aiStructuredContentAssembler;
     @Autowired
     private AiAgentProperties aiAgentProperties;
 
@@ -181,22 +185,22 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
             //3.为了给agentRequest添加history信息，同时不被锁释放后的其他消息影响，
             // 所以我们获得的history最好利用锁获取真实的历史消息
-            List<AiMessage> historyMessageList = this.lambdaQuery().
-                    eq(AiMessage::getConversationId, conversationId).
-                    eq(AiMessage::getStatus, AiMessageStatusEnum.SUCCESS.getValue()).
-                    orderByDesc(AiMessage::getSequenceNo).
-                    last("LIMIT 10").
-                    list();
-            List<AgentHistoryMessage> agentHistoryMessages = historyMessageList.stream().
-                    sorted(Comparator.comparing(AiMessage::getSequenceNo)).
-                    map(message -> {
-                        String historyContent = message.getContent();
-                        String role = message.getRole();
+            List<AgentHistoryMessage> agentHistoryMessages = baseMapper
+                    .selectRecentSuccessfulHistory(
+                            conversationId,
+                            RECENT_HISTORY_TURN_LIMIT
+                    )
+                    .stream()
+                    .map(message -> {
                         AgentHistoryMessage historyMessage = new AgentHistoryMessage();
-                        historyMessage.setContent(historyContent);
-                        historyMessage.setRole(AiMessageRoleEnum.fromValue(role));
+                        historyMessage.setRole(
+                                AiMessageRoleEnum.fromValue(message.getRole())
+                        );
+                        historyMessage.setContent(message.getContent());
                         return historyMessage;
-                    }).toList();
+                    })
+                    .toList();
+
             return this.addPendingMessage(loginUser, content, aiShoppingContext, requestId, conversationId, conversation, agentHistoryMessages);
         });
         ThrowUtils.throwIf(pendingMessage == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
@@ -336,9 +340,11 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     "Conversation does not exist");
 
             Date now = new Date();
+            AiStructuredContentVO structuredContent = aiStructuredContentAssembler.assemble(
+                    agentRunResponse.getOutput());
             AiMessage assistantMessage = pendingMessage.assistantMessage();
             assistantMessage.setContent(agentRunResponse.getAnswer().trim());
-            assistantMessage.setStructuredContent(serializeObject(agentRunResponse.getOutput(), "AI 结构化结果"));
+            assistantMessage.setStructuredContent(serializeObject(structuredContent, "AI 结构化结果"));
             assistantMessage.setModelName(agentRunResponse.getModel() == null ? null : agentRunResponse.getModel().getName());
             assistantMessage.setInputTokens(agentRunResponse.getUsage() == null ? null : agentRunResponse.getUsage().getInputTokens());
             assistantMessage.setOutputTokens(agentRunResponse.getUsage() == null ? null : agentRunResponse.getUsage().getOutputTokens());
@@ -357,12 +363,10 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     agentRunResponse.getTraces()
             );
 
+            conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
             conversation.setLastMessageTime(now);
             conversation.setUpdateTime(now);
-            if (agentRunResponse.getOutput() != null) {
-                conversation.setMemorySummary(agentRunResponse.getOutput().getSummary());
-            }
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
             return buildChatVO(pendingMessage.requestId(), conversation, pendingMessage.shoppingContext(),

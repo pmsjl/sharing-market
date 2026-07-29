@@ -12,6 +12,8 @@ import java.util.List;
 public class AgentOutput implements Serializable {
     /** Agent 判断出的本轮用户意图。 */
     private AiIntentEnum intent;
+    /** 截至本轮仍对后续对话有用的滚动语义摘要。 */
+    private String memorySummary;
 
     /** 对本轮结论的简短结构化摘要。 */
     private String summary;
@@ -27,9 +29,6 @@ public class AgentOutput implements Serializable {
 
     /** 可用于继续检索平台商品的关键词。 */
     private List<String> searchKeywords = new ArrayList<>();
-
-    /** 前端可安全展示和执行的后续操作建议。 */
-    private List<AgentSuggestedAction> suggestedActions = new ArrayList<>();
 
     /** RAG 检索命中的来源候选，返回用户前仍需 Java 校验。 */
     private List<AgentSource> sources = new ArrayList<>();

@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pmsjl.mapper.AiMessageMapper">
+
+    <select id="selectStalePendingMessages" resultType="com.pmsjl.model.entity.AiMessage">
+
+        SELECT m.id, m.conversationId
+        FROM ai_message m
+                 INNER JOIN ai_conversation c
+                            ON c.id = m.conversationId
+                                AND c.isDelete = 0
+        WHERE m.role = 'ASSISTANT'
+          AND m.status = 'PENDING'
+          AND m.isDelete = 0
+          AND m.createTime &lt; #{expireBefore}
+        ORDER BY m.createTime ASC, m.id ASC
+            LIMIT #{batchSize}
+
+    </select>
+
     <update id="markPendingMessageTimedOut">
 
         UPDATE ai_message
@@ -17,19 +34,39 @@
 
     </update>
 
-    <select id="selectStalePendingMessages" resultType="com.pmsjl.model.entity.AiMessage">
 
-        SELECT m.id, m.conversationId
-        FROM ai_message m
-        INNER JOIN ai_conversation c
-        ON c.id = m.conversationId
-        AND c.isDelete = 0
-        WHERE m.role = 'ASSISTANT'
-        AND m.status = 'PENDING'
-        AND m.isDelete = 0
-        AND m.createTime &lt; #{expireBefore}
-        ORDER BY m.createTime ASC, m.id ASC
-        LIMIT #{batchSize}
+    <select id="selectRecentSuccessfulHistory"
+            resultType="com.pmsjl.model.entity.AiMessage">
+
+        SELECT historyMessage.role,historyMessage.content
+        FROM ai_message historyMessage
+                 INNER JOIN (SELECT assistantMessage.requestId,
+                                    assistantMessage.sequenceNo AS assistantSequenceNo
+                             FROM ai_message assistantMessage
+                                      INNER JOIN ai_message userMessage
+                                                 ON userMessage.conversationId = assistantMessage.conversationId
+                                                     AND userMessage.requestId = assistantMessage.requestId
+                                                     AND userMessage.sequenceNo = assistantMessage.sequenceNo - 1
+                                                     AND userMessage.role = 'USER'
+                                                     AND userMessage.status = 'SUCCESS'
+                                                     AND userMessage.isDelete = 0
+                             WHERE assistantMessage.conversationId = #{conversationId}
+                               AND assistantMessage.role = 'ASSISTANT'
+                               AND assistantMessage.status = 'SUCCESS'
+                               AND assistantMessage.isDelete = 0
+                             ORDER BY assistantMessage.sequenceNo DESC
+                                 LIMIT #{turnLimit}) recentTurn
+                            ON recentTurn.requestId = historyMessage.requestId
+                                AND historyMessage.sequenceNo IN (
+                                                                  recentTurn.assistantSequenceNo - 1,
+                                                                  recentTurn.assistantSequenceNo
+                                    )
+        WHERE historyMessage.conversationId = #{conversationId}
+          AND historyMessage.role IN ('USER', 'ASSISTANT')
+          AND historyMessage.status = 'SUCCESS'
+          AND historyMessage.isDelete = 0
+        ORDER BY historyMessage.sequenceNo ASC
 
     </select>
+
 </mapper>
