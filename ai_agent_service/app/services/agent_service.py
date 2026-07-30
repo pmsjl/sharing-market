@@ -24,9 +24,15 @@ from app.models.agent import (
     AgentFinalResult,
     AgentOutput,
 )
-from app.models.tools import CommoditySearchArguments
+from app.models.tools import (
+    CommoditySearchArguments,
+    PreferenceToolArguments,
+)
 from app.prompts.shopping_guide import build_messages
-from app.tools.definitions import SEARCH_COMMODITIES_TOOL
+from app.tools.definitions import (
+    GET_MY_PREFERENCE_SIGNALS_TOOL,
+    SEARCH_COMMODITIES_TOOL,
+)
 
 
 class AgentServiceError(Exception):
@@ -98,7 +104,10 @@ class AgentService:
             try:
                 response_data = await self.openai_client.create_response(
                     input_items=input_items,
-                    tools=[SEARCH_COMMODITIES_TOOL],
+                    tools=[
+                        SEARCH_COMMODITIES_TOOL,
+                        GET_MY_PREFERENCE_SIGNALS_TOOL,
+                    ],
                     text_format=AGENT_FINAL_RESULT_TEXT_FORMAT,
                 )
             except OpenAIResponsesClientError as exception:
@@ -149,6 +158,7 @@ class AgentService:
                 tool_message, trace, returned_ids = (await
                                                      self._execute_tool_calls(
                                                          request_id,
+                                                         request.userId,
                                                          tool_call,
                                                      ))
                 input_items.append(tool_message)
@@ -183,6 +193,7 @@ class AgentService:
     async def _execute_tool_calls(
         self,
         request_id: str,
+        user_id: int,
         tool_call: dict,
     ) -> tuple[dict, AgentToolTrace, set[str]]:
         call_id = tool_call.get("call_id")
@@ -204,13 +215,6 @@ class AgentService:
                 "模型返回的工具名称格式异常",
                 True,
             )
-        if tool_name != SEARCH_COMMODITIES_TOOL["name"]:
-            raise AgentServiceError(
-                502,
-                "AI_TOOL_NOT_SUPPORTED",
-                f"模型请求了不支持的工具：{tool_name}",
-                False,
-            )
         if not isinstance(raw_arguments, str):
             raise AgentServiceError(
                 502,
@@ -219,6 +223,37 @@ class AgentService:
                 False,
             )
 
+        if tool_name == SEARCH_COMMODITIES_TOOL["name"]:
+            return await self._execute_search_commodities(
+                request_id=request_id,
+                call_id=call_id,
+                tool_name=tool_name,
+                raw_arguments=raw_arguments,
+            )
+
+        if tool_name == GET_MY_PREFERENCE_SIGNALS_TOOL["name"]:
+            return await self._execute_preference_signals(
+                request_id=request_id,
+                user_id=user_id,
+                call_id=call_id,
+                tool_name=tool_name,
+                raw_arguments=raw_arguments,
+            )
+
+        raise AgentServiceError(
+            502,
+            "AI_TOOL_NOT_SUPPORTED",
+            f"模型请求了不支持的工具：{tool_name}",
+            False,
+        )
+
+    async def _execute_search_commodities(
+        self,
+        request_id: str,
+        call_id: str,
+        tool_name: str,
+        raw_arguments: str,
+    ) -> tuple[dict, AgentToolTrace, set[str]]:
         try:
             arguments_data = json.loads(raw_arguments)
             arguments = CommoditySearchArguments.model_validate(arguments_data)
@@ -263,6 +298,68 @@ class AgentService:
             latencyMs=tool_latency_ms,
         )
         return tool_message, trace, returned_commodity_ids
+
+    async def _execute_preference_signals(
+        self,
+        request_id: str,
+        user_id: int,
+        call_id: str,
+        tool_name: str,
+        raw_arguments: str,
+    ) -> tuple[dict, AgentToolTrace, set[str]]:
+        try:
+            arguments_data = json.loads(raw_arguments)
+            arguments = PreferenceToolArguments.model_validate(arguments_data)
+        except (json.JSONDecodeError, ValidationError, TypeError) as exception:
+            raise AgentServiceError(
+                502,
+                "AI_TOOL_ARGUMENTS_INVALID",
+                "模型生成的用户偏好工具参数不合法",
+                True,
+            ) from exception
+
+        tool_started_at = time.perf_counter()
+        try:
+            result = (
+                await self.java_backend_client.get_my_preference_signals(
+                    request_id=request_id,
+                    user_id=user_id,
+                )
+            )
+        except JavaBackendClientError as exception:
+            raise AgentServiceError(
+                503 if exception.retryable else 502,
+                exception.agent_error_key,
+                exception.message,
+                exception.retryable,
+            ) from exception
+
+        tool_latency_ms = int(
+            (time.perf_counter() - tool_started_at) * 1000
+        )
+        tool_message = {
+            "type": "function_call_output",
+            "call_id": call_id,
+            "output": result.model_dump_json(),
+        }
+        trace = AgentToolTrace(
+            toolName=tool_name,
+            toolArguments=arguments.model_dump(mode="json"),
+            toolResultSummary={
+                "behaviorStats": result.behaviorStats.model_dump(mode="json"),
+                "preferredCategoryCount": len(result.preferredCategories),
+                "representativeInteractionCount": len(
+                    result.representativeInteractions
+                ),
+                "confidence": result.confidence.value,
+                "coldStart": result.coldStart,
+            },
+            status="SUCCESS",
+            latencyMs=tool_latency_ms,
+        )
+
+        # 历史交互商品只用于理解偏好，不能成为本轮推荐事实来源。
+        return tool_message, trace, set()
 
     @staticmethod
     def _extract_output_items(response_data: dict) -> list[dict[str, Any]]:
