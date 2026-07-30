@@ -183,9 +183,24 @@ pnpm-debug.log*
 ### Python ###
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
 
 ### Claude Code ###
 .claude/
+
+### 本地项目文档 ###
+# 设计/接口草案会随本地实现频繁变化，不作为仓库交付物。
+/AI_AGENT_API.md
+/AI_AGENT_REPRODUCTION_GUIDE.md
+/docs/UI_REDESIGN_PLAN.md
+/docs/UI_REDESIGN_PROGRESS.md
 
 ### 操作系统 ###
 # macOS
@@ -211,6 +226,10 @@ $RECYCLE.BIN/
 application-prod.yml
 application-local.yml
 application-secret.yml
+
+# 本机运行配置可能包含数据库、Redis、OSS 等真实凭据。
+# 仓库仅保留 application.example.yml。
+/market_backend/src/main/resources/application.yml
 
 # 证书与密钥
 *.pem
