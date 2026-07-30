@@ -6,21 +6,26 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.config.AiAgentProperties;
+import com.pmsjl.exception.AiInternalToolException;
+import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.internal.AiCommoditySearchItem;
 import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityType;
 import com.pmsjl.model.enums.AiCommoditySortEnum;
+import com.pmsjl.model.enums.AiMessageRoleEnum;
 import com.pmsjl.model.vo.CommoditySearchToolResponse;
 import com.pmsjl.service.AiInternalToolService;
-import com.pmsjl.service.AiMessageService;
+import com.pmsjl.service.AiUserPreferenceService;
 import com.pmsjl.service.CommodityService;
 import com.pmsjl.service.CommodityTypeService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -35,17 +40,18 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
     @Autowired
     AiAgentProperties aiAgentProperties;
     @Autowired
-    AiMessageService aiMessageService;
+    AiMessageMapper aiMessageMapper;
     @Autowired
     CommodityService commodityService;
     @Autowired
     CommodityTypeService commodityTypeService;
+    @Autowired
+    AiUserPreferenceService aiUserPreferenceService;
 
     @Override
     public CommoditySearchToolResponse searchCommodities(CommoditySearchToolRequest commoditySearchToolRequest, HttpServletRequest request) {
-        String interToken = request.getHeader("X-Internal-Token");
         String requestId = request.getHeader("X-Request-Id");
-        validateHeader(request);
+        validateInternalRequest(request);
         List<Long> categoryIds = commoditySearchToolRequest.getCategoryIds();
         List<Long> excludeCommodityIds = commoditySearchToolRequest.getExcludeCommodityIds();
         List<String> degrees = commoditySearchToolRequest.getDegrees();
@@ -141,6 +147,36 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
 
     }
 
+    @Override
+    public UserPreferenceToolResponse getMyPreferenceSignals(
+            Long userId,
+            HttpServletRequest request
+    ) {
+        if (userId == null || userId <= 0) {
+            throw new AiInternalToolException(
+                    HttpStatus.BAD_REQUEST,
+                    "AI_JAVA_TOOL_ARGUMENTS_INVALID",
+                    "userId 不合法",
+                    false
+            );
+        }
+
+        AiMessage requestMessage = validateInternalRequest(request);
+        if (!userId.equals(requestMessage.getUserId())) {
+            throw new AiInternalToolException(
+                    HttpStatus.FORBIDDEN,
+                    "AI_JAVA_TOOL_UNAUTHORIZED",
+                    "requestId 不属于当前用户",
+                    false
+            );
+        }
+
+        return aiUserPreferenceService.buildPreferenceProfile(
+                request.getHeader("X-Request-Id"),
+                userId
+        );
+    }
+
     private List<AiCommoditySearchItem> buildAiCommoditySearchItems(List<Commodity> records) {
         Set<Long> commodityTypeIds = records.stream()
                 .map(Commodity::getCommodityTypeId)
@@ -218,11 +254,46 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
         }
     }
 
-    private void validateHeader(HttpServletRequest request) {
-        String interToken = request.getHeader("X-Internal-Token");
+    private AiMessage validateInternalRequest(HttpServletRequest request) {
+        String internalToken = request.getHeader("X-Internal-Token");
         String requestId = request.getHeader("X-Request-Id");
-        ThrowUtils.throwIf(!aiAgentProperties.getInternalToken().equals(interToken), ErrorCode.PARAMS_ERROR, "内部token不一致");
-        boolean result = aiMessageService.lambdaQuery().eq(AiMessage::getRequestId, requestId).exists();
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "对话不存在");
+
+        if (aiAgentProperties.getInternalToken() == null
+                || !aiAgentProperties.getInternalToken()
+                .equals(internalToken)) {
+            throw new AiInternalToolException(
+                    HttpStatus.UNAUTHORIZED,
+                    "AI_JAVA_TOOL_UNAUTHORIZED",
+                    "内部 Token 校验失败",
+                    false
+            );
+        }
+        if (StringUtils.isBlank(requestId)) {
+            throw new AiInternalToolException(
+                    HttpStatus.BAD_REQUEST,
+                    "AI_JAVA_TOOL_ARGUMENTS_INVALID",
+                    "X-Request-Id 不能为空",
+                    false
+            );
+        }
+
+        AiMessage requestMessage = aiMessageMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<AiMessage>lambdaQuery()
+                .eq(AiMessage::getRequestId, requestId)
+                .eq(
+                        AiMessage::getRole,
+                        AiMessageRoleEnum.USER.getValue()
+                )
+        );
+        if (requestMessage == null) {
+            throw new AiInternalToolException(
+                    HttpStatus.FORBIDDEN,
+                    "AI_JAVA_TOOL_UNAUTHORIZED",
+                    "requestId 不属于有效 Agent 请求",
+                    false
+            );
+        }
+        return requestMessage;
     }
 }

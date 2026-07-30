@@ -15,9 +15,12 @@ SEARCH_COMMODITIES_TOOL = {
                 "maxItems": 5,
                 "description": (
                     "商品名称或描述的独立候选搜索词，最多5项。"
+                    "优先填写用户表达过的宽泛核心品类、主题或型号；"
+                    "不要用模型自行联想到的品牌、书名或具体商品替代用户的宽泛词。"
                     "每项只填写一个核心词或一个完整商品短语，"
                     "不同元素之间按OR匹配；"
                     "不要把多个候选词用空格连接在同一个元素中。"
+                    "若具体词无结果，后续调用应删除非必要修饰并退回最短核心词。"
                 ),
             },
             "categoryIds": {
@@ -89,20 +92,20 @@ SEARCH_COMMODITIES_TOOL = {
 }
 
 
-GET_COMMODITY_DETAIL = {
-    "type": "function",
-    "name": "get_commodity_detail",
-    "description": "",
+GET_MY_PREFERENCE_SIGNALS_TOOL = {
+    "type":
+    "function",
+    "name":
+    "get_my_preference_signals",
+    "description": ("获取当前用户由有效收藏和已支付购买记录生成的"
+                    "脱敏行为画像，包括代表性商品、分类、价格和成色偏好。"
+                    "仅在用户要求个性化推荐，或需求过于宽泛时调用。"),
     "parameters": {
         "type": "object",
-        "properties": {
-            "commodityId": {
-                "type": "string",
-                "description": "",
-            },
-        },
-        "required": ["commodityId"],
+        "properties": {},
+        "required": [],
         "additionalProperties": False,
     },
-    "strict": False,
+    "strict":
+    True,
 }

@@ -7,6 +7,10 @@ import httpx
 from pydantic import ValidationError
 
 from app.api import health as health_module
+from app.clients.java_backend import (
+    JavaBackendClient,
+    JavaBackendClientError,
+)
 from app.clients.openai_responses import (
     OpenAIResponsesClient,
     OpenAIResponsesClientError,
@@ -16,6 +20,7 @@ from app.models.agent import (
     AGENT_FINAL_RESULT_TEXT_FORMAT,
     AgentRunRequest,
 )
+from app.models.tools import UserPreferenceToolResponse
 from app.prompts.shopping_guide import build_messages
 from app.services.agent_service import AgentService, AgentServiceError
 
@@ -35,6 +40,25 @@ def make_settings(**overrides) -> Settings:
     }
     values.update(overrides)
     return Settings(**values)
+
+
+def cold_start_preference_payload(request_id="request-1"):
+    return {
+        "requestId": request_id,
+        "behaviorStats": {
+            "distinctPurchaseCount": 0,
+            "distinctFavoriteCount": 0,
+            "distinctCategoryCount": 0,
+        },
+        "preferredCategories": [],
+        "representativeInteractions": [],
+        "purchasePriceProfile": None,
+        "favoriteCurrentPriceProfile": None,
+        "preferredDegrees": [],
+        "recentCommodityIds": [],
+        "confidence": "NONE",
+        "coldStart": True,
+    }
 
 
 async def create_response_with_handler(
@@ -71,6 +95,106 @@ class StubOpenAIClient:
         return self.responses.pop(0)
 
 
+class JavaBackendClientTests(unittest.IsolatedAsyncioTestCase):
+
+    async def test_preference_request_uses_get_path_and_internal_headers(self):
+        captured_request = None
+
+        def handler(request):
+            nonlocal captured_request
+            captured_request = request
+            return httpx.Response(
+                200,
+                json=cold_start_preference_payload(),
+            )
+
+        async_client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+        )
+        with patch(
+            "app.clients.java_backend.httpx.AsyncClient",
+            return_value=async_client,
+        ):
+            result = await JavaBackendClient(
+                make_settings()
+            ).get_my_preference_signals(
+                request_id="request-1",
+                user_id=7,
+            )
+
+        self.assertEqual(
+            captured_request.method,
+            "GET",
+        )
+        self.assertEqual(
+            str(captured_request.url),
+            (
+                "http://127.0.0.1:8102/api/internal/ai/tools/"
+                "users/7/preference-signals"
+            ),
+        )
+        self.assertEqual(
+            captured_request.headers["X-Internal-Token"],
+            "internal-token",
+        )
+        self.assertEqual(
+            captured_request.headers["X-Request-Id"],
+            "request-1",
+        )
+        self.assertTrue(result.coldStart)
+
+    async def test_preference_request_maps_forbidden_to_non_retryable(self):
+        async_client = httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(403)
+            ),
+        )
+        with patch(
+            "app.clients.java_backend.httpx.AsyncClient",
+            return_value=async_client,
+        ):
+            with self.assertRaises(JavaBackendClientError) as error:
+                await JavaBackendClient(
+                    make_settings()
+                ).get_my_preference_signals(
+                    request_id="request-1",
+                    user_id=7,
+                )
+
+        self.assertEqual(
+            error.exception.agent_error_key,
+            "AI_JAVA_TOOL_UNAUTHORIZED",
+        )
+        self.assertFalse(error.exception.retryable)
+
+    async def test_preference_request_rejects_mismatched_request_id(self):
+        async_client = httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    json=cold_start_preference_payload("request-2"),
+                )
+            ),
+        )
+        with patch(
+            "app.clients.java_backend.httpx.AsyncClient",
+            return_value=async_client,
+        ):
+            with self.assertRaises(JavaBackendClientError) as error:
+                await JavaBackendClient(
+                    make_settings()
+                ).get_my_preference_signals(
+                    request_id="request-1",
+                    user_id=7,
+                )
+
+        self.assertEqual(
+            error.exception.agent_error_key,
+            "AI_JAVA_TOOL_REQUEST_ID_MISMATCH",
+        )
+        self.assertTrue(error.exception.retryable)
+
+
 class StubCommodityItem:
     def __init__(self, commodity_id):
         self.id = commodity_id
@@ -94,10 +218,59 @@ class StubToolResult:
 class StubJavaBackendClient:
     def __init__(self):
         self.calls = []
+        self.preference_calls = []
 
     async def search_commodities(self, request_id, arguments):
         self.calls.append((request_id, arguments))
         return StubToolResult()
+
+    async def get_my_preference_signals(self, request_id, user_id):
+        self.preference_calls.append((request_id, user_id))
+        return UserPreferenceToolResponse.model_validate({
+            "requestId": request_id,
+            "behaviorStats": {
+                "distinctPurchaseCount": 1,
+                "distinctFavoriteCount": 0,
+                "distinctCategoryCount": 1,
+            },
+            "preferredCategories": [{
+                "categoryId": "10",
+                "categoryName": "教材书籍",
+                "weight": 1.0,
+                "signals": ["PURCHASE"],
+                "evidence": {
+                    "paidPurchaseCount": 1,
+                    "activeFavoriteCount": 0,
+                },
+            }],
+            "representativeInteractions": [{
+                "commodityId": "9001",
+                "commodityName": "Python程序设计基础",
+                "descriptionSnippet": "适合零基础课程",
+                "categoryId": "10",
+                "categoryName": "教材书籍",
+                "degree": "九五新",
+                "signal": "PURCHASE",
+            }],
+            "purchasePriceProfile": {
+                "sampleCount": 1,
+                "minUnitPrice": "22.00",
+                "medianUnitPrice": "22.00",
+                "maxUnitPrice": "22.00",
+            },
+            "favoriteCurrentPriceProfile": None,
+            "preferredDegrees": [{
+                "degree": "九五新",
+                "weight": 1.0,
+                "evidence": {
+                    "paidPurchaseCount": 1,
+                    "activeFavoriteCount": 0,
+                },
+            }],
+            "recentCommodityIds": ["9001"],
+            "confidence": "LOW",
+            "coldStart": False,
+        })
 
 
 def structured_output_message(
@@ -477,6 +650,84 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.usage.inputTokens, 25)
         self.assertEqual(result.usage.outputTokens, 9)
 
+    async def test_preference_tool_binds_user_and_replays_profile(self):
+        function_call = {
+            "type": "function_call",
+            "call_id": "preference-call-1",
+            "name": "get_my_preference_signals",
+            "arguments": "{}",
+        }
+        openai_client = StubOpenAIClient([
+            {
+                "output": [function_call],
+                "usage": {},
+            },
+            {
+                "output": [structured_output_message()],
+                "usage": {},
+            },
+        ])
+        java_client = StubJavaBackendClient()
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=java_client,
+        )
+
+        await service.run("request-1", self.make_request())
+
+        registered_tool_names = {
+            tool["name"]
+            for tool in openai_client.calls[0]["tools"]
+        }
+        self.assertEqual(
+            registered_tool_names,
+            {"search_commodities", "get_my_preference_signals"},
+        )
+        self.assertEqual(
+            java_client.preference_calls,
+            [("request-1", 1)],
+        )
+
+        replayed_outputs = [
+            item
+            for item in openai_client.calls[1]["input_items"]
+            if item.get("type") == "function_call_output"
+        ]
+        preference_profile = json.loads(replayed_outputs[0]["output"])
+        self.assertEqual(
+            preference_profile["representativeInteractions"][0][
+                "commodityId"
+            ],
+            "9001",
+        )
+
+    async def test_preference_tool_rejects_model_supplied_user_id(self):
+        openai_client = StubOpenAIClient([{
+            "output": [{
+                "type": "function_call",
+                "call_id": "preference-call-1",
+                "name": "get_my_preference_signals",
+                "arguments": '{"userId":999}',
+            }],
+            "usage": {},
+        }])
+        java_client = StubJavaBackendClient()
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=java_client,
+        )
+
+        with self.assertRaises(AgentServiceError) as invalid_arguments:
+            await service.run("request-1", self.make_request())
+
+        self.assertEqual(
+            invalid_arguments.exception.agent_error_key,
+            "AI_TOOL_ARGUMENTS_INVALID",
+        )
+        self.assertEqual(java_client.preference_calls, [])
+
     async def test_multiple_tool_rounds_are_replayed(self):
         first_call = {
             "type": "function_call",
@@ -734,6 +985,18 @@ class ShoppingGuidePromptTests(unittest.TestCase):
         )
         self.assertIn("根据问题复杂度调整详略", messages[0]["content"])
         self.assertIn("新候选优先", messages[0]["content"])
+        self.assertIn(
+            "不要把一个宽泛需求擅自改写成更具体的品牌、书名、版本或商品全称",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "只有核心词搜索仍为空，才能回答暂无商品",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "不得根据一次过窄搜索直接断言平台没有相关商品",
+            messages[0]["content"],
+        )
         self.assertEqual(
             messages[1]["content"],
             '当前购买条件：{"budgetMax":100.0,"usageScene":"寝室",'
