@@ -20,9 +20,16 @@ from app.models.agent import (
     AGENT_FINAL_RESULT_TEXT_FORMAT,
     AgentRunRequest,
 )
-from app.models.tools import UserPreferenceToolResponse
+from app.models.tools import (
+    CommoditySearchArguments,
+    UserPreferenceToolResponse,
+)
 from app.prompts.shopping_guide import build_messages
 from app.services.agent_service import AgentService, AgentServiceError
+from app.tools.definitions import (
+    GET_MY_PREFERENCE_SIGNALS_TOOL,
+    SEARCH_COMMODITIES_TOOL,
+)
 
 
 def make_settings(**overrides) -> Settings:
@@ -273,6 +280,15 @@ class StubJavaBackendClient:
         })
 
 
+class ColdStartStubJavaBackendClient(StubJavaBackendClient):
+
+    async def get_my_preference_signals(self, request_id, user_id):
+        self.preference_calls.append((request_id, user_id))
+        return UserPreferenceToolResponse.model_validate(
+            cold_start_preference_payload(request_id)
+        )
+
+
 def structured_output_message(
     answer="可以先确认预算和主要用途。",
     commodity_ids=None,
@@ -455,7 +471,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             "type": "function_call",
             "call_id": "call_test",
             "name": "search_commodities",
-            "arguments": '{"keywords":["手机"]}',
+            "arguments": '{"keywords":["手机"],"limit":20}',
             "status": "completed",
         }
         sse_body = "\n".join([
@@ -728,18 +744,105 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(java_client.preference_calls, [])
 
+    async def test_preference_history_id_cannot_be_recommended_without_search(
+        self,
+    ):
+        openai_client = StubOpenAIClient([
+            {
+                "output": [{
+                    "type": "function_call",
+                    "call_id": "preference-call-1",
+                    "name": "get_my_preference_signals",
+                    "arguments": "{}",
+                }],
+                "usage": {},
+            },
+            {
+                "output": [
+                    structured_output_message(
+                        commodity_ids=["9001"],
+                    )
+                ],
+                "usage": {},
+            },
+        ])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        with self.assertRaises(AgentServiceError) as invalid_reference:
+            await service.run("request-1", self.make_request())
+
+        self.assertEqual(
+            invalid_reference.exception.agent_error_key,
+            "AI_MODEL_RESPONSE_INVALID",
+        )
+        self.assertFalse(invalid_reference.exception.retryable)
+
+    async def test_cold_start_preference_can_continue_to_search(self):
+        preference_call = {
+            "type": "function_call",
+            "call_id": "preference-call-1",
+            "name": "get_my_preference_signals",
+            "arguments": "{}",
+        }
+        search_call = {
+            "type": "function_call",
+            "call_id": "search-call-1",
+            "name": "search_commodities",
+            "arguments": '{"keywords":["教材"],"limit":30}',
+        }
+        openai_client = StubOpenAIClient([
+            {"output": [preference_call], "usage": {}},
+            {"output": [search_call], "usage": {}},
+            {
+                "output": [
+                    structured_output_message(
+                        commodity_ids=["1001"],
+                    )
+                ],
+                "usage": {},
+            },
+        ])
+        java_client = ColdStartStubJavaBackendClient()
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=java_client,
+        )
+
+        result = await service.run("request-1", self.make_request())
+
+        self.assertEqual(
+            java_client.preference_calls,
+            [("request-1", 1)],
+        )
+        self.assertEqual(len(java_client.calls), 1)
+        self.assertEqual(
+            [trace.toolName for trace in result.traces],
+            ["get_my_preference_signals", "search_commodities"],
+        )
+        self.assertEqual(
+            result.output.recommendations[0].commodityId,
+            "1001",
+        )
+
     async def test_multiple_tool_rounds_are_replayed(self):
         first_call = {
             "type": "function_call",
             "call_id": "call-1",
             "name": "search_commodities",
-            "arguments": '{"keywords":["电脑"]}',
+            "arguments": '{"keywords":["电脑"],"limit":20}',
         }
         second_call = {
             "type": "function_call",
             "call_id": "call-2",
             "name": "search_commodities",
-            "arguments": '{"keywords":["笔记本"],"maxPrice":3000}',
+            "arguments": (
+                '{"keywords":["笔记本"],"maxPrice":3000,"limit":15}'
+            ),
         }
         openai_client = StubOpenAIClient([
             {"output": [first_call], "usage": {}},
@@ -839,6 +942,32 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "AI_TOOL_ARGUMENTS_INVALID",
         )
 
+        missing_limit_client = StubOpenAIClient([{
+            "output": [{
+                "type": "function_call",
+                "call_id": "call-1",
+                "name": "search_commodities",
+                "arguments": '{"keywords":["台灯"]}',
+            }],
+            "usage": {},
+        }])
+        java_client = StubJavaBackendClient()
+        missing_limit_service = AgentService(
+            make_settings(),
+            openai_client=missing_limit_client,
+            java_backend_client=java_client,
+        )
+        with self.assertRaises(AgentServiceError) as missing_limit:
+            await missing_limit_service.run(
+                "request-1",
+                self.make_request(),
+            )
+        self.assertEqual(
+            missing_limit.exception.agent_error_key,
+            "AI_TOOL_ARGUMENTS_INVALID",
+        )
+        self.assertEqual(java_client.calls, [])
+
         invalid_output_client = StubOpenAIClient([{
             "output": None,
             "usage": {},
@@ -879,7 +1008,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "type": "function_call",
             "call_id": "call-1",
             "name": "search_commodities",
-            "arguments": "{}",
+            "arguments": '{"limit":20}',
         }
         openai_client = StubOpenAIClient([
             {"output": [function_call], "usage": {}},
@@ -935,6 +1064,61 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ShoppingGuidePromptTests(unittest.TestCase):
+    def test_search_limit_is_required_and_allows_up_to_forty(self):
+        with self.assertRaises(ValidationError):
+            CommoditySearchArguments.model_validate({})
+
+        self.assertEqual(CommoditySearchArguments(limit=1).limit, 1)
+        self.assertEqual(CommoditySearchArguments(limit=40).limit, 40)
+
+        with self.assertRaises(ValidationError):
+            CommoditySearchArguments(limit=41)
+
+        limit_schema = SEARCH_COMMODITIES_TOOL["parameters"][
+            "properties"
+        ]["limit"]
+        self.assertEqual(limit_schema["minimum"], 1)
+        self.assertEqual(limit_schema["maximum"], 40)
+        self.assertEqual(
+            SEARCH_COMMODITIES_TOOL["parameters"]["required"],
+            ["limit"],
+        )
+        self.assertIn(
+            "不得省略",
+            limit_schema["description"],
+        )
+
+    def test_tool_definitions_own_selection_and_argument_semantics(self):
+        self.assertIn(
+            "只咨询通用选购、验货、面交或支付安全时不调用",
+            SEARCH_COMMODITIES_TOOL["description"],
+        )
+        self.assertIn(
+            "不要用模型自行联想到的品牌、书名或具体商品",
+            SEARCH_COMMODITIES_TOOL["parameters"]["properties"][
+                "keywords"
+            ]["description"],
+        )
+        self.assertIn(
+            "不得猜测",
+            SEARCH_COMMODITIES_TOOL["parameters"]["properties"][
+                "excludeCommodityIds"
+            ]["description"],
+        )
+        self.assertIn(
+            "用户明确要求个性化推荐，或需求宽泛且缺少筛选依据时调用",
+            GET_MY_PREFERENCE_SIGNALS_TOOL["description"],
+        )
+        self.assertIn(
+            "历史交互商品不代表当前在售，推荐前必须重新搜索",
+            GET_MY_PREFERENCE_SIGNALS_TOOL["description"],
+        )
+        self.assertEqual(
+            GET_MY_PREFERENCE_SIGNALS_TOOL["parameters"]["properties"],
+            {},
+        )
+        self.assertTrue(GET_MY_PREFERENCE_SIGNALS_TOOL["strict"])
+
     def test_system_prompt_defines_out_of_scope_behavior(self):
         request = AgentRunRequest(
             userId=1,
@@ -986,15 +1170,31 @@ class ShoppingGuidePromptTests(unittest.TestCase):
         self.assertIn("根据问题复杂度调整详略", messages[0]["content"])
         self.assertIn("新候选优先", messages[0]["content"])
         self.assertIn(
-            "不要把一个宽泛需求擅自改写成更具体的品牌、书名、版本或商品全称",
-            messages[0]["content"],
-        )
-        self.assertIn(
-            "只有核心词搜索仍为空，才能回答暂无商品",
+            "退回用户表达的核心词再搜索一次",
             messages[0]["content"],
         )
         self.assertIn(
             "不得根据一次过窄搜索直接断言平台没有相关商品",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "当前消息 > 当前购买条件 > 当前会话历史 > 长期偏好",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "不把冷启动视为工具故障",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "偏好结果是历史信号，不代表商品当前在售",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "具体商品必须经 search_commodities 返回后才能推荐",
+            messages[0]["content"],
+        )
+        self.assertIn(
+            "才使用偏好结果中的 recentCommodityIds",
             messages[0]["content"],
         )
         self.assertEqual(

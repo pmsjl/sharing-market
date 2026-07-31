@@ -3,6 +3,7 @@ package com.pmsjl.service.Impl;
 import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.exception.AiInternalToolException;
 import com.pmsjl.mapper.AiMessageMapper;
+import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.enums.AiMessageRoleEnum;
@@ -99,6 +100,53 @@ class AiInternalToolServiceImplTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         verify(aiMessageMapper, never()).selectOne(any());
+    }
+
+    @Test
+    void rejectsMissingSearchLimit() {
+        when(request.getHeader("X-Internal-Token"))
+                .thenReturn("internal-token");
+        when(request.getHeader("X-Request-Id"))
+                .thenReturn("request-1");
+        when(aiMessageMapper.selectOne(any()))
+                .thenReturn(userMessage(7L));
+        CommoditySearchToolRequest toolRequest =
+                new CommoditySearchToolRequest();
+
+        AiInternalToolException exception = assertThrows(
+                AiInternalToolException.class,
+                () -> service.searchCommodities(toolRequest, request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals(
+                "AI_JAVA_TOOL_ARGUMENTS_INVALID",
+                exception.getAgentErrorKey()
+        );
+    }
+
+    @Test
+    void rejectsSearchLimitAboveForty() {
+        when(request.getHeader("X-Internal-Token"))
+                .thenReturn("internal-token");
+        when(request.getHeader("X-Request-Id"))
+                .thenReturn("request-1");
+        when(aiMessageMapper.selectOne(any()))
+                .thenReturn(userMessage(7L));
+        CommoditySearchToolRequest toolRequest =
+                new CommoditySearchToolRequest();
+        toolRequest.setLimit(41);
+
+        AiInternalToolException exception = assertThrows(
+                AiInternalToolException.class,
+                () -> service.searchCommodities(toolRequest, request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals(
+                "AI_JAVA_TOOL_ARGUMENTS_INVALID",
+                exception.getAgentErrorKey()
+        );
     }
 
     private AiMessage userMessage(Long userId) {

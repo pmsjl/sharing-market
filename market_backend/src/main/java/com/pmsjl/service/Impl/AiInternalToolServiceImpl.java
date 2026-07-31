@@ -60,9 +60,15 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
         );
         BigDecimal maxPrice = commoditySearchToolRequest.getMaxPrice();
         BigDecimal minPrice = commoditySearchToolRequest.getMinPrice();
-        int limit = commoditySearchToolRequest.getLimit() == null
-                ? 10
-                : commoditySearchToolRequest.getLimit();
+        Integer limit = commoditySearchToolRequest.getLimit();
+        if (limit == null || limit < 1 || limit > 40) {
+            throw new AiInternalToolException(
+                    HttpStatus.BAD_REQUEST,
+                    "AI_JAVA_TOOL_ARGUMENTS_INVALID",
+                    "limit 为必填且必须在 1 到 40 之间",
+                    false
+            );
+        }
 
         AiCommoditySortEnum sortOrder =
                 commoditySearchToolRequest.getSortBy() == null
