@@ -104,11 +104,14 @@ public class AiUserPreferenceServiceImpl
     }
 
     private List<CommodityOrder> loadLatestPaidOrders(Long userId) {
-        List<CommodityOrder> orders = commodityOrderService.lambdaQuery()
-                .eq(CommodityOrder::getUserId, userId)
-                .eq(CommodityOrder::getPayStatus, 1)
-                .orderByDesc(CommodityOrder::getUpdateTime)
-                .orderByDesc(CommodityOrder::getId).list();
+        List<CommodityOrder> orders = new ArrayList<>(
+                commodityOrderService.lambdaQuery()
+                        .eq(CommodityOrder::getUserId, userId)
+                        .eq(CommodityOrder::getPayStatus, 1)
+                        .orderByDesc(CommodityOrder::getUpdateTime)
+                        .orderByDesc(CommodityOrder::getId)
+                        .list()
+        );
         orders.sort(
                 Comparator.comparing(
                         this::eventTime,
@@ -132,14 +135,16 @@ public class AiUserPreferenceServiceImpl
     private List<UserCommodityFavorites> loadLatestActiveFavorites(
             Long userId
     ) {
-        List<UserCommodityFavorites> favorites =
+        List<UserCommodityFavorites> favorites = new ArrayList<>(
                 favoritesService.lambdaQuery()
                         .eq(UserCommodityFavorites::getUserId, userId)
                         .eq(UserCommodityFavorites::getStatus, 1)
                         .orderByDesc(
                                 UserCommodityFavorites::getUpdateTime
                         )
-                        .orderByDesc(UserCommodityFavorites::getId).list();
+                        .orderByDesc(UserCommodityFavorites::getId)
+                        .list()
+        );
 
 
         favorites.sort(
@@ -422,6 +427,8 @@ public class AiUserPreferenceServiceImpl
                 .map(behavior -> behavior.commodity().getPrice())
                 .filter(Objects::nonNull)
                 .filter(price -> price.signum() >= 0)
+                //这里BigDemical是类不是基本数值类型，所以没法用直接大于等于0来表示。
+                //这里的signum就是这个类封装的大于等于0的方法
                 .map(price -> price.setScale(2, RoundingMode.HALF_UP))
                 .sorted()
                 .toList();
@@ -538,6 +545,7 @@ public class AiUserPreferenceServiceImpl
             EffectiveBehavior right
     ) {
         return right.eventTime().compareTo(left.eventTime());
+        //这么记：right在前降序，left在前升序
     }
 
     private Date eventTime(CommodityOrder order) {

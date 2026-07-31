@@ -1,6 +1,9 @@
 package com.pmsjl.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
+import com.pmsjl.mapper.CommodityOrderMapper;
+import com.pmsjl.mapper.UserCommodityFavoritesMapper;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityOrder;
@@ -12,6 +15,7 @@ import com.pmsjl.service.CommodityOrderService;
 import com.pmsjl.service.CommodityService;
 import com.pmsjl.service.CommodityTypeService;
 import com.pmsjl.service.UserCommodityFavoritesService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -42,17 +46,31 @@ class AiUserPreferenceServiceImplTest {
     private CommodityService commodityService;
     @Mock
     private CommodityTypeService typeService;
+    @Mock
+    private CommodityOrderMapper orderMapper;
+    @Mock
+    private UserCommodityFavoritesMapper favoritesMapper;
+    private LambdaQueryChainWrapper<CommodityOrder> orderQuery;
+    private LambdaQueryChainWrapper<UserCommodityFavorites> favoritesQuery;
+
+    @BeforeEach
+    void setUpQueries() {
+        orderQuery = new LambdaQueryChainWrapper<>(orderMapper);
+        favoritesQuery = new LambdaQueryChainWrapper<>(favoritesMapper);
+        when(orderService.lambdaQuery()).thenReturn(orderQuery);
+        when(favoritesService.lambdaQuery()).thenReturn(favoritesQuery);
+    }
 
     @Test
     void buildsDeduplicatedWeightedProfile() {
-        when(orderService.list(
+        when(orderMapper.selectList(
                 org.mockito.ArgumentMatchers
                         .<Wrapper<CommodityOrder>>any()
         )).thenReturn(List.of(
                 order(1L, "44.00", 2, 3000L),
                 order(2L, "120.00", 1, 2000L)
         ));
-        when(favoritesService.list(
+        when(favoritesMapper.selectList(
                 org.mockito.ArgumentMatchers
                         .<Wrapper<UserCommodityFavorites>>any()
         )).thenReturn(List.of(
@@ -165,11 +183,11 @@ class AiUserPreferenceServiceImplTest {
 
     @Test
     void returnsColdStartWithoutLoadingCommodityTables() {
-        when(orderService.list(
+        when(orderMapper.selectList(
                 org.mockito.ArgumentMatchers
                         .<Wrapper<CommodityOrder>>any()
         )).thenReturn(List.of());
-        when(favoritesService.list(
+        when(favoritesMapper.selectList(
                 org.mockito.ArgumentMatchers
                         .<Wrapper<UserCommodityFavorites>>any()
         )).thenReturn(List.of());

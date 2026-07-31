@@ -32,8 +32,8 @@ public class CommoditySearchToolRequest implements Serializable {
     /** 结果排序方式，默认按相关度排序。 */
     private AiCommoditySortEnum sortBy = AiCommoditySortEnum.RELEVANCE;
 
-    /** 最多返回的商品数量，默认 10 条。 */
-    private Integer limit = 10;
+    /** 本次返回的商品数量，必填，取值范围为 1 到 40。 */
+    private Integer limit;
 
     private static final long serialVersionUID = 1L;
 }
