@@ -192,6 +192,13 @@ htmlcov/
 .venv/
 venv/
 
+### RAG knowledge pipeline transient data ###
+/ai_agent_service/.cache/rag_sources/
+/ai_agent_service/.cache/platform_policy_staging/
+/ai_agent_service/.cache/knowledge_staging/
+/ai_agent_service/.cache/knowledge_previous/
+/ai_agent_service/knowledge.__new__/
+
 ### Claude Code ###
 .claude/
 
