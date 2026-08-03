@@ -15,10 +15,11 @@
 - 完整过滤、来源和审计元数据位于 `normalized/rag_document_manifest.jsonl`；关系联查数据位于 `normalized/course_material_relations.jsonl`
 - 未发现公开购买相关资料提及的课程身份：1231个，均明确标记为 `unknown_after_search`
 - 第一类规则来源：56个来源记录，包括六个平台官方资料、国家现行法规、哈工大/深圳校区规定和本项目代码事实
-- 第一类规则事实：50条审核事实，覆盖13个主题；13份面向用户的现行规则位于 `documents/effective/platform/`
+- 第一类规则事实：229条审核事实，覆盖13个主题；13份面向用户的现行规则位于 `documents/effective/platform/`
 - 第一类RAG清单：`normalized/platform_rag_document_manifest.jsonl`；来源发现报告和需求追踪矩阵位于 `normalized/platform_source_discovery_report.json` 与 `normalized/platform_policy_requirement_matrix.json`
+- 第三、四类校园指南：10份面向用户的文档位于 `documents/effective/dorm/` 与 `documents/effective/lifecycle/`；来源见 `sources/campus_sources.json`，清单见 `normalized/campus_guidance_manifest.jsonl`
 - 六个平台研究、法规与校规证据位于 `documents/reference/`；依赖新功能或待确认校规的内容位于 `documents/draft/platform/`，不参与普通用户RAG
-- 正式/参考/草案文档总数：108份
+- 正式/参考/草案文档总数：118份
 
 课程中的“教材与参考资料”只证明来源曾提及该书，不证明当前学期必须购买。实时价格、库存、成色和上架状态继续由商品工具查询。
 

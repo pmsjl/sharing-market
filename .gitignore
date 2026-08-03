@@ -193,11 +193,15 @@ htmlcov/
 venv/
 
 ### RAG knowledge pipeline transient data ###
-/ai_agent_service/.cache/rag_sources/
-/ai_agent_service/.cache/platform_policy_staging/
-/ai_agent_service/.cache/knowledge_staging/
-/ai_agent_service/.cache/knowledge_previous/
+/ai_agent_service/.cache/
 /ai_agent_service/knowledge.__new__/
+
+### 临时脚本（用完即删，不提交） ###
+# 一次性/开发用脚本放这里，用完删除，不进版本库。
+/scratch/
+/scripts/tmp/
+ai_agent_service/scratch/
+*.scratch.py
 
 ### Claude Code ###
 .claude/
