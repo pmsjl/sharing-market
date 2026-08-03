@@ -192,9 +192,11 @@ htmlcov/
 .venv/
 venv/
 
-### RAG knowledge pipeline transient data ###
+### RAG 知识库：仅保留最终 knowledge/ 成果，不跟踪构建管线 ###
 /ai_agent_service/.cache/
 /ai_agent_service/knowledge.__new__/
+/ai_agent_service/tools/
+/ai_agent_service/tests/test_knowledge_pipeline.py
 
 ### 临时脚本（用完即删，不提交） ###
 # 一次性/开发用脚本放这里，用完删除，不进版本库。
@@ -210,6 +212,8 @@ ai_agent_service/scratch/
 # 设计/接口草案会随本地实现频繁变化，不作为仓库交付物。
 /AI_AGENT_API.md
 /AI_AGENT_REPRODUCTION_GUIDE.md
+/AGENTS.md
+/校园二手交易导购助手_RAG四类Document规划.md
 /docs/UI_REDESIGN_PLAN.md
 /docs/UI_REDESIGN_PROGRESS.md
 
