@@ -27,5 +27,32 @@ class Settings:
 
     max_tool_rounds: int = int(os.getenv("AI_MAX_TOOL_ROUNDS", "4"))
 
+    #RAG相关参数
+    rag_enabled: bool = os.getenv("RAG_ENABLED", "false").lower() == "true"
+
+    embedding_base_url: str = os.getenv(
+        "EMBEDDING_BASE_URL",
+        os.getenv("OPENAI_BASE_URL", ""),
+    )
+    embedding_api_key: str = os.getenv(
+        "EMBEDDING_API_KEY",
+        os.getenv("OPENAI_API_KEY", ""),
+    )
+    embedding_model: str = os.getenv(
+        "EMBEDDING_MODEL",
+        "text-embedding-3-small",
+    )
+    embedding_dimensions: int = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
+
+    rag_index_dir: str = os.getenv(
+        "RAG_INDEX_DIR",
+        ".cache/rag_index",
+    )
+    rag_top_k: int = int(os.getenv("RAG_TOP_K", "5"))
+    rag_score_threshold: float = float(os.getenv("RAG_SCORE_THRESHOLD",
+                                                 "0.50"))
+    rag_max_chunks_per_document: int = int(
+        os.getenv("RAG_MAX_CHUNKS_PER_DOCUMENT", "2"))
+
 
 settings = Settings()
