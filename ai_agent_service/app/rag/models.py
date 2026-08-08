@@ -1,9 +1,8 @@
-"""规划、索引和检索共同使用的 RAG 数据结构。"""
+﻿"""规划、索引和检索共同使用的 RAG 数据结构。"""
 
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 KnowledgeCategory = Literal[
     "platform_policy",
@@ -92,12 +91,11 @@ class RagQueryPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     should_retrieve: bool
-    exact_document_ids: list[str] = Field(default_factory=list)
-    preferred_categories: list[KnowledgeCategory] = Field(default_factory=list)
+    course_document_ids: list[str] = Field(default_factory=list)
+    extra_categories: list[KnowledgeCategory] = Field(default_factory=list)
     fallback_categories: list[KnowledgeCategory] = Field(default_factory=list)
     course_relation_summaries: list[CourseRelationSummary] = Field(
-        default_factory=list
-    )
+        default_factory=list)
     course_match_mode: CourseMatchMode = "none"
     matched_course_names: list[str] = Field(default_factory=list)
     constraints_fallback: bool = False

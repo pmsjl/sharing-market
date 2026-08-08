@@ -10,6 +10,7 @@ from app.rag.retriever import Retriever
 
 
 class _QueryEmbedder:
+
     async def embed_one(self, query: str) -> list[float]:
         assert query == "target"
         return [1.0, 0.0]
@@ -64,8 +65,8 @@ def _retriever() -> Retriever:
 def test_exact_preferred_and_fallback_are_prioritized_as_separate_lanes():
     plan = RagQueryPlan(
         should_retrieve=True,
-        exact_document_ids=["GUIDE:d1"],
-        preferred_categories=["campus_dorm"],
+        course_document_ids=["GUIDE:d1"],
+        extra_categories=["campus_dorm"],
         fallback_categories=["platform_policy", "campus_lifecycle"],
     )
 
@@ -82,7 +83,7 @@ def test_exact_preferred_and_fallback_are_prioritized_as_separate_lanes():
 def test_fallback_never_adds_unselected_course_documents():
     plan = RagQueryPlan(
         should_retrieve=True,
-        exact_document_ids=["GUIDE:d1"],
+        course_document_ids=["GUIDE:d1"],
         fallback_categories=[
             "platform_policy",
             "campus_dorm",
@@ -101,7 +102,7 @@ def test_fallback_never_adds_unselected_course_documents():
 def test_missing_exact_document_can_still_use_non_course_fallback():
     plan = RagQueryPlan(
         should_retrieve=True,
-        exact_document_ids=["GUIDE:missing"],
+        course_document_ids=["GUIDE:missing"],
         fallback_categories=["campus_dorm"],
     )
 
@@ -128,8 +129,6 @@ def test_unready_or_disabled_plan_returns_no_context():
     unready = Retriever(settings, _QueryEmbedder(), None)
 
     assert asyncio.run(
-        unready.retrieve("target", RagQueryPlan(should_retrieve=True))
-    ) == []
-    assert asyncio.run(
-        _retriever().retrieve("target", RagQueryPlan(should_retrieve=False))
-    ) == []
+        unready.retrieve("target", RagQueryPlan(should_retrieve=True))) == []
+    assert asyncio.run(_retriever().retrieve(
+        "target", RagQueryPlan(should_retrieve=False))) == []

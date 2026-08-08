@@ -9,6 +9,7 @@ from app.rag.models import RagQueryPlan, RetrievedChunk
 
 
 class Retriever:
+
     def __init__(
         self,
         settings: Settings,
@@ -22,8 +23,11 @@ class Retriever:
 
     @classmethod
     def load(cls, settings: Settings) -> "Retriever":
-        return cls(settings, EmbeddingClient(settings), IndexStore.load(settings))
+        return cls(settings, EmbeddingClient(settings),
+                   IndexStore.load(settings))
 
+    #加了property就是相当于原本是retriever.chunks()
+    #现在少加个括号，变成retriever.chunks
     @property
     def chunks(self):
         return self.index_store.chunks
@@ -44,43 +48,36 @@ class Retriever:
         if not self.ready or not plan.should_retrieve:
             return []
 
-        query_vector = l2_normalize(
-            await self.embedding_client.embed_one(query)
-        )
-        has_scopes = bool(
-            plan.exact_document_ids
-            or plan.preferred_categories
-            or plan.fallback_categories
-        )
+        query_vector = l2_normalize(await
+                                    self.embedding_client.embed_one(query))
+        has_scopes = bool(plan.course_document_ids or plan.extra_categories
+                          or plan.fallback_categories)
         if not has_scopes:
             return self._retrieve_unfiltered(query_vector)
 
-        exact_ids = set(plan.exact_document_ids)
-        preferred = set(plan.preferred_categories)
-        fallback = set(plan.fallback_categories)
+        course_document_ids = set(plan.course_document_ids)
+        extra_categories = set(plan.extra_categories)
+        fallback_categories = set(plan.fallback_categories)
 
-        exact_rows = [
-            row
-            for row, chunk in enumerate(self.chunks)
-            if chunk.document_id in exact_ids
+        course_chunk_rows = [
+            row for row, chunk in enumerate(self.chunks)
+            if chunk.document_id in course_document_ids
         ]
-        exact_row_set = set(exact_rows)
-        preferred_rows = [
-            row
-            for row, chunk in enumerate(self.chunks)
-            if row not in exact_row_set and chunk.category in preferred
+        exact_row_set = set(course_chunk_rows)
+        extra_rows = [
+            row for row, chunk in enumerate(self.chunks)
+            if row not in exact_row_set and chunk.category in extra_categories
         ]
-        primary_row_set = exact_row_set | set(preferred_rows)
+        primary_row_set = exact_row_set | set(extra_rows)
         fallback_rows = [
-            row
-            for row, chunk in enumerate(self.chunks)
-            if row not in primary_row_set and chunk.category in fallback
+            row for row, chunk in enumerate(self.chunks)
+            if row not in primary_row_set and chunk.category in fallback_categories
         ]
 
         results: list[RetrievedChunk] = []
         per_document: dict[str, int] = {}
         seen_chunk_ids: set[str] = set()
-        for rows in (exact_rows, preferred_rows, fallback_rows):
+        for rows in (course_chunk_rows, extra_rows, fallback_rows):
             self._append_lane(
                 rows,
                 query_vector,
@@ -100,11 +97,8 @@ class Retriever:
             query_vector.reshape(1, -1),
             self.settings.rag_top_k * 6,
         )
-        pairs = [
-            (int(row), float(score))
-            for row, score in zip(rows[0], scores[0])
-            if row >= 0
-        ]
+        pairs = [(int(row), float(score))
+                 for row, score in zip(rows[0], scores[0]) if row >= 0]
         results: list[RetrievedChunk] = []
         self._append_pairs(pairs, results, {}, set())
         return results
@@ -117,10 +111,8 @@ class Retriever:
         per_document: dict[str, int],
         seen_chunk_ids: set[str],
     ) -> None:
-        pairs = [
-            (row, float(self.vectors[row] @ query_vector))
-            for row in rows
-        ]
+        pairs = [(row, float(self.vectors[row] @ query_vector))
+                 for row in rows]
         self._append_pairs(
             pairs,
             results,
@@ -161,5 +153,4 @@ class Retriever:
                     content=chunk.content,
                     score=score,
                     metadata=chunk.metadata,
-                )
-            )
+                ))

@@ -2,6 +2,14 @@
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+# 固定从服务根目录加载本地 .env；已经存在的系统环境变量优先。
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(_ENV_PATH, override=False)
 
 
 @dataclass(frozen=True)
@@ -30,19 +38,15 @@ class Settings:
     #RAG相关参数
     rag_enabled: bool = os.getenv("RAG_ENABLED", "false").lower() == "true"
 
-    embedding_base_url: str = os.getenv(
-        "EMBEDDING_BASE_URL",
-        os.getenv("OPENAI_BASE_URL", ""),
-    )
-    embedding_api_key: str = os.getenv(
-        "EMBEDDING_API_KEY",
-        os.getenv("OPENAI_API_KEY", ""),
-    )
+    # Embedding 服务必须独立配置，不能回退到不支持 /embeddings 的生成模型中转。
+    embedding_base_url: str = os.getenv("EMBEDDING_BASE_URL", "")
+    embedding_api_key: str = os.getenv("EMBEDDING_API_KEY", "")
     embedding_model: str = os.getenv(
         "EMBEDDING_MODEL",
-        "text-embedding-3-small",
+        "text-embedding-v4",
     )
-    embedding_dimensions: int = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
+    embedding_dimensions: int = int(os.getenv("EMBEDDING_DIMENSIONS", "1024"))
+    embedding_batch_size: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "10"))
 
     rag_index_dir: str = os.getenv(
         "RAG_INDEX_DIR",

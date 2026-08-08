@@ -55,13 +55,11 @@ async def build_index(
 
     embedder = embedder or EmbeddingClient(settings)
     raw_vectors = await embedder.embed_batch(
-        [chunk.embedding_text for chunk in chunks]
-    )
+        [chunk.embedding_text for chunk in chunks])
     if len(raw_vectors) != len(chunks):
         raise ValueError("embedding 返回数量与 chunk 数量不一致")
-    vectors = np.vstack([l2_normalize(vector) for vector in raw_vectors]).astype(
-        np.float32
-    )
+    vectors = np.vstack([l2_normalize(vector)
+                         for vector in raw_vectors]).astype(np.float32)
     if vectors.ndim != 2 or vectors.shape[1] != settings.embedding_dimensions:
         raise ValueError("embedding 向量维度与当前配置不一致")
 
@@ -86,9 +84,9 @@ async def build_index(
         "chunkCount": len(chunks),
         "manifestSha256": manifest_sha256(knowledge_root),
     }
-    (build_dir / "meta.json").write_text(
-        json.dumps(metadata, ensure_ascii=False), encoding="utf-8"
-    )
+    (build_dir / "meta.json").write_text(json.dumps(metadata,
+                                                    ensure_ascii=False),
+                                         encoding="utf-8")
 
     # ``os.replace`` 在同一文件系统内是原子操作；读取方只会看到旧的完整
     # 指针或新的完整指针，不会读到只写了一部分的 CURRENT 文件。
@@ -96,6 +94,7 @@ async def build_index(
     temporary_current = index_dir / f".CURRENT-{uuid4().hex}.tmp"
     temporary_current.write_text(build_dir.name, encoding="utf-8")
     os.replace(temporary_current, current_path)
+    #把tmp文件名字改成"CURRENT",并覆盖原本的文件，实现无缝更新
     return build_dir
 
 
@@ -127,47 +126,53 @@ class IndexStore:
         """
         try:
             index_dir = Path(settings.rag_index_dir)
-            build_name = (index_dir / "CURRENT").read_text(encoding="utf-8").strip()
+            build_name = (index_dir /
+                          "CURRENT").read_text(encoding="utf-8").strip()
             if not build_name or Path(build_name).name != build_name:
+                #这里是判断CURRENT文件有没有被篡改，如果被篡改为多级目录
+                #那么Path().name只取最后一级名称和
+                #篡改的build_name的多级目录字符串自然不相等
                 return None
             build_dir = index_dir / "versions" / build_name
-            metadata = json.loads((build_dir / "meta.json").read_text(encoding="utf-8"))
+            metadata = json.loads(
+                (build_dir / "meta.json").read_text(encoding="utf-8"))
             if not isinstance(metadata, dict):
                 return None
             index = faiss.read_index(str(build_dir / "index.faiss"))
             vectors = np.load(build_dir / "vectors.npy")
             chunks = [
                 KnowledgeChunk.model_validate(json.loads(line))
-                for line in (build_dir / "chunks.jsonl")
-                .read_text(encoding="utf-8")
-                .splitlines()
-                if line.strip()
+                for line in (build_dir / "chunks.jsonl").read_text(
+                    encoding="utf-8").splitlines() if line.strip()
             ]
 
             if metadata.get("embeddingModel") != settings.embedding_model:
                 return None
-            if metadata.get("embeddingDimensions") != settings.embedding_dimensions:
+            if metadata.get(
+                    "embeddingDimensions") != settings.embedding_dimensions:
                 return None
             if metadata.get("chunkingVersion") != CHUNKING_VERSION:
                 return None
             if metadata.get("chunkCount") != len(chunks):
                 return None
-            if vectors.ndim != 2 or vectors.shape[1] != settings.embedding_dimensions:
+            if vectors.ndim != 2 or vectors.shape[
+                    1] != settings.embedding_dimensions:
                 return None
             if index.d != settings.embedding_dimensions:
                 return None
             if index.ntotal != len(chunks) or len(chunks) != vectors.shape[0]:
                 return None
-            if metadata.get("manifestSha256") != manifest_sha256(knowledge_root):
+            if metadata.get("manifestSha256") != manifest_sha256(
+                    knowledge_root):
                 return None
         except (
-            OSError,
-            ValueError,
-            TypeError,
-            KeyError,
-            IndexError,
-            json.JSONDecodeError,
-            RuntimeError,
+                OSError,
+                ValueError,
+                TypeError,
+                KeyError,
+                IndexError,
+                json.JSONDecodeError,
+                RuntimeError,
         ):
             return None
         return cls(index, vectors, chunks, metadata)
