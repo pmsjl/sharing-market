@@ -43,6 +43,8 @@ class EmbeddingClient:
         """按固定大小分批，避免重建索引时产生过大的单次请求。"""
         vectors: list[list[float]] = []
         _BATCH_SIZE = self.settings.embedding_batch_size
+        if _BATCH_SIZE <= 0:
+            raise ValueError("EMBEDDING_BATCH_SIZE 必须大于 0")
         for start in range(0, len(texts), _BATCH_SIZE):
             vectors.extend(await self._embed_batch_once(texts[start:start +
                                                               _BATCH_SIZE]))

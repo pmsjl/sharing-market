@@ -13,5 +13,5 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface CommodityScoreMapper extends BaseMapper<CommodityScore> {
 
-    double getAverageScoreById(Long commodityId);
+    Double getAverageScoreById(Long commodityId);
 }

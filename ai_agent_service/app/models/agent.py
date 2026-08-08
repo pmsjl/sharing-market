@@ -71,10 +71,13 @@ class AgentRecommendation(BaseModel):
 
 
 class AgentSource(BaseModel):
-    sourceType: str
-    sourceId: int
-    title: str
-    excerpt: str
+    model_config = ConfigDict(extra="forbid")
+
+    sourceType: Literal["GUIDE"] = "GUIDE"
+    sourceId: str = Field(min_length=1, max_length=150)
+    title: str = Field(min_length=1, max_length=200)
+    excerpt: str = Field(min_length=1, max_length=300)
+    content: str | None = Field(default=None, min_length=1, max_length=1200)
 
 
 class AgentOutput(BaseModel):
@@ -136,6 +139,22 @@ class AgentOutput(BaseModel):
         ),
     )
 
+    knowledgeChunkIds: list[str] = Field(
+        max_length=5,
+        description=(
+            "本轮回答实际使用的知识 chunk ID；只能从本轮参考消息中选择，"
+            "未使用时返回空数组。"
+        ),
+    )
+
+    courseRelationIds: list[str] = Field(
+        max_length=100,
+        description=(
+            "本轮回答实际使用的课程关系 ID；只能从本轮参考消息中选择，"
+            "未使用时返回空数组。"
+        ),
+    )
+
     @model_validator(mode="after")
     def validate_recommendations(self):
         commodity_ids = [
@@ -168,6 +187,12 @@ class AgentFinalResult(BaseModel):
             "结构化业务结果。"
         ),
     )
+
+
+class AgentResponseOutput(AgentOutput):
+    """返回 Java 的结构；展示来源不允许由模型直接生成。"""
+
+    sources: list[AgentSource] = Field(default_factory=list, max_length=5)
 
 
 def _inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
@@ -266,7 +291,7 @@ class AgentRunRequest(BaseModel):
 class AgentRunResponse(BaseModel):
     requestId: str
     answer: str
-    output: AgentOutput
+    output: AgentResponseOutput
     model: AgentModelInfo
     usage: AgentUsage
     latencyMs: int

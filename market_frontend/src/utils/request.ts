@@ -24,28 +24,39 @@ request.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    //处理网络错误
-    let msg = "";
-    const code = error.response.code ?? 401;
-    switch (code) {
-      case 401:
-        msg = "token过期";
-        break;
-      case 403:
-        msg = "无权访问";
-        break;
-      case 404:
-        msg = "请求地址错误";
-        break;
-      case 500:
-        msg = "服务器出现问题";
-        break;
-      default:
-        msg = "无网络";
+    // 超时或断网时 Axios 不会提供 response，必须使用可空读取。
+    const responseData = error.response?.data as
+      | { code?: number; message?: string }
+      | undefined;
+    const status = error.response?.status;
+    let msg: string;
+    if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+      msg = "请求超时，请稍后重试";
+    } else if (!error.response) {
+      msg = "网络连接失败，请检查服务状态";
+    } else {
+      switch (status) {
+        case 401:
+          msg = "token过期";
+          break;
+        case 403:
+          msg = "无权访问";
+          break;
+        case 404:
+          msg = "请求地址错误";
+          break;
+        case 500:
+          msg = "服务器出现问题";
+          break;
+        default:
+          msg = responseData?.message || "请求失败，请稍后重试";
+      }
     }
+    error.message = responseData?.message || msg;
+    error.requestMessageShown = true;
     ElMessage({
       type: "error",
-      message: msg
+      message: error.message
     });
     return Promise.reject(error);
   }
