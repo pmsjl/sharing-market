@@ -369,14 +369,16 @@
                 :key="`${source.sourceType}-${source.sourceId}`"
                 type="button"
                 class="source-link"
-                @click="router.push(source.targetPath)"
+                aria-haspopup="dialog"
+                :aria-label="`查看来源详情：${source.title}`"
+                @click="openSource(source)"
               >
                 <span>{{ source.sourceType }}</span>
                 <div>
                   <strong>{{ source.title }}</strong>
                   <p>{{ source.excerpt }}</p>
                 </div>
-                <b aria-hidden="true">↗</b>
+                <b aria-hidden="true">查看</b>
               </button>
             </div>
           </div>
@@ -506,6 +508,38 @@
         </div>
       </template>
     </el-drawer>
+
+    <el-dialog
+      v-model="sourceDialogOpen"
+      class="source-detail-dialog"
+      :width="sourceDialogWidth"
+      align-center
+      append-to-body
+      destroy-on-close
+      :close-on-click-modal="true"
+      :close-on-press-escape="true"
+    >
+      <template #header>
+        <div class="source-detail-heading">
+          <span class="source-detail-type">{{
+            selectedSource?.sourceType
+          }}</span>
+          <div>
+            <h2>{{ selectedSource?.title || "参考来源" }}</h2>
+            <p>{{ selectedSource?.sourceId }}</p>
+          </div>
+        </div>
+      </template>
+      <section class="source-detail-body" aria-label="来源引用正文">
+        <div class="source-detail-label">本次回答引用片段</div>
+        <p>{{ selectedSource?.content || selectedSource?.excerpt }}</p>
+      </section>
+      <template #footer>
+        <el-button type="primary" @click="sourceDialogOpen = false">
+          关闭
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -519,7 +553,7 @@ import {
   ref,
   watch
 } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
@@ -528,6 +562,7 @@ import {
   AiChatVO,
   AiConversationVO,
   AiMessageVO,
+  AiRagSourceVO,
   AiShoppingContext,
   archiveAiConversation,
   createAiConversation,
@@ -597,6 +632,7 @@ const getInitialTypingSpeed = (): TypingSpeed => {
 };
 
 const router = useRouter();
+const route = useRoute();
 const layoutSettingStore = useLayOutSettingStore();
 const pageRef = ref<HTMLElement | null>(null);
 const messageListRef = ref<HTMLElement | null>(null);
@@ -624,6 +660,8 @@ const typingSpeed = ref<TypingSpeed>(getInitialTypingSpeed());
 const typingMessageId = ref<string | null>(null);
 const typingBuffers = reactive<Record<string, string>>({});
 const shouldFollowOutput = ref(true);
+const sourceDialogOpen = ref(false);
+const selectedSource = ref<AiRagSourceVO | null>(null);
 
 let typingAnimationFrame: number | null = null;
 let messageResizeObserver: ResizeObserver | null = null;
@@ -680,6 +718,9 @@ const contextFieldCount = computed(() => {
 
 const contextDrawerSize = computed(() =>
   viewportWidth.value <= 720 ? "92%" : "420px"
+);
+const sourceDialogWidth = computed(() =>
+  viewportWidth.value <= 660 ? "calc(100vw - 24px)" : "720px"
 );
 const hasOlderMessages = computed(
   () => messages.value.length < messageTotal.value
@@ -1042,6 +1083,17 @@ const startNewChat = () => {
   nextTick(() => composerRef.value?.focus());
 };
 
+watch(activeConversationId, (conversationId) => {
+  const current = Array.isArray(route.query.conversationId)
+    ? route.query.conversationId[0]
+    : route.query.conversationId;
+  if ((current || null) === conversationId) return;
+  const query = { ...route.query };
+  if (conversationId) query.conversationId = conversationId;
+  else delete query.conversationId;
+  void router.replace({ query });
+});
+
 const selectConversation = async (item: AiConversationVO) => {
   finishActiveTyping();
   activeConversationId.value = item.id;
@@ -1185,7 +1237,11 @@ const submitContent = async (
       ),
       retryable: true
     });
-    if (error?.message && !String(error.message).includes("404")) {
+    if (
+      error?.message &&
+      !error?.requestMessageShown &&
+      !String(error.message).includes("404")
+    ) {
       ElMessage.error(error.message);
     }
     await scrollToBottom();
@@ -1227,14 +1283,49 @@ const applyStarter = (prompt: string) => {
   nextTick(() => composerRef.value?.focus());
 };
 
+const openSource = (source: AiRagSourceVO) => {
+  if (source.sourceType === "GUIDE") {
+    selectedSource.value = source;
+    sourceDialogOpen.value = true;
+    return;
+  }
+  if (source.targetPath) void router.push(source.targetPath);
+};
+
 const openCommodity = (commodityId: string) => {
-  router.push(`/user/commodity/detail/${commodityId}`);
+  void router.push({
+    path: `/user/commodity/detail/${commodityId}`,
+    query: {
+      from: "agent",
+      ...(activeConversationId.value
+        ? { conversationId: activeConversationId.value }
+        : {})
+    }
+  });
 };
 
 onMounted(async () => {
   layoutSettingStore.focusMode = true;
   window.addEventListener("resize", handleResize);
-  await loadConversations();
+  const loaded = await loadConversations();
+  const requestedConversationId = Array.isArray(route.query.conversationId)
+    ? route.query.conversationId[0]
+    : route.query.conversationId;
+  if (!loaded || !requestedConversationId) return;
+  const conversation = conversations.value.find(
+    (item) => item.id === requestedConversationId
+  );
+  if (conversation) {
+    await selectConversation(conversation);
+    return;
+  }
+  activeConversationId.value = requestedConversationId;
+  messagePage.value = 1;
+  const restored = await loadMessages(requestedConversationId);
+  if (!restored) {
+    startNewChat();
+    ElMessage.warning("原咨询已不可用，已为你打开新咨询");
+  }
 });
 
 onBeforeUnmount(() => {
@@ -1254,8 +1345,10 @@ onBeforeUnmount(() => {
 .agent-desk {
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
+  width: 100%;
   height: 100%;
   max-height: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -1274,7 +1367,9 @@ button {
   z-index: 4;
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
+  overflow: hidden;
   padding: 22px 16px 16px;
   border-right: 1px solid var(--market-line);
   background: var(--market-sidebar-bg);
@@ -1527,6 +1622,11 @@ button {
     linear-gradient(rgba(35, 49, 63, 0.018), rgba(35, 49, 63, 0.018)),
     var(--market-paper);
 }
+.chat-toolbar,
+.composer-dock {
+  min-width: 0;
+  flex-shrink: 0;
+}
 .chat-toolbar {
   flex: 0 0 auto;
   min-height: 72px;
@@ -1669,6 +1769,7 @@ button {
 
 .message-stage {
   height: auto;
+  max-height: 100%;
   min-height: 0;
   min-width: 0;
   overflow-x: hidden;
@@ -2142,6 +2243,60 @@ button {
 
 .source-link b {
   color: var(--market-orange);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.source-detail-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+  padding-right: 28px;
+}
+.source-detail-heading h2 {
+  margin: 0;
+  color: var(--market-ink);
+  font-size: 20px;
+  line-height: 1.35;
+}
+.source-detail-heading p {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--market-muted);
+  font-family: var(--market-font-mono);
+  font-size: 12px;
+}
+.source-detail-type {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--market-green);
+  background: var(--market-note-green-bg);
+  font-size: 11px;
+  font-weight: 900;
+}
+.source-detail-body {
+  max-height: min(58dvh, 560px);
+  overflow-y: auto;
+  padding: 18px;
+  border: 1px solid var(--market-line);
+  border-radius: 8px;
+  background: var(--market-paper);
+  overscroll-behavior: contain;
+}
+.source-detail-label {
+  margin-bottom: 10px;
+  color: var(--market-orange);
+  font-size: 12px;
+  font-weight: 900;
+}
+.source-detail-body p {
+  margin: 0;
+  color: var(--market-ink);
+  font-size: 15px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .recommendation-heading {
   margin-bottom: 10px;
@@ -2675,14 +2830,6 @@ button {
   .composer-dock {
     padding-top: 6px;
     padding-bottom: max(7px, env(safe-area-inset-bottom));
-  }
-}
-
-@media (min-width: 901px) {
-  .composer-dock {
-    // Windows 任务栏可能覆盖浏览器仍计入可视高度的底部区域。
-    // 独立预留桌面避让区，确保输入框操作行始终位于系统覆盖层上方。
-    padding-bottom: max(64px, env(safe-area-inset-bottom));
   }
 }
 </style>

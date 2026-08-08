@@ -6,6 +6,7 @@ from unittest.mock import patch
 import httpx
 from pydantic import ValidationError
 
+from app.api import agent as agent_module
 from app.api import health as health_module
 from app.clients.java_backend import (
     JavaBackendClient,
@@ -26,6 +27,12 @@ from app.models.tools import (
 )
 from app.prompts.shopping_guide import build_messages
 from app.services.agent_service import AgentService, AgentServiceError
+from app.rag.models import (
+    CourseRelationSummary,
+    RagContext,
+    RagQueryPlan,
+    RetrievedChunk,
+)
 from app.tools.definitions import (
     GET_MY_PREFERENCE_SIGNALS_TOOL,
     SEARCH_COMMODITIES_TOOL,
@@ -44,6 +51,7 @@ def make_settings(**overrides) -> Settings:
         "java_backend_base_url": "http://127.0.0.1:8102",
         "java_backend_timeout_seconds": 10,
         "max_tool_rounds": 4,
+        "rag_enabled": False,
     }
     values.update(overrides)
     return Settings(**values)
@@ -100,6 +108,71 @@ class StubOpenAIClient:
             "text_format": copy.deepcopy(text_format),
         })
         return self.responses.pop(0)
+
+
+class StubRagService:
+    def __init__(self, context):
+        self.context = context
+        self.calls = []
+        self.ready = not context.degraded
+
+    async def get_context(self, query):
+        self.calls.append(query)
+        return self.context
+
+
+def rag_context():
+    relation = CourseRelationSummary(
+        course_name="数据结构",
+        course_code="COMP2022",
+        repo_id="COMP2052",
+        course_document_id="GUIDE:course-repo-COMP2052",
+        semester="第一学年春季",
+        majors=["计算机类"],
+        major_codes=["0101"],
+        entry_years=[2019],
+        relation_ids=["GUIDE:course-relation-one"],
+        relation_group_ids=["GUIDE:course-relation-group-one"],
+        plan_ids=["PLAN-ONE"],
+        plan_source_ids=["plan-source:one"],
+        plan_source_urls=["https://example.test/one"],
+    )
+    chunks = [
+        RetrievedChunk(
+            chunk_id="GUIDE:course-repo-COMP2052#教材",
+            document_id="GUIDE:course-repo-COMP2052",
+            source_type="GUIDE",
+            source_id="course-repo-COMP2052",
+            category="course_materials",
+            title="数据结构课程资料",
+            section="教材",
+            content="  教材正文\n包含   多余空白。" + "长" * 1400,
+            score=0.9,
+            metadata={},
+        ),
+        RetrievedChunk(
+            chunk_id="GUIDE:course-repo-COMP2052#环境",
+            document_id="GUIDE:course-repo-COMP2052",
+            source_type="GUIDE",
+            source_id="course-repo-COMP2052",
+            category="course_materials",
+            title="数据结构课程资料",
+            section="环境",
+            content="开发环境正文",
+            score=0.8,
+            metadata={},
+        ),
+    ]
+    return RagContext(
+        query="COMP2022 教材",
+        plan=RagQueryPlan(
+            should_retrieve=True,
+            course_document_ids=["GUIDE:course-repo-COMP2052"],
+            course_relation_summaries=[relation],
+            course_match_mode="alias",
+        ),
+        retrieved=chunks,
+    )
 
 
 class JavaBackendClientTests(unittest.IsolatedAsyncioTestCase):
@@ -292,8 +365,12 @@ class ColdStartStubJavaBackendClient(StubJavaBackendClient):
 def structured_output_message(
     answer="可以先确认预算和主要用途。",
     commodity_ids=None,
+    knowledge_chunk_ids=None,
+    course_relation_ids=None,
 ):
     commodity_ids = commodity_ids or []
+    knowledge_chunk_ids = knowledge_chunk_ids or []
+    course_relation_ids = course_relation_ids or []
     payload = {
         "answer": answer,
         "output": {
@@ -316,6 +393,8 @@ def structured_output_message(
             "purchaseAdvice": [],
             "warnings": [],
             "searchKeywords": [],
+            "knowledgeChunkIds": knowledge_chunk_ids,
+            "courseRelationIds": course_relation_ids,
         },
     }
     return {
@@ -401,6 +480,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 "purchaseAdvice",
                 "warnings",
                 "searchKeywords",
+                "knowledgeChunkIds",
+                "courseRelationIds",
             },
         )
         self.assertIs(output_schema["additionalProperties"], False)
@@ -601,6 +682,83 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.model.name, "gpt-5.6-terra")
         self.assertEqual(result.usage.inputTokens, 20)
         self.assertEqual(result.usage.outputTokens, 8)
+
+    async def test_rag_is_loaded_once_and_validated_sources_are_derived(self):
+        context = rag_context()
+        rag_service = StubRagService(context)
+        function_call = {
+            "type": "function_call",
+            "call_id": "call-1",
+            "name": "search_commodities",
+            "arguments": '{"keywords":["教材"],"limit":5}',
+        }
+        openai_client = StubOpenAIClient([
+            {"output": [function_call], "usage": {}},
+            {
+                "output": [structured_output_message(
+                    commodity_ids=["1001"],
+                    knowledge_chunk_ids=[
+                        "GUIDE:course-repo-COMP2052#教材",
+                        "GUIDE:course-repo-COMP2052#环境",
+                    ],
+                    course_relation_ids=["GUIDE:course-relation-one"],
+                )],
+                "usage": {},
+            },
+        ])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+            rag_service=rag_service,
+        )
+
+        result = await service.run("request-1", self.make_request())
+
+        self.assertEqual(rag_service.calls, [self.make_request().message])
+        for call in openai_client.calls:
+            references = [
+                item for item in call["input_items"]
+                if "knowledgeChunkId=" in item.get("content", "")
+            ]
+            self.assertEqual(len(references), 1)
+            self.assertIn("courseRelationIds=GUIDE:course-relation-one",
+                          references[0]["content"])
+        self.assertEqual(len(result.output.sources), 1)
+        self.assertEqual(result.output.sources[0].sourceId,
+                         "GUIDE:course-repo-COMP2052")
+        self.assertEqual(len(result.output.sources[0].excerpt), 300)
+        self.assertNotIn("\n", result.output.sources[0].excerpt)
+        self.assertEqual(
+            result.output.sources[0].content,
+            "教材正文\n包含 多余空白。"
+            + "长" * (1200 - len("教材正文\n包含 多余空白。")),
+        )
+        self.assertIn("\n", result.output.sources[0].content)
+        self.assertEqual(len(result.output.sources[0].content), 1200)
+
+    async def test_rejects_unavailable_rag_ids(self):
+        for chunk_ids, relation_ids in [
+            (["GUIDE:missing#one"], []),
+            ([], ["GUIDE:course-relation-missing"]),
+        ]:
+            with self.subTest(chunk_ids=chunk_ids, relation_ids=relation_ids):
+                service = AgentService(
+                    make_settings(),
+                    openai_client=StubOpenAIClient([{
+                        "output": [structured_output_message(
+                            knowledge_chunk_ids=chunk_ids,
+                            course_relation_ids=relation_ids,
+                        )],
+                        "usage": {},
+                    }]),
+                    java_backend_client=StubJavaBackendClient(),
+                    rag_service=StubRagService(rag_context()),
+                )
+                with self.assertRaises(AgentServiceError) as raised:
+                    await service.run("request-1", self.make_request())
+                self.assertEqual(raised.exception.agent_error_key,
+                                 "AI_MODEL_RESPONSE_INVALID")
 
     async def test_invalid_text_verbosity_is_rejected_before_model_call(self):
         openai_client = StubOpenAIClient([])
@@ -1132,6 +1290,10 @@ class ShoppingGuidePromptTests(unittest.TestCase):
         self.assertIn("完全超出范围时，只回复", system_prompt)
         self.assertIn("回复后立即结束，不调用商品搜索工具", system_prompt)
         self.assertIn("混合问题只回答其中与二手购买或交易相关的部分", system_prompt)
+        self.assertIn("当前日期：", system_prompt)
+        self.assertIn("（Asia/Shanghai）", system_prompt)
+        self.assertIn("表示入学年份，不表示用户当前仍处于大一", system_prompt)
+        self.assertIn("不得默认推荐\n大一课程资料", system_prompt)
         self.assertIn("answer 面向用户并包含完整回答", system_prompt)
         self.assertIn("summary 只概括本轮结论", system_prompt)
         self.assertIn(
@@ -1237,6 +1399,9 @@ class ShoppingGuidePromptTests(unittest.TestCase):
 
 
 class HealthTests(unittest.IsolatedAsyncioTestCase):
+    async def test_agent_and_health_routes_share_service_instance(self):
+        self.assertIs(agent_module.agent_service, health_module.agent_service)
+
     async def test_health_reflects_model_and_internal_token_configuration(self):
         original_settings = health_module.settings
         try:
@@ -1250,6 +1415,21 @@ class HealthTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await health_module.health())["status"], "DEGRADED")
         finally:
             health_module.settings = original_settings
+
+    async def test_health_reports_shared_rag_readiness_without_affecting_status(self):
+        original_settings = health_module.settings
+        original_service = health_module.agent_service
+        try:
+            health_module.settings = make_settings()
+            health_module.agent_service = type(
+                "Service", (), {"rag_service": type("Rag", (), {"ready": True})()}
+            )()
+            result = await health_module.health()
+            self.assertEqual(result["status"], "UP")
+            self.assertTrue(result["ragEnabled"])
+        finally:
+            health_module.settings = original_settings
+            health_module.agent_service = original_service
 
 
 if __name__ == "__main__":

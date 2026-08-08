@@ -5,14 +5,13 @@ from typing import Annotated
 from fastapi import APIRouter, Header
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
+from app.container import agent_service
 from app.core.security import InternalAuthenticationError, verify_internal_token
 from app.models.agent import AgentErrorResponse, AgentRunRequest, AgentRunResponse
-from app.services.agent_service import AgentService, AgentServiceError
+from app.services.agent_service import AgentServiceError
 
 
-router = APIRouter(tags=["agent"]) 
-agent_service = AgentService(settings)
+router = APIRouter(tags=["agent"])
 
 
 @router.post("/agent/v1/runs", response_model=AgentRunResponse)

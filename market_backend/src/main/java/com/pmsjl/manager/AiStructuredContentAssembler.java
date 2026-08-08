@@ -2,11 +2,14 @@ package com.pmsjl.manager;
 
 import com.pmsjl.model.dto.ai.internal.AgentOutput;
 import com.pmsjl.model.dto.ai.internal.AgentRecommendation;
+import com.pmsjl.model.dto.ai.internal.AgentSource;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.vo.AiRecommendationVO;
+import com.pmsjl.model.vo.AiRagSourceVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.model.vo.CommodityVO;
 import com.pmsjl.service.CommodityService;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -21,6 +24,12 @@ import java.util.Set;
  */
 @Component
 public class AiStructuredContentAssembler {
+
+    private static final int MAX_SOURCE_COUNT = 5;
+    private static final int MAX_SOURCE_ID_LENGTH = 150;
+    private static final int MAX_SOURCE_TITLE_LENGTH = 200;
+    private static final int MAX_SOURCE_EXCERPT_LENGTH = 300;
+    private static final int MAX_SOURCE_CONTENT_LENGTH = 1200;
 
     private final CommodityService commodityService;
 
@@ -41,6 +50,7 @@ public class AiStructuredContentAssembler {
         result.setWarnings(safeList(output.getWarnings()));
         result.setSearchKeywords(safeList(output.getSearchKeywords()));
         result.setRecommendations(buildRecommendations(output, validCommodities));
+        result.setSources(buildSources(output));
         return result;
     }
 
@@ -90,6 +100,46 @@ public class AiStructuredContentAssembler {
             item.setReason(recommendation.getReason());
             item.setRiskTip(recommendation.getRiskTip());
             results.add(item);
+        }
+        return results;
+    }
+
+    /**
+     * GUIDE 已由 Python 依据本轮检索结果校验；Java 只执行严格的展示白名单。
+     */
+    private List<AiRagSourceVO> buildSources(AgentOutput output) {
+        List<AiRagSourceVO> results = new ArrayList<>();
+        Set<String> sourceIds = new LinkedHashSet<>();
+        for (AgentSource source : safeList(output.getSources())) {
+            if (source == null || !"GUIDE".equals(source.getSourceType())) {
+                continue;
+            }
+            if (StringUtils.isAnyBlank(
+                    source.getSourceId(), source.getTitle(), source.getExcerpt())) {
+                continue;
+            }
+            if (source.getSourceId().length() > MAX_SOURCE_ID_LENGTH
+                    || source.getTitle().length() > MAX_SOURCE_TITLE_LENGTH
+                    || source.getExcerpt().length() > MAX_SOURCE_EXCERPT_LENGTH
+                    || (source.getContent() != null
+                    && (StringUtils.isBlank(source.getContent())
+                    || source.getContent().length() > MAX_SOURCE_CONTENT_LENGTH))
+                    || !sourceIds.add(source.getSourceId())) {
+                continue;
+            }
+
+            AiRagSourceVO item = new AiRagSourceVO();
+            item.setSourceType("GUIDE");
+            item.setSourceId(source.getSourceId());
+            item.setTitle(source.getTitle());
+            item.setExcerpt(source.getExcerpt());
+            item.setContent(source.getContent());
+            // 首版没有 GUIDE 详情页，禁止伪造站内跳转地址。
+            item.setTargetPath(null);
+            results.add(item);
+            if (results.size() >= MAX_SOURCE_COUNT) {
+                break;
+            }
         }
         return results;
     }

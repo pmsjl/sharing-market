@@ -3,6 +3,9 @@
 <mapper namespace="com.pmsjl.mapper.CommodityScoreMapper">
 
     <select id="getAverageScoreById" resultType="java.lang.Double">
-        select avg(score) as AverageScore from commodity_score where commodityId=#{commodityId}
+        select avg(score) as AverageScore
+        from commodity_score
+        where commodityId = #{commodityId}
+          and isDelete = 0
     </select>
 </mapper>

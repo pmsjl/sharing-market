@@ -1,7 +1,6 @@
 <template>
   <div
     class="layout_container"
-    :style="{ '--market-viewport-height': `${viewportHeight}px` }"
     :class="{
       'focus-mode': $route.meta.workspace && LayOutSettingStore.focusMode
     }"
@@ -43,7 +42,6 @@
 
 <script setup lang="ts">
 import Tabbar from "./tabbar/index.vue";
-import { onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import Logo from "./logo/index.vue";
 import Menu from "./menu/index.vue";
@@ -54,66 +52,6 @@ import useLayOutSettingStore from "@/store/modules/setting";
 const userStore = userUserStore();
 const LayOutSettingStore = useLayOutSettingStore();
 const $route = useRoute();
-const viewportHeight = ref(window.innerHeight);
-
-let viewportResizeFrame: number | null = null;
-
-const getUsableViewportHeight = () => {
-  const innerHeight = window.innerHeight;
-  const visualHeight = window.visualViewport?.height || innerHeight;
-  let usableHeight = Math.min(innerHeight, visualHeight);
-
-  const availableScreenHeight =
-    window.screen.availHeight - Math.max(0, window.screenY);
-  const screenHeightLooksReliable =
-    availableScreenHeight > 0 &&
-    availableScreenHeight < usableHeight &&
-    availableScreenHeight >= usableHeight * 0.8;
-
-  if (screenHeightLooksReliable) {
-    usableHeight = availableScreenHeight;
-  }
-
-  return Math.max(1, Math.floor(usableHeight));
-};
-
-const updateViewportHeight = () => {
-  viewportHeight.value = getUsableViewportHeight();
-};
-
-const scheduleViewportHeightUpdate = () => {
-  if (viewportResizeFrame != null) return;
-  viewportResizeFrame = window.requestAnimationFrame(() => {
-    viewportResizeFrame = null;
-    updateViewportHeight();
-  });
-};
-
-onMounted(() => {
-  updateViewportHeight();
-  window.addEventListener("resize", scheduleViewportHeightUpdate);
-  window.visualViewport?.addEventListener(
-    "resize",
-    scheduleViewportHeightUpdate
-  );
-  document.addEventListener("fullscreenchange", scheduleViewportHeightUpdate);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", scheduleViewportHeightUpdate);
-  window.visualViewport?.removeEventListener(
-    "resize",
-    scheduleViewportHeightUpdate
-  );
-  document.removeEventListener(
-    "fullscreenchange",
-    scheduleViewportHeightUpdate
-  );
-  if (viewportResizeFrame != null) {
-    window.cancelAnimationFrame(viewportResizeFrame);
-    viewportResizeFrame = null;
-  }
-});
 </script>
 <script lang="ts">
 export default {
@@ -126,7 +64,7 @@ export default {
   width: 100%;
   height: 100vh;
   height: 100dvh;
-  height: var(--market-viewport-height, 100dvh);
+  max-height: 100dvh;
   min-height: 0;
   overflow: hidden;
   background: var(--market-body-bg);
@@ -248,10 +186,10 @@ export default {
 
 .layout_container.focus-mode {
   position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--market-viewport-height, 100dvh);
+  inset: 0;
+  width: 100%;
+  height: auto;
+  max-height: none;
 
   .layout_slider,
   .layout_tabbar {

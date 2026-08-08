@@ -61,11 +61,11 @@ public class CommodityScoreController {
 
 
     @GetMapping("/averageScore")
-    public Result getAverageScore(@RequestParam Long commodityId) {
+    public Result<Double> getAverageScore(@RequestParam Long commodityId) {
         ThrowUtils.throwIf(commodityId==null||commodityId<=0,ErrorCode.PARAMS_ERROR);
         Double score=commodityScoreService.getAverageScoreById(commodityId);
         if(score==null){
-            return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"还没有人评价，欢迎成为第一个评分的人");
+            return ResultUtils.success(0.0D);
         }
         if(score<0){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);

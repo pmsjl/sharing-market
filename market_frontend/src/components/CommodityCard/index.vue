@@ -1,5 +1,12 @@
 <template>
   <div class="market-page commodity-detail" ref="pageRef">
+    <div v-if="isAgentEntry" class="agent-return-bar">
+      <el-button :icon="ArrowLeft" plain @click="returnToAgent">
+        返回智能导购
+      </el-button>
+      <span>继续查看刚才的咨询与推荐理由</span>
+    </div>
+
     <section class="detail-hero market-board">
       <div class="detail-media">
         <img
@@ -152,11 +159,17 @@
 </template>
 
 <script setup lang="ts">
-import { Coin } from "@element-plus/icons-vue";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { Share, Star, StarFilled, View } from "@element-plus/icons-vue";
+import {
+  ArrowLeft,
+  Coin,
+  Share,
+  Star,
+  StarFilled,
+  View
+} from "@element-plus/icons-vue";
 import QRCodeVue3 from "qrcode-vue3";
 import {
   getCommodityVoByIdUsingGet,
@@ -202,7 +215,19 @@ const alreadyRecord = ref(0);
 const id = ref();
 const shareDialogVisible = ref(false);
 const buyDialogVisible = ref(false);
-const currentPageUrl = ref(window.location.href);
+const buildShareUrl = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("from");
+  url.searchParams.delete("conversationId");
+  return url.toString();
+};
+const currentPageUrl = ref(buildShareUrl());
+const routeValue = (value: unknown) =>
+  Array.isArray(value) ? String(value[0] || "") : String(value || "");
+const isAgentEntry = computed(() => routeValue(route.query.from) === "agent");
+const sourceConversationId = computed(() =>
+  routeValue(route.query.conversationId)
+);
 const sellerId = computed(() => String(commodity.value.adminId || ""));
 const canContactSeller = computed(
   () => Boolean(sellerId.value) && sellerId.value !== currentUserId
@@ -322,6 +347,20 @@ const handleShare = () => {
   shareDialogVisible.value = true;
 };
 
+const returnToAgent = () => {
+  const previousPath = String(window.history.state?.back || "");
+  if (previousPath.startsWith("/user/agentGuide")) {
+    router.back();
+    return;
+  }
+  void router.push({
+    path: "/user/agentGuide",
+    query: sourceConversationId.value
+      ? { conversationId: sourceConversationId.value }
+      : {}
+  });
+};
+
 const handleContactSeller = () => {
   if (!canContactSeller.value) return;
   router.push({
@@ -392,6 +431,23 @@ onMounted(async () => {
 .commodity-detail {
   display: grid;
   gap: 20px;
+}
+
+.agent-return-bar {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--market-line);
+  border-radius: 8px;
+  color: var(--market-muted);
+  background: var(--market-surface);
+  font-size: 13px;
+}
+
+.agent-return-bar .el-button {
+  min-height: 40px;
 }
 
 .detail-hero {
@@ -608,6 +664,11 @@ html.dark .link-container {
 }
 
 @media (max-width: 520px) {
+  .agent-return-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .price-board,
   .link-container {
     grid-template-columns: 1fr;

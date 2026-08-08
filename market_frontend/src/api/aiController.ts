@@ -1,5 +1,9 @@
 import request from "@/utils/request";
 
+// Java 会等待 Python Agent 完成工具循环并在约 90 秒后返回受控结果；
+// 浏览器应比服务端多保留回写余量，避免商品工具成功后提前断开。
+const AI_CHAT_TIMEOUT_MS = 120000;
+
 export type AiMessageRoleEnum = "USER" | "ASSISTANT";
 export type AiMessageStatusEnum = "PENDING" | "SUCCESS" | "FAILED";
 export type AiConversationStatusEnum = "ACTIVE" | "ARCHIVED";
@@ -37,7 +41,8 @@ export interface AiRagSourceVO {
   sourceId: string;
   title: string;
   excerpt: string;
-  targetPath: string;
+  content?: string | null;
+  targetPath: string | null;
 }
 
 export interface AiStructuredContentVO {
@@ -104,7 +109,8 @@ export const createAiConversation = (body: AiChatMessageRequest) =>
   request<unknown, Result<AiChatVO>>({
     url: "/api/ai/conversations",
     method: "POST",
-    data: body
+    data: body,
+    timeout: AI_CHAT_TIMEOUT_MS
   });
 
 export const sendAiConversationMessage = (
@@ -114,7 +120,8 @@ export const sendAiConversationMessage = (
   request<unknown, Result<AiChatVO>>({
     url: `/api/ai/conversations/${conversationId}/messages`,
     method: "POST",
-    data: body
+    data: body,
+    timeout: AI_CHAT_TIMEOUT_MS
   });
 
 export const listAiConversations = (

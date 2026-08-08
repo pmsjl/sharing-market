@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.container import agent_service
 from app.core.config import settings
 
 
@@ -18,5 +19,5 @@ async def health() -> dict[str, object]:
         "modelConfigured": model_configured,
         "internalTokenConfigured": token_configured,
         "javaBackendReachable": False,
-        "ragEnabled": False,
+        "ragEnabled": agent_service.rag_service.ready,
     }
