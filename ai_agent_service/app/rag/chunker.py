@@ -19,9 +19,8 @@ def read_body(path: Path) -> str:
 """
 按二级标题切分document
 """
-
-
 def split_h2(body: str) -> list[tuple[str | None, str]]:
+
     matches = list(H2_PATTERN.finditer(body))
     if not matches:
         return [(None, body)]

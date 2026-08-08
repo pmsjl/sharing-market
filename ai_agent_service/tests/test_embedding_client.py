@@ -8,13 +8,36 @@ from app.rag import embedding_client as embedding_module
 from app.rag.embedding_client import EmbeddingClient
 
 
-def _settings() -> Settings:
+def _settings(batch_size: int = 10) -> Settings:
     return Settings(
         embedding_base_url="https://embedding.example/v1/",
         embedding_api_key="test-key",
         embedding_model="test-embedding",
         embedding_dimensions=2,
+        embedding_batch_size=batch_size,
     )
+
+
+def test_embed_batch_uses_configured_batch_size(monkeypatch):
+    client = EmbeddingClient(_settings(batch_size=2))
+    batches: list[list[str]] = []
+
+    async def fake_embed_batch_once(batch: list[str]) -> list[list[float]]:
+        batches.append(batch)
+        return [[float(len(item)), 0.0] for item in batch]
+
+    monkeypatch.setattr(client, "_embed_batch_once", fake_embed_batch_once)
+    result = asyncio.run(client.embed_batch(["a", "bb", "ccc", "dddd", "eeeee"]))
+
+    assert batches == [["a", "bb"], ["ccc", "dddd"], ["eeeee"]]
+    assert len(result) == 5
+
+
+def test_embed_batch_rejects_non_positive_batch_size():
+    client = EmbeddingClient(_settings(batch_size=0))
+
+    with pytest.raises(ValueError, match="EMBEDDING_BATCH_SIZE"):
+        asyncio.run(client.embed_batch(["query"]))
 
 
 def test_validate_sorts_valid_out_of_order_indexes():

@@ -25,7 +25,8 @@ def _relation(**overrides):
     return value
 
 
-def _index(tmp_path: Path, rows: list[dict] | None = None) -> CourseRelationIndex:
+def _index(tmp_path: Path,
+           rows: list[dict] | None = None) -> CourseRelationIndex:
     normalized = tmp_path / "normalized"
     normalized.mkdir()
     rows = rows or [_relation()]
@@ -40,31 +41,33 @@ def test_exact_course_uses_exact_documents_and_purchase_policy(tmp_path):
     plan = plan_query("COMP2022 的教材怎么买", _index(tmp_path))
 
     assert plan.should_retrieve is True
-    assert plan.exact_document_ids == [
+    assert plan.course_document_ids == [
         "GUIDE:course-repo-COMP2052",
         "GUIDE:course-purchase-policy",
     ]
-    assert plan.preferred_categories == []
+    assert plan.extra_categories == []
     assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)
     assert plan.course_match_mode == "alias"
     assert len(plan.course_relation_summaries) == 1
 
 
-def test_exact_course_purchase_phrase_adds_policy_without_global_keyword(tmp_path):
+def test_exact_course_purchase_phrase_adds_policy_without_global_keyword(
+        tmp_path):
     plan = plan_query("COMP2022 可以买二手吗", _index(tmp_path))
 
-    assert plan.exact_document_ids == [
+    assert plan.course_document_ids == [
         "GUIDE:course-repo-COMP2052",
         "GUIDE:course-purchase-policy",
     ]
 
 
-def test_generic_course_material_question_searches_all_course_categories(tmp_path):
+def test_generic_course_material_question_searches_all_course_categories(
+        tmp_path):
     plan = plan_query("教材什么时候买比较合适", _index(tmp_path))
 
     assert plan.should_retrieve is True
-    assert plan.exact_document_ids == []
-    assert plan.preferred_categories == [
+    assert plan.course_document_ids == []
+    assert plan.extra_categories == [
         "campus_lifecycle",
         "course_materials",
         "course_purchase_policy",
@@ -76,8 +79,8 @@ def test_non_keyword_query_uses_non_course_semantic_fallback(tmp_path):
     plan = plan_query("帮我找一台便宜的二手电脑", _index(tmp_path))
 
     assert plan.should_retrieve is True
-    assert plan.exact_document_ids == []
-    assert plan.preferred_categories == []
+    assert plan.course_document_ids == []
+    assert plan.extra_categories == []
     assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)
 
 
@@ -112,15 +115,16 @@ def test_course_catalog_query_returns_relations_and_parent_documents(tmp_path):
     plan = plan_query("计算机类 2019 级有哪些课程", _index(tmp_path, rows))
 
     assert plan.course_match_mode == "constraints"
-    assert plan.exact_document_ids == [
+    assert plan.course_document_ids == [
         "GUIDE:course-repo-COMP2052",
         "GUIDE:course-repo-COMP3001",
     ]
-    assert {item.course_name for item in plan.course_relation_summaries} == {
-        "数据结构",
-        "计算机网络",
-    }
-    assert "GUIDE:course-purchase-policy" not in plan.exact_document_ids
+    assert {item.course_name
+            for item in plan.course_relation_summaries} == {
+                "数据结构",
+                "计算机网络",
+            }
+    assert "GUIDE:course-purchase-policy" not in plan.course_document_ids
 
 
 def test_user_background_does_not_trigger_course_dimension_selection(tmp_path):
@@ -130,16 +134,16 @@ def test_user_background_does_not_trigger_course_dimension_selection(tmp_path):
     )
 
     assert plan.course_match_mode == "none"
-    assert plan.exact_document_ids == []
+    assert plan.course_document_ids == []
     assert plan.course_relation_summaries == []
 
 
 def test_mixed_course_and_dorm_query_keeps_both_scopes(tmp_path):
     plan = plan_query("COMP2022 的教材能放宿舍吗", _index(tmp_path))
 
-    assert plan.exact_document_ids == [
+    assert plan.course_document_ids == [
         "GUIDE:course-repo-COMP2052",
         "GUIDE:course-purchase-policy",
     ]
-    assert plan.preferred_categories == ["campus_dorm"]
+    assert plan.extra_categories == ["campus_dorm"]
     assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)

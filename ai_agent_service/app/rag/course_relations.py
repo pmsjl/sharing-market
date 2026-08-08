@@ -42,13 +42,8 @@ class CourseConstraints:
 
     @property
     def has_any(self) -> bool:
-        return bool(
-            self.entry_year
-            or self.majors
-            or self.major_codes
-            or self.academic_years
-            or self.seasons
-        )
+        return bool(self.entry_year or self.majors or self.major_codes
+                    or self.academic_years or self.seasons)
 
 
 @dataclass(frozen=True)
@@ -76,13 +71,13 @@ class CourseRelationIndex:
 
     def __init__(self) -> None:
         self.relations: list[CourseRelation] = []
-        self.by_course_name: dict[str, set[str]] = {}
-        self.by_course_code: dict[str, set[str]] = {}
-        self.by_repo_id: dict[str, set[str]] = {}
-        self.by_major: dict[str, set[str]] = {}
-        self.by_major_code: dict[str, set[str]] = {}
-        self.by_entry_year: dict[int, set[str]] = {}
-        self.by_semester: dict[str, set[str]] = {}
+        self.course_name_dict: dict[str, set[str]] = {}
+        self.course_code_dict: dict[str, set[str]] = {}
+        self.repo_id_dict: dict[str, set[str]] = {}
+        self.major_dict: dict[str, set[str]] = {}
+        self.major_code_dict: dict[str, set[str]] = {}
+        self.entry_year_dict: dict[int, set[str]] = {}
+        self.semester_dict: dict[str, set[str]] = {}
         self._course_names_longest: list[str] = []
         self._majors_longest: list[str] = []
         self._major_codes_longest: list[str] = []
@@ -91,38 +86,35 @@ class CourseRelationIndex:
     def load(cls, knowledge_root: Path) -> "CourseRelationIndex":
         obj = cls()
         path = knowledge_root / "normalized" / "course_material_relations.jsonl"
-        for line_number, line in enumerate(
-            path.read_text(encoding="utf-8-sig").splitlines(), start=1
-        ):
+        for index, line in enumerate(
+                path.read_text(encoding="utf-8-sig").splitlines(), start=1):
             if not line.strip():
                 continue
             try:
                 relation = CourseRelation.model_validate(json.loads(line))
             except (json.JSONDecodeError, ValidationError) as exc:
-                raise ValueError(
-                    f"课程关系表第 {line_number} 行格式不合法：{path}"
-                ) from exc
+                raise ValueError(f"课程关系表第 {index} 行格式不合法：{path}") from exc
             obj.relations.append(relation)
-            obj._add(obj.by_course_name, relation.course_name, relation)
-            obj._add(obj.by_course_code, relation.course_code, relation)
-            obj._add(obj.by_repo_id, relation.repo_id, relation)
-            obj._add(obj.by_major, relation.major, relation)
-            obj._add(obj.by_major_code, relation.major_code, relation)
-            obj._add(obj.by_entry_year, relation.entry_year, relation)
-            obj._add(obj.by_semester, relation.semester, relation)
+            obj._add(obj.course_name_dict, relation.course_name, relation)
+            obj._add(obj.course_code_dict, relation.course_code, relation)
+            obj._add(obj.repo_id_dict, relation.repo_id, relation)
+            obj._add(obj.major_dict, relation.major, relation)
+            obj._add(obj.major_code_dict, relation.major_code, relation)
+            obj._add(obj.entry_year_dict, relation.entry_year, relation)
+            obj._add(obj.semester_dict, relation.semester, relation)
 
-        obj._course_names_longest = obj._longest_first(obj.by_course_name)
-        obj._majors_longest = obj._longest_first(obj.by_major)
-        obj._major_codes_longest = obj._longest_first(obj.by_major_code)
+        obj._course_names_longest = obj._longest_first(obj.course_name_dict)
+        obj._majors_longest = obj._longest_first(obj.major_dict)
+        obj._major_codes_longest = obj._longest_first(obj.major_code_dict)
         return obj
 
     @staticmethod
-    def _add(index: dict, alias, relation: CourseRelation) -> None:
-        index.setdefault(alias, set()).add(relation.course_document_id)
+    def _add(objDict: dict, alias, relation: CourseRelation) -> None:
+        objDict.setdefault(alias, set()).add(relation.course_document_id)
 
     @staticmethod
-    def _longest_first(index: dict[str, set[str]]) -> list[str]:
-        return sorted(index, key=lambda value: (-len(value), value))
+    def _longest_first(objDict: dict[str, set[str]]) -> list[str]:
+        return sorted(objDict, key=lambda value: (-len(value), value))
 
     def match(
         self,
@@ -131,12 +123,11 @@ class CourseRelationIndex:
         allow_dimension_only: bool = False,
     ) -> CourseMatch:
         """优先解析课程别名；没有别名时可按显式维度选择。"""
-        literal_names = self._match_non_overlapping(
-            query, self._course_names_longest
-        )
+        literal_names = self._match_non_overlapping(query,
+                                                    self._course_names_longest)
         constraints = self._extract_constraints(query)
 
-        course_codes = self._match_token_aliases(query, self.by_course_code)
+        course_codes = self._match_token_aliases(query, self.course_code_dict)
         if course_codes:
             rows = [
                 item for item in self.relations
@@ -144,7 +135,7 @@ class CourseRelationIndex:
             ]
             return self._alias_match(rows, literal_names, constraints)
 
-        repo_ids = self._match_token_aliases(query, self.by_repo_id)
+        repo_ids = self._match_token_aliases(query, self.repo_id_dict)
         if repo_ids:
             rows = [
                 item for item in self.relations if item.repo_id in repo_ids
@@ -160,9 +151,8 @@ class CourseRelationIndex:
 
         if allow_dimension_only and constraints.has_any:
             rows = self._filter_relations(self.relations, constraints)
-            mode: CourseMatchMode = (
-                "constraints" if rows else "constraints_no_match"
-            )
+            mode: CourseMatchMode = ("constraints"
+                                     if rows else "constraints_no_match")
             return self._build_match(rows, [], mode)
 
         return CourseMatch(set(), [], [], "none")
@@ -189,15 +179,12 @@ class CourseRelationIndex:
     def _extract_constraints(self, query: str) -> CourseConstraints:
         year_match = _ENTRY_YEAR_PATTERN.search(query)
         entry_year = int(year_match.group(1)) if year_match else None
-        majors = tuple(
-            self._match_non_overlapping(query, self._majors_longest)
-        )
+        majors = tuple(self._match_non_overlapping(query,
+                                                   self._majors_longest))
         major_codes = tuple(
-            self._match_token_aliases(query, self.by_major_code)
-        )
-        academic_years = tuple(
-            term for term in _ACADEMIC_YEAR_TERMS if term in query
-        )
+            self._match_token_aliases(query, self.major_code_dict))
+        academic_years = tuple(term for term in _ACADEMIC_YEAR_TERMS
+                               if term in query)
         seasons = tuple(term for term in _SEASON_TERMS if term in query)
         return CourseConstraints(
             entry_year=entry_year,
@@ -214,25 +201,20 @@ class CourseRelationIndex:
     ) -> list[CourseRelation]:
         selected: list[CourseRelation] = []
         for relation in rows:
-            if (
-                constraints.entry_year is not None
-                and relation.entry_year != constraints.entry_year
-            ):
+            if (constraints.entry_year is not None
+                    and relation.entry_year != constraints.entry_year):
                 continue
             if constraints.majors and relation.major not in constraints.majors:
                 continue
-            if (
-                constraints.major_codes
-                and relation.major_code not in constraints.major_codes
-            ):
+            if (constraints.major_codes
+                    and relation.major_code not in constraints.major_codes):
                 continue
             if constraints.academic_years and not any(
-                term in relation.semester for term in constraints.academic_years
-            ):
+                    term in relation.semester
+                    for term in constraints.academic_years):
                 continue
             if constraints.seasons and not any(
-                term in relation.semester for term in constraints.seasons
-            ):
+                    term in relation.semester for term in constraints.seasons):
                 continue
             selected.append(relation)
         return selected
@@ -243,21 +225,35 @@ class CourseRelationIndex:
         course_names: list[str],
         mode: CourseMatchMode,
         *,
+        # *前面的可以正常
+        # (rows,
+        # names,
+        # "alias",
+        # constraints_fallback=False)
+        # 这种传参
+        # 加*表示后面的参数必须显式传递用constraints_fallback=False,
+        # 而不能直接写一个False赋值，
         constraints_fallback: bool = False,
     ) -> CourseMatch:
         return CourseMatch(
-            document_ids={item.course_document_id for item in rows},
+            document_ids={item.course_document_id
+                          for item in rows},
             course_names=course_names,
             relation_summaries=self._summarize(rows),
             mode=mode,
             constraints_fallback=constraints_fallback,
         )
 
+
+
+    # 这里返回的是检索到的符合的relation类，
+    # 然后将这些转化为课程->专业入学年份等等的映射关系(summary类)
     @staticmethod
     def _summarize(
-        rows: list[CourseRelation],
-    ) -> list[CourseRelationSummary]:
-        grouped: dict[tuple[str, str, str, str, str], list[CourseRelation]] = {}
+        rows: list[CourseRelation], ) -> list[CourseRelationSummary]:
+
+        grouped: dict[tuple[str, str, str, str, str],
+                      list[CourseRelation]] = {}
         for relation in rows:
             key = (
                 relation.course_name,
@@ -279,44 +275,41 @@ class CourseRelationIndex:
                     repo_id=repo_id,
                     course_document_id=document_id,
                     semester=semester,
-                    majors=sorted({item.major for item in relations}),
-                    major_codes=sorted(
-                        {item.major_code for item in relations}
-                    ),
-                    entry_years=sorted(
-                        {item.entry_year for item in relations}
-                    ),
+                    majors=sorted({item.major
+                                   for item in relations}),
+                    major_codes=sorted({item.major_code
+                                        for item in relations}),
+                    entry_years=sorted({item.entry_year
+                                        for item in relations}),
                     relation_ids=sorted(
-                        {item.relation_id for item in relations}
-                    ),
+                        {item.relation_id
+                         for item in relations}),
                     relation_group_ids=sorted(
-                        {item.relation_group_id for item in relations}
-                    ),
-                    plan_ids=sorted({item.plan_id for item in relations}),
-                    plan_source_ids=sorted(
-                        {
-                            source_id
-                            for item in relations
-                            for source_id in item.plan_source_ids
-                        }
-                    ),
-                    plan_source_urls=sorted(
-                        {
-                            source_url
-                            for item in relations
-                            for source_url in item.plan_source_urls
-                        }
-                    ),
-                )
-            )
+                        {item.relation_group_id
+                         for item in relations}),
+                    plan_ids=sorted({item.plan_id
+                                     for item in relations}),
+                    plan_source_ids=sorted({
+                        source_id
+                        for item in relations
+                        for source_id in item.plan_source_ids
+                    }),
+                    plan_source_urls=sorted({
+                        source_url
+                        for item in relations
+                        for source_url in item.plan_source_urls
+                    }),
+                ))
         return summaries
 
     @staticmethod
-    def _match_token_aliases(query: str, index: dict[str, set[str]]) -> list[str]:
+    def _match_token_aliases(query: str,
+                             obj_dict: dict[str, set[str]]) -> list[str]:
         matched = [
-            alias
-            for alias in index
-            if re.search(
+            alias for alias in obj_dict if re.search(
+                # escape就是把这里的alias当作字符串而不是正则表达式匹配，
+                # 比如C++这里的就是字符串而不是正则中的+，
+                # 前后的意思是不允许出现字母或数字，用于匹配完整code
                 rf"(?<![A-Za-z0-9]){re.escape(alias)}(?![A-Za-z0-9])",
                 query,
                 flags=re.IGNORECASE,
@@ -332,10 +325,8 @@ class CourseRelationIndex:
             start = query.find(alias)
             while start >= 0:
                 end = start + len(alias)
-                if not any(
-                    start < occupied_end and end > occupied_start
-                    for occupied_start, occupied_end in occupied
-                ):
+                if not any(start < occupied_end and end > occupied_start
+                           for occupied_start, occupied_end in occupied):
                     matched.append(alias)
                     occupied.append((start, end))
                     break
