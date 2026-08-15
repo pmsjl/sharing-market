@@ -1,10 +1,12 @@
 package com.pmsjl.manager;
 
 import com.pmsjl.model.dto.ai.internal.AgentOutput;
+import com.pmsjl.model.dto.ai.internal.AgentCitation;
 import com.pmsjl.model.dto.ai.internal.AgentRecommendation;
 import com.pmsjl.model.dto.ai.internal.AgentSource;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.vo.AiRecommendationVO;
+import com.pmsjl.model.vo.AiRagCitationVO;
 import com.pmsjl.model.vo.AiRagSourceVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.model.vo.CommodityVO;
@@ -27,9 +29,13 @@ public class AiStructuredContentAssembler {
 
     private static final int MAX_SOURCE_COUNT = 5;
     private static final int MAX_SOURCE_ID_LENGTH = 150;
+    private static final int MAX_DOCUMENT_ID_LENGTH = 150;
     private static final int MAX_SOURCE_TITLE_LENGTH = 200;
-    private static final int MAX_SOURCE_EXCERPT_LENGTH = 300;
-    private static final int MAX_SOURCE_CONTENT_LENGTH = 1200;
+    private static final int MAX_CITATION_COUNT = 5;
+    private static final int MAX_CHUNK_ID_LENGTH = 200;
+    private static final int MAX_SECTION_LENGTH = 200;
+    private static final int MAX_CITATION_EXCERPT_LENGTH = 300;
+    private static final int MAX_CITATION_CONTENT_LENGTH = 1200;
 
     private final CommodityService commodityService;
 
@@ -109,35 +115,67 @@ public class AiStructuredContentAssembler {
      */
     private List<AiRagSourceVO> buildSources(AgentOutput output) {
         List<AiRagSourceVO> results = new ArrayList<>();
-        Set<String> sourceIds = new LinkedHashSet<>();
+        Set<String> documentIds = new LinkedHashSet<>();
         for (AgentSource source : safeList(output.getSources())) {
             if (source == null || !"GUIDE".equals(source.getSourceType())) {
                 continue;
             }
             if (StringUtils.isAnyBlank(
-                    source.getSourceId(), source.getTitle(), source.getExcerpt())) {
+                    source.getSourceId(), source.getDocumentId(), source.getTitle())) {
                 continue;
             }
             if (source.getSourceId().length() > MAX_SOURCE_ID_LENGTH
+                    || source.getDocumentId().length() > MAX_DOCUMENT_ID_LENGTH
                     || source.getTitle().length() > MAX_SOURCE_TITLE_LENGTH
-                    || source.getExcerpt().length() > MAX_SOURCE_EXCERPT_LENGTH
-                    || (source.getContent() != null
-                    && (StringUtils.isBlank(source.getContent())
-                    || source.getContent().length() > MAX_SOURCE_CONTENT_LENGTH))
-                    || !sourceIds.add(source.getSourceId())) {
+                    || documentIds.contains(source.getDocumentId())) {
+                continue;
+            }
+
+            List<AiRagCitationVO> citations = buildCitations(source.getCitations());
+            if (citations.isEmpty() || !documentIds.add(source.getDocumentId())) {
                 continue;
             }
 
             AiRagSourceVO item = new AiRagSourceVO();
             item.setSourceType("GUIDE");
             item.setSourceId(source.getSourceId());
+            item.setDocumentId(source.getDocumentId());
             item.setTitle(source.getTitle());
-            item.setExcerpt(source.getExcerpt());
-            item.setContent(source.getContent());
+            item.setCitations(citations);
             // 首版没有 GUIDE 详情页，禁止伪造站内跳转地址。
             item.setTargetPath(null);
             results.add(item);
             if (results.size() >= MAX_SOURCE_COUNT) {
+                break;
+            }
+        }
+        return results;
+    }
+
+    private List<AiRagCitationVO> buildCitations(List<AgentCitation> values) {
+        List<AiRagCitationVO> results = new ArrayList<>();
+        Set<String> chunkIds = new LinkedHashSet<>();
+        for (AgentCitation citation : safeList(values)) {
+            if (citation == null || StringUtils.isAnyBlank(
+                    citation.getChunkId(), citation.getExcerpt(), citation.getContent())) {
+                continue;
+            }
+            String section = StringUtils.trimToNull(citation.getSection());
+            if (citation.getChunkId().length() > MAX_CHUNK_ID_LENGTH
+                    || (section != null && section.length() > MAX_SECTION_LENGTH)
+                    || citation.getExcerpt().length() > MAX_CITATION_EXCERPT_LENGTH
+                    || citation.getContent().length() > MAX_CITATION_CONTENT_LENGTH
+                    || !chunkIds.add(citation.getChunkId())) {
+                continue;
+            }
+
+            AiRagCitationVO item = new AiRagCitationVO();
+            item.setChunkId(citation.getChunkId());
+            item.setSection(section);
+            item.setExcerpt(citation.getExcerpt());
+            item.setContent(citation.getContent());
+            results.add(item);
+            if (results.size() >= MAX_CITATION_COUNT) {
                 break;
             }
         }

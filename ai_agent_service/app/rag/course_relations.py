@@ -114,12 +114,12 @@ class CourseRelationIndex:
 
     @staticmethod
     def _longest_first(objDict: dict[str, set[str]]) -> list[str]:
-        return sorted(objDict, key=lambda value: (-len(value), value))
+        return sorted(objDict, key=lambda k: (-len(k), k))
 
     def match(
         self,
         query: str,
-        *,
+        *, 
         allow_dimension_only: bool = False,
     ) -> CourseMatch:
         """优先解析课程别名；没有别名时可按显式维度选择。"""

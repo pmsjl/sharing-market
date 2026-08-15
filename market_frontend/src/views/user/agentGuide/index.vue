@@ -376,7 +376,7 @@
                 <span>{{ source.sourceType }}</span>
                 <div>
                   <strong>{{ source.title }}</strong>
-                  <p>{{ source.excerpt }}</p>
+                  <p>{{ sourcePreview(source) }}</p>
                 </div>
                 <b aria-hidden="true">查看</b>
               </button>
@@ -526,13 +526,32 @@
           }}</span>
           <div>
             <h2>{{ selectedSource?.title || "参考来源" }}</h2>
-            <p>{{ selectedSource?.sourceId }}</p>
+            <p>{{ selectedSource?.documentId || selectedSource?.sourceId }}</p>
           </div>
         </div>
       </template>
       <section class="source-detail-body" aria-label="来源引用正文">
-        <div class="source-detail-label">本次回答引用片段</div>
-        <p>{{ selectedSource?.content || selectedSource?.excerpt }}</p>
+        <div class="source-detail-label">
+          本次回答引用
+          {{ selectedSource?.citations?.length || 1 }} 个片段
+        </div>
+        <div
+          v-if="selectedSource?.citations?.length"
+          class="source-citation-list"
+        >
+          <article
+            v-for="citation in selectedSource.citations"
+            :key="citation.chunkId"
+            class="source-citation"
+          >
+            <h3>{{ citation.section || "引用片段" }}</h3>
+            <p>{{ citation.content || citation.excerpt }}</p>
+            <small>{{ citation.chunkId }}</small>
+          </article>
+        </div>
+        <p v-else>
+          {{ selectedSource?.content || selectedSource?.excerpt }}
+        </p>
       </section>
       <template #footer>
         <el-button type="primary" @click="sourceDialogOpen = false">
@@ -1291,6 +1310,9 @@ const openSource = (source: AiRagSourceVO) => {
   }
   if (source.targetPath) void router.push(source.targetPath);
 };
+
+const sourcePreview = (source: AiRagSourceVO) =>
+  source.citations?.[0]?.excerpt || source.excerpt || "查看本次引用片段";
 
 const openCommodity = (commodityId: string) => {
   void router.push({
@@ -2289,6 +2311,32 @@ button {
   color: var(--market-orange);
   font-size: 12px;
   font-weight: 900;
+}
+.source-citation-list {
+  display: grid;
+  gap: 16px;
+}
+.source-citation {
+  min-width: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--market-line);
+}
+.source-citation:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.source-citation h3 {
+  margin: 0 0 8px;
+  color: var(--market-ink);
+  font-size: 15px;
+}
+.source-citation small {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: var(--market-muted);
+  font-family: var(--market-font-mono);
+  font-size: 10px;
 }
 .source-detail-body p {
   margin: 0;

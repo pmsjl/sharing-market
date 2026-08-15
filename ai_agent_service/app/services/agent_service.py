@@ -23,6 +23,7 @@ from app.models.agent import (
     AgentUsage,
     AGENT_FINAL_RESULT_TEXT_FORMAT,
     AgentFinalResult,
+    AgentCitation,
     AgentOutput,
     AgentResponseOutput,
     AgentSource,
@@ -579,28 +580,56 @@ class AgentService:
                 False,
             )
 
-        sources: list[AgentSource] = []
-        seen_source_ids: set[str] = set()
+        sources_by_document: dict[str, AgentSource] = {}
+        seen_chunk_ids: set[str] = set()
         for chunk_id in output.knowledgeChunkIds:
+            if chunk_id in seen_chunk_ids:
+                continue
+            seen_chunk_ids.add(chunk_id)
+
             item = retrieved_by_id[chunk_id]
-            source_id = item.document_id.strip()
-            if source_id in seen_source_ids or len(source_id) > 150:
+            document_id = item.document_id.strip()
+            source_id = item.source_id.strip()
+            normalized_chunk_id = item.chunk_id.strip()
+            if (not document_id or len(document_id) > 150
+                    or not source_id or len(source_id) > 150
+                    or not normalized_chunk_id
+                    or len(normalized_chunk_id) > 200):
                 continue
             title = AgentService._clean_source_text(item.title, 200)
             content = AgentService._clean_source_content(item.content, 1200)
             excerpt = AgentService._clean_source_text(content, 300)
-            if not source_id or not title or not excerpt or not content:
+            section = (AgentService._clean_source_text(item.section, 200)
+                       if item.section else None) or None
+            if not title or not excerpt or not content:
                 continue
-            seen_source_ids.add(source_id)
-            sources.append(AgentSource(
-                sourceId=source_id,
-                title=title,
+
+            citation = AgentCitation(
+                chunkId=normalized_chunk_id,
+                section=section,
                 excerpt=excerpt,
                 content=content,
-            ))
-            if len(sources) >= 5:
-                break
-        return sources
+            )
+            source = sources_by_document.get(document_id)
+            if source is None:
+                if len(sources_by_document) >= 5:
+                    continue
+                sources_by_document[document_id] = AgentSource(
+                    sourceType=item.source_type,
+                    sourceId=source_id,
+                    documentId=document_id,
+                    title=title,
+                    citations=[citation],
+                )
+                continue
+
+            # 同一索引文档必须始终指向同一个业务来源，异常元数据不合并。
+            if source.sourceId != source_id:
+                continue
+            if len(source.citations) < 5:
+                source.citations.append(citation)
+
+        return list(sources_by_document.values())
 
     @staticmethod
     def _clean_source_text(value: str, max_length: int) -> str:

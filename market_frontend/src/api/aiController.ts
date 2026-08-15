@@ -36,11 +36,22 @@ export interface AiRecommendationVO {
   riskTip?: string;
 }
 
+export interface AiRagCitationVO {
+  chunkId: string;
+  section?: string | null;
+  excerpt: string;
+  content: string;
+}
+
 export interface AiRagSourceVO {
   sourceType: "COMMODITY" | "POST" | "COMMENT" | "NOTICE" | "GUIDE";
   sourceId: string;
+  documentId?: string;
   title: string;
-  excerpt: string;
+  citations?: AiRagCitationVO[];
+  /** 兼容升级前保存的历史消息。 */
+  excerpt?: string;
+  /** 兼容升级前保存的历史消息。 */
   content?: string | null;
   targetPath: string | null;
 }
