@@ -18,6 +18,11 @@ public class UserAddRequest implements Serializable {
     private String userAccount;
 
     /**
+     * 初始密码，由管理员创建用户时提供，不使用仓库内置默认值
+     */
+    private String userPassword;
+
+    /**
      * 用户头像
      */
     private String userAvatar;

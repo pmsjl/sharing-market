@@ -1173,6 +1173,7 @@ declare namespace API {
     userAccount?: string;
     userAvatar?: string;
     userName?: string;
+    userPassword?: string;
     userRole?: string;
   };
 

@@ -98,8 +98,8 @@ import { getSafeRedirectPath } from "@/utils/roleHome";
 
 const authPage = ref<HTMLElement | null>(null);
 const loginForm = reactive({
-  userAccount: "jjjj",
-  userPassword: "12345678"
+  userAccount: "",
+  userPassword: ""
 });
 const loginForms = ref();
 const loading = ref(false);

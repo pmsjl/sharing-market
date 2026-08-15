@@ -28,6 +28,7 @@ class Retriever:
 
     #加了property就是相当于原本是retriever.chunks()
     #现在少加个括号，变成retriever.chunks
+    
     @property
     def chunks(self):
         return self.index_store.chunks
@@ -38,7 +39,7 @@ class Retriever:
 
     @property
     def index(self):
-        return self.index_store.index
+        return self.index_store.index 
 
     async def retrieve(
         self,

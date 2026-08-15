@@ -1,6 +1,7 @@
 package com.pmsjl.manager;
 
 import com.pmsjl.model.dto.ai.internal.AgentOutput;
+import com.pmsjl.model.dto.ai.internal.AgentCitation;
 import com.pmsjl.model.dto.ai.internal.AgentRecommendation;
 import com.pmsjl.model.dto.ai.internal.AgentSource;
 import com.pmsjl.model.entity.Commodity;
@@ -77,21 +78,30 @@ class AiStructuredContentAssemblerTest {
         AgentOutput output = new AgentOutput();
         output.setIntent(AiIntentEnum.GENERAL_GUIDE);
         output.setSummary("指南回答");
+        AgentSource firstSource = source(
+                "GUIDE", "1", "来源 1", "摘录 1", "完整正文 1");
+        firstSource.setCitations(List.of(
+                firstSource.getCitations().get(0),
+                citation("GUIDE:1#test", "重复章节", "重复摘录", "重复正文"),
+                citation("GUIDE:1#second", "第二章节", "摘录 2", "完整正文 2")
+        ));
         output.setSources(List.of(
-                source("POST", "POST:1", "帖子", "不受支持"),
+                source("POST", "1", "帖子", "不受支持"),
                 source("GUIDE", "", "空 ID", "无效"),
                 source("GUIDE", "x".repeat(151), "过长 ID", "无效"),
-                source("GUIDE", "GUIDE:long-title", "题".repeat(201), "无效"),
-                source("GUIDE", "GUIDE:long-excerpt", "过长摘录", "摘".repeat(301)),
-                source("GUIDE", "GUIDE:blank-content", "空正文", "有效摘录", " "),
-                source("GUIDE", "GUIDE:long-content", "过长正文", "有效摘录", "正".repeat(1201)),
-                source("GUIDE", "GUIDE:1", "来源 1", "摘录 1", "完整正文 1"),
-                source("GUIDE", "GUIDE:1", "重复来源", "重复摘录"),
-                source("GUIDE", "GUIDE:2", "来源 2", "摘录 2"),
-                source("GUIDE", "GUIDE:3", "来源 3", "摘录 3"),
-                source("GUIDE", "GUIDE:4", "来源 4", "摘录 4"),
-                source("GUIDE", "GUIDE:5", "来源 5", "摘录 5"),
-                source("GUIDE", "GUIDE:6", "来源 6", "摘录 6")
+                sourceWithDocumentId("GUIDE", "long-document", "x".repeat(151),
+                        "过长文档 ID", "无效", "无效"),
+                source("GUIDE", "long-title", "题".repeat(201), "无效"),
+                source("GUIDE", "long-excerpt", "过长摘录", "摘".repeat(301)),
+                source("GUIDE", "blank-content", "空正文", "有效摘录", " "),
+                source("GUIDE", "long-content", "过长正文", "有效摘录", "正".repeat(1201)),
+                firstSource,
+                source("GUIDE", "1", "重复来源", "重复摘录"),
+                source("GUIDE", "2", "来源 2", "摘录 2"),
+                source("GUIDE", "3", "来源 3", "摘录 3"),
+                source("GUIDE", "4", "来源 4", "摘录 4"),
+                source("GUIDE", "5", "来源 5", "摘录 5"),
+                source("GUIDE", "6", "来源 6", "摘录 6")
         ));
 
         AiStructuredContentVO result =
@@ -99,15 +109,24 @@ class AiStructuredContentAssemblerTest {
 
         assertEquals(5, result.getSources().size());
         assertEquals(
-                List.of("GUIDE:1", "GUIDE:2", "GUIDE:3", "GUIDE:4", "GUIDE:5"),
+                List.of("1", "2", "3", "4", "5"),
                 result.getSources().stream().map(item -> item.getSourceId()).toList()
         );
+        assertEquals("GUIDE:1", result.getSources().get(0).getDocumentId());
         assertTrue(result.getSources().stream()
                 .allMatch(item -> "GUIDE".equals(item.getSourceType())));
         assertTrue(result.getSources().stream()
                 .allMatch(item -> item.getTargetPath() == null));
-        assertEquals("完整正文 1", result.getSources().get(0).getContent());
-        assertNull(result.getSources().get(1).getContent());
+        assertEquals(2, result.getSources().get(0).getCitations().size());
+        assertEquals("GUIDE:1#test",
+                result.getSources().get(0).getCitations().get(0).getChunkId());
+        assertEquals("完整正文 1",
+                result.getSources().get(0).getCitations().get(0).getContent());
+        assertEquals("GUIDE:1#second",
+                result.getSources().get(0).getCitations().get(1).getChunkId());
+        assertEquals("第二章节",
+                result.getSources().get(0).getCitations().get(1).getSection());
+        assertNull(result.getSources().get(0).getContent());
         assertNull(result.getSources().get(0).getTargetPath());
         verifyNoInteractions(commodityService);
     }
@@ -157,12 +176,45 @@ class AiStructuredContentAssemblerTest {
                                       String title,
                                       String excerpt,
                                       String content) {
+        return sourceWithDocumentId(
+                type,
+                id,
+                type + ":" + id,
+                title,
+                excerpt,
+                content
+        );
+    }
+
+    private static AgentSource sourceWithDocumentId(String type,
+                                                    String id,
+                                                    String documentId,
+                                                    String title,
+                                                    String excerpt,
+                                                    String content) {
         AgentSource source = new AgentSource();
         source.setSourceType(type);
         source.setSourceId(id);
+        source.setDocumentId(documentId);
         source.setTitle(title);
-        source.setExcerpt(excerpt);
-        source.setContent(content);
+        source.setCitations(List.of(citation(
+                documentId + "#test",
+                "测试章节",
+                excerpt,
+                content == null ? excerpt : content
+        )));
         return source;
+    }
+
+    private static AgentCitation citation(String chunkId,
+                                           String section,
+                                           String excerpt,
+                                           String content) {
+        AgentCitation citation = new AgentCitation();
+        citation.setChunkId(chunkId);
+        citation.setSection(section);
+        citation.setExcerpt(excerpt);
+        citation.setContent(content);
+        return citation;
     }
 }

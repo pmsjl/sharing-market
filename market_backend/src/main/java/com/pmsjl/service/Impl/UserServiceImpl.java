@@ -71,12 +71,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public Long addUser(UserAddRequest userAddRequest) {
+        String initialPassword = userAddRequest.getUserPassword();
+        ThrowUtils.throwIf(
+                StringUtils.isBlank(initialPassword) || initialPassword.length() < 8,
+                ErrorCode.PARAMS_ERROR,
+                "初始密码不能少于 8 位"
+        );
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
-        // 默认密码 12345678
-        String defaultPassword = "12345678";
-        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + defaultPassword).getBytes());
-        // 这里的采取了十六进制加密算法填入表中的并不是简单的12345678
+        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + initialPassword).getBytes());
         user.setUserPassword(encryptPassword);
         user.setCreateTime(DateTime.now());
         user.setUpdateTime(DateTime.now());

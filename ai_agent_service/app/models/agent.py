@@ -70,14 +70,23 @@ class AgentRecommendation(BaseModel):
     )
 
 
+class AgentCitation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chunkId: str = Field(min_length=1, max_length=200)
+    section: str | None = Field(default=None, min_length=1, max_length=200)
+    excerpt: str = Field(min_length=1, max_length=300)
+    content: str = Field(min_length=1, max_length=1200)
+
+
 class AgentSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     sourceType: Literal["GUIDE"] = "GUIDE"
     sourceId: str = Field(min_length=1, max_length=150)
+    documentId: str = Field(min_length=1, max_length=150)
     title: str = Field(min_length=1, max_length=200)
-    excerpt: str = Field(min_length=1, max_length=300)
-    content: str | None = Field(default=None, min_length=1, max_length=1200)
+    citations: list[AgentCitation] = Field(min_length=1, max_length=5)
 
 
 class AgentOutput(BaseModel):
