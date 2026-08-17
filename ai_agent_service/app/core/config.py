@@ -6,7 +6,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 # 固定从服务根目录加载本地 .env；已经存在的系统环境变量优先。
 _ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(_ENV_PATH, override=False)
@@ -52,11 +51,22 @@ class Settings:
         "RAG_INDEX_DIR",
         ".cache/rag_index",
     )
-    rag_top_k: int = int(os.getenv("RAG_TOP_K", "5"))
+    rag_guide_top_k: int = int(
+        os.getenv("RAG_GUIDE_TOP_K", os.getenv("RAG_TOP_K", "5")))
     rag_score_threshold: float = float(os.getenv("RAG_SCORE_THRESHOLD",
                                                  "0.50"))
-    rag_max_chunks_per_document: int = int(
-        os.getenv("RAG_MAX_CHUNKS_PER_DOCUMENT", "2"))
+    rag_guide_max_chunks_per_document: int = int(
+        os.getenv(
+            "RAG_GUIDE_MAX_CHUNKS_PER_DOCUMENT",
+            os.getenv("RAG_MAX_CHUNKS_PER_DOCUMENT", "2"),
+        ))
+    rag_post_top_k: int = int(os.getenv("RAG_POST_TOP_K", "3"))
+    rag_post_score_threshold: float = float(
+        os.getenv("RAG_POST_SCORE_THRESHOLD", "0.50"))
+    rag_post_max_chunks_per_document: int = int(
+        os.getenv("RAG_POST_MAX_CHUNKS_PER_DOCUMENT", "1"))
+    rag_post_snapshot_page_size: int = int(
+        os.getenv("RAG_POST_SNAPSHOT_PAGE_SIZE", "200"))
 
 
 settings = Settings()

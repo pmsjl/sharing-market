@@ -4,10 +4,15 @@ import com.pmsjl.model.dto.ai.internal.AgentOutput;
 import com.pmsjl.model.dto.ai.internal.AgentCitation;
 import com.pmsjl.model.dto.ai.internal.AgentRecommendation;
 import com.pmsjl.model.dto.ai.internal.AgentSource;
+import com.pmsjl.model.dto.ai.internal.AgentRelatedPostCandidate;
+import com.pmsjl.model.dto.ai.internal.PostRagSnapshotItem;
 import com.pmsjl.model.entity.Commodity;
+import com.pmsjl.model.entity.Post;
 import com.pmsjl.model.enums.AiIntentEnum;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.service.CommodityService;
+import com.pmsjl.service.PostService;
+import com.pmsjl.service.AiPostRagService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -27,6 +32,10 @@ class AiStructuredContentAssemblerTest {
 
     @Mock
     private CommodityService commodityService;
+    @Mock
+    private PostService postService;
+    @Mock
+    private AiPostRagService aiPostRagService;
 
     @Test
     void assembleHydratesValidCommoditiesAndPreservesRecommendationOrder() {
@@ -44,7 +53,7 @@ class AiStructuredContentAssemblerTest {
         ));
 
         AiStructuredContentVO result =
-                new AiStructuredContentAssembler(commodityService).assemble(output);
+                assembler().assemble(output);
 
         assertEquals(2, result.getRecommendations().size());
         assertEquals(2L, result.getRecommendations().get(0).getCommodity().getId());
@@ -64,7 +73,7 @@ class AiStructuredContentAssemblerTest {
         output.setSummary("通用建议");
 
         AiStructuredContentVO result =
-                new AiStructuredContentAssembler(commodityService).assemble(output);
+                assembler().assemble(output);
 
         assertTrue(result.getRecommendations().isEmpty());
         assertTrue(result.getPurchaseAdvice().isEmpty());
@@ -105,7 +114,7 @@ class AiStructuredContentAssemblerTest {
         ));
 
         AiStructuredContentVO result =
-                new AiStructuredContentAssembler(commodityService).assemble(output);
+                assembler().assemble(output);
 
         assertEquals(5, result.getSources().size());
         assertEquals(
@@ -131,6 +140,48 @@ class AiStructuredContentAssemblerTest {
         verifyNoInteractions(commodityService);
     }
 
+    @Test
+    void assembleRevalidatesPostSourceAndHydratesRelatedPostFromDatabase() {
+        AgentOutput output = new AgentOutput();
+        output.setIntent(AiIntentEnum.GENERAL_GUIDE);
+        output.setSummary("帖子建议");
+        AgentSource postSource = source(
+                "POST", "11", "Python 提供的标题", "引用摘录", "引用正文"
+        );
+        postSource.setSourceVersion("1000");
+        output.setSources(List.of(postSource));
+        output.setRelatedPostCandidates(List.of(
+                relatedCandidate(11L, "1000"),
+                relatedCandidate(11L, "1000")
+        ));
+
+        Post post = new Post();
+        post.setId(11L);
+        post.setTitle("数据库中的当前标题");
+        post.setContent("这是数据库里的当前帖子正文，用于生成相关帖子摘要。");
+        post.setTags("[\"数码\",\"验货\"]");
+        when(postService.listByIds(anyCollection())).thenReturn(List.of(post));
+        when(aiPostRagService.isEligible(post, "1000")).thenReturn(true);
+        PostRagSnapshotItem snapshot = new PostRagSnapshotItem();
+        snapshot.setSourceVersion("1000");
+        snapshot.setTags(List.of("数码", "验货"));
+        when(aiPostRagService.toSnapshotItem(post)).thenReturn(snapshot);
+
+        AiStructuredContentVO result = assembler().assemble(output);
+
+        assertEquals(1, result.getSources().size());
+        assertEquals("POST", result.getSources().get(0).getSourceType());
+        assertEquals("数据库中的当前标题", result.getSources().get(0).getTitle());
+        assertEquals("/user/post/11", result.getSources().get(0).getTargetPath());
+        assertEquals(1, result.getRelatedPosts().size());
+        assertEquals("数据库中的当前标题",
+                result.getRelatedPosts().get(0).getTitle());
+        assertEquals(List.of("数码", "验货"),
+                result.getRelatedPosts().get(0).getTags());
+        assertEquals("/user/post/11",
+                result.getRelatedPosts().get(0).getTargetPath());
+    }
+
     private static AgentOutput outputWithRecommendations(
             AgentRecommendation... recommendations) {
         AgentOutput output = new AgentOutput();
@@ -141,6 +192,24 @@ class AiStructuredContentAssemblerTest {
         output.setWarnings(List.of("库存可能变化"));
         output.setSearchKeywords(List.of("平板"));
         return output;
+    }
+
+    private AiStructuredContentAssembler assembler() {
+        return new AiStructuredContentAssembler(
+                commodityService,
+                postService,
+                aiPostRagService
+        );
+    }
+
+    private static AgentRelatedPostCandidate relatedCandidate(
+            Long postId,
+            String sourceVersion
+    ) {
+        AgentRelatedPostCandidate candidate = new AgentRelatedPostCandidate();
+        candidate.setPostId(postId);
+        candidate.setSourceVersion(sourceVersion);
+        return candidate;
     }
 
     private static AgentRecommendation recommendation(Long commodityId,

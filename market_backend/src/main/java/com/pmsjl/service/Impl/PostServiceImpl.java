@@ -290,6 +290,27 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         return listPostVOByPage(postQueryRequest, request);
     }
 
+    @Override
+    public List<Post> listRagSnapshotCandidates(long afterId, int scanLimit) {
+        ThrowUtils.throwIf(
+                afterId < 0 || scanLimit < 1 || scanLimit > 201,
+                ErrorCode.PARAMS_ERROR
+        );
+        return lambdaQuery()
+                .select(
+                        Post::getId,
+                        Post::getTitle,
+                        Post::getContent,
+                        Post::getTags,
+                        Post::getCreateTime,
+                        Post::getUpdateTime
+                )
+                .gt(Post::getId, afterId)
+                .orderByAsc(Post::getId)
+                .last("LIMIT " + scanLimit)
+                .list();
+    }
+
     private PostVO getPostVO(Post post, HttpServletRequest request) {
         PostVO postVO = getPostVO(post);
         User user = userService.getById(post.getUserId());

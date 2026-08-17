@@ -355,17 +355,16 @@
 
             <div
               v-if="
-                !isMessageTyping(message.id) &&
-                message.structuredContent?.sources?.length
+                !isMessageTyping(message.id) && guideSources(message).length
               "
               class="source-block"
             >
               <div class="recommendation-heading">
                 <strong>回答参考来源</strong>
-                <span>{{ message.structuredContent.sources.length }} 条</span>
+                <span>{{ guideSources(message).length }} 条</span>
               </div>
               <button
-                v-for="source in message.structuredContent.sources"
+                v-for="source in guideSources(message)"
                 :key="`${source.sourceType}-${source.sourceId}`"
                 type="button"
                 class="source-link"
@@ -380,6 +379,41 @@
                 </div>
                 <b aria-hidden="true">查看</b>
               </button>
+            </div>
+
+            <div
+              v-if="
+                !isMessageTyping(message.id) &&
+                message.structuredContent?.relatedPosts?.length
+              "
+              class="related-post-block"
+            >
+              <div class="recommendation-heading">
+                <strong>相关帖子</strong>
+                <span
+                  >{{ message.structuredContent.relatedPosts.length }} 篇</span
+                >
+              </div>
+              <div class="related-post-grid">
+                <button
+                  v-for="post in message.structuredContent.relatedPosts"
+                  :key="post.postId"
+                  type="button"
+                  class="related-post-card"
+                  @click="openRelatedPost(post.targetPath)"
+                >
+                  <span
+                    v-if="citedPostIds(message).has(post.postId)"
+                    class="cited-post-badge"
+                    >回答引用</span
+                  >
+                  <strong>{{ post.title }}</strong>
+                  <p>{{ post.excerpt }}</p>
+                  <div v-if="post.tags?.length" class="related-post-tags">
+                    <span v-for="tag in post.tags" :key="tag">#{{ tag }}</span>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         </article>
@@ -1314,6 +1348,22 @@ const openSource = (source: AiRagSourceVO) => {
 const sourcePreview = (source: AiRagSourceVO) =>
   source.citations?.[0]?.excerpt || source.excerpt || "查看本次引用片段";
 
+const guideSources = (message: AiMessageVO) =>
+  (message.structuredContent?.sources || []).filter(
+    (source) => source.sourceType === "GUIDE"
+  );
+
+const citedPostIds = (message: AiMessageVO) =>
+  new Set(
+    (message.structuredContent?.sources || [])
+      .filter((source) => source.sourceType === "POST")
+      .map((source) => source.sourceId)
+  );
+
+const openRelatedPost = (targetPath: string) => {
+  if (targetPath) void router.push(targetPath);
+};
+
 const openCommodity = (commodityId: string) => {
   void router.push({
     path: `/user/commodity/detail/${commodityId}`,
@@ -2222,6 +2272,72 @@ button {
   background: var(--market-surface);
 }
 
+.related-post-block {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px dashed rgba(47, 125, 92, 0.38);
+  border-radius: 8px;
+  background: var(--market-paper-deep);
+}
+
+.related-post-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.related-post-card {
+  position: relative;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--market-line);
+  border-radius: 8px;
+  color: var(--market-ink);
+  text-align: left;
+  background: var(--market-surface);
+  cursor: pointer;
+}
+
+.related-post-card strong,
+.related-post-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+}
+
+.related-post-card strong {
+  padding-right: 64px;
+  -webkit-line-clamp: 2;
+}
+
+.related-post-card p {
+  margin: 7px 0;
+  color: var(--market-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  -webkit-line-clamp: 3;
+}
+
+.cited-post-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--market-green);
+  font-size: 10px;
+  font-weight: 900;
+  background: var(--market-note-green-bg);
+}
+
+.related-post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--market-orange);
+  font-size: 10px;
+}
+
 .source-link {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -2775,7 +2891,8 @@ button {
     margin-bottom: 15px;
   }
   .starter-grid,
-  .recommendation-grid {
+  .recommendation-grid,
+  .related-post-grid {
     grid-template-columns: 1fr;
   }
   .chat-message {

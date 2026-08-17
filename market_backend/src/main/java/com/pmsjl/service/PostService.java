@@ -11,6 +11,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.pmsjl.model.vo.PostVO;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.List;
+
 /**
  * <p>
  * 帖子 服务类
@@ -40,4 +42,6 @@ public interface PostService extends IService<Post> {
     Page<PostVO> listMyPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request);
 
     Page<PostVO> searchPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request);
+
+    List<Post> listRagSnapshotCandidates(long afterId, int scanLimit);
 }

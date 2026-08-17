@@ -4,13 +4,19 @@ import com.pmsjl.model.dto.ai.internal.AgentOutput;
 import com.pmsjl.model.dto.ai.internal.AgentCitation;
 import com.pmsjl.model.dto.ai.internal.AgentRecommendation;
 import com.pmsjl.model.dto.ai.internal.AgentSource;
+import com.pmsjl.model.dto.ai.internal.AgentRelatedPostCandidate;
+import com.pmsjl.model.dto.ai.internal.PostRagSnapshotItem;
 import com.pmsjl.model.entity.Commodity;
+import com.pmsjl.model.entity.Post;
+import com.pmsjl.model.vo.AiRelatedPostVO;
 import com.pmsjl.model.vo.AiRecommendationVO;
 import com.pmsjl.model.vo.AiRagCitationVO;
 import com.pmsjl.model.vo.AiRagSourceVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.model.vo.CommodityVO;
 import com.pmsjl.service.CommodityService;
+import com.pmsjl.service.AiPostRagService;
+import com.pmsjl.service.PostService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -38,9 +44,17 @@ public class AiStructuredContentAssembler {
     private static final int MAX_CITATION_CONTENT_LENGTH = 1200;
 
     private final CommodityService commodityService;
+    private final PostService postService;
+    private final AiPostRagService aiPostRagService;
 
-    public AiStructuredContentAssembler(CommodityService commodityService) {
+    public AiStructuredContentAssembler(
+            CommodityService commodityService,
+            PostService postService,
+            AiPostRagService aiPostRagService
+    ) {
         this.commodityService = commodityService;
+        this.postService = postService;
+        this.aiPostRagService = aiPostRagService;
     }
 
     /**
@@ -48,6 +62,7 @@ public class AiStructuredContentAssembler {
      */
     public AiStructuredContentVO assemble(AgentOutput output) {
         Map<Long, Commodity> validCommodities = loadValidCommodities(output);
+        Map<Long, Post> postsById = loadReferencedPosts(output);
 
         AiStructuredContentVO result = new AiStructuredContentVO();
         result.setIntent(output.getIntent());
@@ -56,7 +71,8 @@ public class AiStructuredContentAssembler {
         result.setWarnings(safeList(output.getWarnings()));
         result.setSearchKeywords(safeList(output.getSearchKeywords()));
         result.setRecommendations(buildRecommendations(output, validCommodities));
-        result.setSources(buildSources(output));
+        result.setSources(buildSources(output, postsById));
+        result.setRelatedPosts(buildRelatedPosts(output, postsById));
         return result;
     }
 
@@ -113,11 +129,16 @@ public class AiStructuredContentAssembler {
     /**
      * GUIDE 已由 Python 依据本轮检索结果校验；Java 只执行严格的展示白名单。
      */
-    private List<AiRagSourceVO> buildSources(AgentOutput output) {
+    private List<AiRagSourceVO> buildSources(
+            AgentOutput output,
+            Map<Long, Post> postsById
+    ) {
         List<AiRagSourceVO> results = new ArrayList<>();
         Set<String> documentIds = new LinkedHashSet<>();
         for (AgentSource source : safeList(output.getSources())) {
-            if (source == null || !"GUIDE".equals(source.getSourceType())) {
+            if (source == null
+                    || (!"GUIDE".equals(source.getSourceType())
+                    && !"POST".equals(source.getSourceType()))) {
                 continue;
             }
             if (StringUtils.isAnyBlank(
@@ -132,24 +153,130 @@ public class AiStructuredContentAssembler {
             }
 
             List<AiRagCitationVO> citations = buildCitations(source.getCitations());
-            if (citations.isEmpty() || !documentIds.add(source.getDocumentId())) {
+            if (citations.isEmpty()
+                    || citations.stream().anyMatch(
+                    citation -> !citation.getChunkId().startsWith(
+                            source.getDocumentId() + "#"
+                    )
+            )
+                    || !documentIds.add(source.getDocumentId())) {
                 continue;
             }
 
             AiRagSourceVO item = new AiRagSourceVO();
-            item.setSourceType("GUIDE");
-            item.setSourceId(source.getSourceId());
-            item.setDocumentId(source.getDocumentId());
-            item.setTitle(source.getTitle());
+            if ("POST".equals(source.getSourceType())) {
+                Long postId = parsePositiveLong(source.getSourceId());
+                Post post = postId == null ? null : postsById.get(postId);
+                if (postId == null
+                        || !source.getDocumentId().equals("POST:" + postId)
+                        || !aiPostRagService.isEligible(
+                            post,
+                            source.getSourceVersion()
+                        )) {
+                    documentIds.remove(source.getDocumentId());
+                    continue;
+                }
+                item.setSourceType("POST");
+                item.setSourceId(Long.toString(postId));
+                item.setDocumentId("POST:" + postId);
+                item.setTitle(post.getTitle());
+                item.setTargetPath("/user/post/" + postId);
+            } else {
+                item.setSourceType("GUIDE");
+                item.setSourceId(source.getSourceId());
+                item.setDocumentId(source.getDocumentId());
+                item.setTitle(source.getTitle());
+                item.setTargetPath(null);
+            }
             item.setCitations(citations);
-            // 首版没有 GUIDE 详情页，禁止伪造站内跳转地址。
-            item.setTargetPath(null);
             results.add(item);
             if (results.size() >= MAX_SOURCE_COUNT) {
                 break;
             }
         }
         return results;
+    }
+
+    private Map<Long, Post> loadReferencedPosts(AgentOutput output) {
+        Set<Long> postIds = new LinkedHashSet<>();
+        for (AgentSource source : safeList(output.getSources())) {
+            if (source != null && "POST".equals(source.getSourceType())) {
+                Long postId = parsePositiveLong(source.getSourceId());
+                if (postId != null) {
+                    postIds.add(postId);
+                }
+            }
+        }
+        for (AgentRelatedPostCandidate candidate
+                : safeList(output.getRelatedPostCandidates())) {
+            if (candidate != null
+                    && candidate.getPostId() != null
+                    && candidate.getPostId() > 0) {
+                postIds.add(candidate.getPostId());
+            }
+        }
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        return postService.listByIds(postIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Post::getId,
+                        post -> post
+                ));
+    }
+
+    private List<AiRelatedPostVO> buildRelatedPosts(
+            AgentOutput output,
+            Map<Long, Post> postsById
+    ) {
+        List<AiRelatedPostVO> results = new ArrayList<>();
+        Set<Long> seenPostIds = new LinkedHashSet<>();
+        for (AgentRelatedPostCandidate candidate
+                : safeList(output.getRelatedPostCandidates())) {
+            if (candidate == null
+                    || candidate.getPostId() == null
+                    || candidate.getPostId() <= 0
+                    || !seenPostIds.add(candidate.getPostId())) {
+                continue;
+            }
+            Post post = postsById.get(candidate.getPostId());
+            PostRagSnapshotItem snapshot =
+                    aiPostRagService.toSnapshotItem(post);
+            if (snapshot == null
+                    || !snapshot.getSourceVersion().equals(
+                        candidate.getSourceVersion()
+                    )) {
+                continue;
+            }
+
+            AiRelatedPostVO item = new AiRelatedPostVO();
+            item.setPostId(post.getId());
+            item.setTitle(post.getTitle());
+            item.setExcerpt(cleanPostExcerpt(post.getContent(), 180));
+            item.setTags(snapshot.getTags().stream().limit(5).toList());
+            item.setTargetPath("/user/post/" + post.getId());
+            results.add(item);
+            if (results.size() >= 3) {
+                break;
+            }
+        }
+        return results;
+    }
+
+    private String cleanPostExcerpt(String content, int maxLength) {
+        String normalized = StringUtils.normalizeSpace(content);
+        return normalized.length() <= maxLength
+                ? normalized
+                : normalized.substring(0, maxLength);
+    }
+
+    private Long parsePositiveLong(String value) {
+        try {
+            long parsed = Long.parseLong(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private List<AiRagCitationVO> buildCitations(List<AgentCitation> values) {

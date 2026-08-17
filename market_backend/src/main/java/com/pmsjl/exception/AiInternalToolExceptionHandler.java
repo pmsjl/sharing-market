@@ -1,6 +1,7 @@
 package com.pmsjl.exception;
 
 import com.pmsjl.controller.AiInternalToolController;
+import com.pmsjl.controller.AiInternalRagController;
 import com.pmsjl.model.dto.ai.internal.AgentErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Keeps internal Agent tool failures outside the public Result wrapper. */
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = AiInternalToolController.class)
+@RestControllerAdvice(assignableTypes = {
+        AiInternalToolController.class,
+        AiInternalRagController.class
+})
 @Slf4j
 public class AiInternalToolExceptionHandler {
 

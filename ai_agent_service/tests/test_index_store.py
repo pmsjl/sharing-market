@@ -1,12 +1,14 @@
 import asyncio
+import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from app.core.config import Settings
 from app.rag.document_loader import MANIFEST_FILES
 from app.rag.index_store import IndexStore, build_index
-from app.rag.models import DocumentMeta, KnowledgeChunk
+from app.rag.models import DocumentMeta, KnowledgeChunk, PostSnapshot
 
 
 class _FakeEmbedder:
@@ -111,3 +113,76 @@ def test_load_degrades_for_manifest_drift_or_corrupt_vectors(tmp_path):
     )
     np.save(build_dir / "vectors.npy", np.array([1.0, 0.0], dtype=np.float32))
     assert IndexStore.load(settings, knowledge_root) is None
+
+
+def test_mixed_build_records_guide_and_post_snapshot_metadata(tmp_path):
+    settings = _settings(tmp_path)
+    knowledge_root = _knowledge_root(tmp_path)
+    post = PostSnapshot(
+        id=11,
+        title="显示器验货记录",
+        content="面交时检查接口和坏点。",
+        tags=["数码", "验货"],
+        createTime="2026-08-15 20:22:00",
+        updateTime="2026-08-15 20:23:00",
+        sourceVersion="1786796580000",
+    )
+    post_chunk = KnowledgeChunk(
+        chunk_id="POST:11#one",
+        document_id="POST:11",
+        source_type="POST",
+        source_id="11",
+        category="community_post",
+        title=post.title,
+        section=None,
+        chunk_index=0,
+        content=post.content,
+        embedding_text=post.content,
+        metadata={"sourceVersion": post.source_version},
+    )
+
+    build_dir = asyncio.run(build_index(
+        settings,
+        [_meta()],
+        [_chunks()[0], post_chunk],
+        _FakeEmbedder(),
+        knowledge_root,
+        posts=[post],
+        snapshot_at="2026-08-17T08:00:00+00:00",
+    ))
+
+    metadata = json.loads(
+        (build_dir / "meta.json").read_text(encoding="utf-8")
+    )
+    assert metadata["documentCount"] == 2
+    assert metadata["guideDocumentCount"] == 1
+    assert metadata["postDocumentCount"] == 1
+    assert metadata["guideChunkCount"] == 1
+    assert metadata["postChunkCount"] == 1
+    assert metadata["postSnapshotAt"] == "2026-08-17T08:00:00+00:00"
+    assert len(metadata["postSnapshotSha256"]) == 64
+    assert IndexStore.load(settings, knowledge_root) is not None
+
+
+def test_failed_rebuild_does_not_switch_current(tmp_path):
+    class _FailingEmbedder:
+        async def embed_batch(self, texts):
+            raise RuntimeError("embedding unavailable")
+
+    settings = _settings(tmp_path)
+    knowledge_root = _knowledge_root(tmp_path)
+    first = asyncio.run(
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(), knowledge_root)
+    )
+    current = Path(settings.rag_index_dir) / "CURRENT"
+
+    with pytest.raises(RuntimeError, match="embedding unavailable"):
+        asyncio.run(build_index(
+            settings,
+            [_meta()],
+            _chunks(),
+            _FailingEmbedder(),
+            knowledge_root,
+        ))
+
+    assert current.read_text(encoding="utf-8") == first.name

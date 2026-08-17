@@ -2,7 +2,7 @@
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 KnowledgeCategory = Literal[
     "platform_policy",
@@ -10,6 +10,7 @@ KnowledgeCategory = Literal[
     "campus_lifecycle",
     "course_materials",
     "course_purchase_policy",
+    "community_post",
 ]
 CourseMatchMode = Literal[
     "alias",
@@ -50,7 +51,7 @@ class KnowledgeChunk(BaseModel):
 
     chunk_id: str
     document_id: str
-    source_type: Literal["GUIDE"] = "GUIDE"
+    source_type: Literal["GUIDE", "POST"] = "GUIDE"
     source_id: str
     category: KnowledgeCategory
     title: str
@@ -59,6 +60,74 @@ class KnowledgeChunk(BaseModel):
     content: str
     embedding_text: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PostSnapshot(BaseModel):
+    """Java 离线快照接口返回的一篇可索引 Post。"""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    id: int = Field(gt=0)
+    title: str = Field(min_length=1, max_length=80)
+    content: str = Field(min_length=1, max_length=8192)
+    tags: list[str] = Field(min_length=1)
+    create_time: str = Field(alias="createTime", min_length=1)
+    update_time: str = Field(alias="updateTime", min_length=1)
+    source_version: str = Field(
+        alias="sourceVersion",
+        pattern=r"^[1-9]\d*$",
+    )
+
+    @field_validator("title", "content", "create_time", "update_time")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Post 快照文本字段不能为空")
+        return value
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, tags: list[str]) -> list[str]:
+        if any(not tag.strip() for tag in tags):
+            raise ValueError("Post 快照标签不能为空")
+        if len(tags) != len(set(tags)):
+            raise ValueError("Post 快照标签不能重复")
+        return tags
+
+
+class PostSnapshotPage(BaseModel):
+    """Java Post 快照接口的一页游标结果。"""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    items: list[PostSnapshot] = Field(default_factory=list)
+    next_after_id: int = Field(alias="nextAfterId", ge=0)
+    has_more: bool = Field(alias="hasMore")
+
+
+class PostVersionCandidate(BaseModel):
+    """请求内提交给 Java 的 Post ID 与索引版本。"""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    post_id: int = Field(alias="postId", gt=0)
+    source_version: str = Field(
+        alias="sourceVersion",
+        pattern=r"^[1-9]\d*$",
+    )
+
+
+class PostVersionValidationResponse(BaseModel):
+    """Java 实时校验后仍然有效的 Post 身份集合。"""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    request_id: str = Field(alias="requestId", min_length=1)
+    valid_candidates: list[PostVersionCandidate] = Field(
+        alias="validCandidates",
+        default_factory=list,
+        max_length=10,
+    )
 
 
 class CourseRelationSummary(BaseModel):
@@ -91,6 +160,7 @@ class RagQueryPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     should_retrieve: bool
+    include_posts: bool = False
     course_document_ids: list[str] = Field(default_factory=list)
     extra_categories: list[KnowledgeCategory] = Field(default_factory=list)
     fallback_categories: list[KnowledgeCategory] = Field(default_factory=list)
@@ -108,7 +178,7 @@ class RetrievedChunk(BaseModel):
 
     chunk_id: str
     document_id: str
-    source_type: Literal["GUIDE"]
+    source_type: Literal["GUIDE", "POST"]
     source_id: str
     category: KnowledgeCategory
     title: str
@@ -125,5 +195,6 @@ class RagContext(BaseModel):
 
     query: str
     plan: RagQueryPlan
-    retrieved: list[RetrievedChunk] = Field(max_length=5)
+    retrieved: list[RetrievedChunk] = Field(max_length=8)  # 5 个 GUIDE + 3 个 POST
+    post_degraded: bool = False
     degraded: bool = False

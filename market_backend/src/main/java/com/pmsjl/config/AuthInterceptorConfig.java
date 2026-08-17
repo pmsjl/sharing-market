@@ -35,6 +35,9 @@ public class AuthInterceptorConfig implements WebMvcConfigurer {
                         // Python Agent 调用的内部工具接口，
                         // 不使用普通用户登录态，由 X-Internal-Token 自行鉴权
                         "/internal/ai/tools/**",
+                        // 离线 RAG 重建没有用户消息，只校验 X-Internal-Token；
+                        // 具体校验仍由 AiInternalRagController 对应服务完成。
+                        "/internal/ai/rag/**",
                         // Knife4j / Swagger 接口文档相关路径必须全部放行
                         "/doc.html",
                         "/webjars/**",

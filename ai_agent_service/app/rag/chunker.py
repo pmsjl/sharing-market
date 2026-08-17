@@ -2,7 +2,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from app.rag.models import DocumentMeta, KnowledgeChunk
+from app.rag.models import DocumentMeta, KnowledgeChunk, PostSnapshot
 
 H2_PATTERN = re.compile(r"(?m)^##\s+(.+?)\s*$")
 COURSE_SECTIONS = {"教材", "参考资料", "软件环境", "实验器材"}
@@ -19,6 +19,8 @@ def read_body(path: Path) -> str:
 """
 按二级标题切分document
 """
+
+
 def split_h2(body: str) -> list[tuple[str | None, str]]:
 
     matches = list(H2_PATTERN.finditer(body))
@@ -36,6 +38,25 @@ def split_h2(body: str) -> list[tuple[str | None, str]]:
         # group(2)依次类推
         #这里的(.+?)是非贪婪匹配，空格会交给后面的\s*,\s是空白字符的意思
 
+    return sections
+
+
+def split_post_sections(body: str) -> list[tuple[str | None, str]]:
+    """保留首个 H2 之前的开场，并按 H2 切分帖子正文。"""
+    matches = list(H2_PATTERN.finditer(body))
+    if not matches:
+        return [(None, body)] if body else []
+
+    sections: list[tuple[str | None, str]] = []
+    introduction = body[:matches[0].start()].strip()
+    if introduction:
+        sections.append((None, introduction))
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        content = body[start:end].strip()
+        if content:
+            sections.append((match.group(1).strip(), content))
     return sections
 
 
@@ -66,6 +87,7 @@ def chunk_document(
                 KnowledgeChunk(
                     chunk_id=f"{meta.document_id}#{suffix}",
                     document_id=meta.document_id,
+                    source_type="GUIDE",
                     source_id=meta.document_id.removeprefix("GUIDE:"),
                     category=meta.category,
                     title=meta.title,
@@ -94,6 +116,51 @@ def chunk_document(
                         (meta.section_source_ids.get(section or "", [])),
                     },
                 ))
+    return chunks
+
+
+def chunk_post(post: PostSnapshot) -> list[KnowledgeChunk]:
+    """把一篇 Java Post 快照切成可检索且可追溯的稳定 chunk。"""
+    body = re.sub(
+        r"(?m)^#\s+.+?\s*$",
+        "",
+        post.content,
+        count=1,
+    ).strip()
+    document_id = f"POST:{post.id}"
+    chunks: list[KnowledgeChunk] = []
+    for section, content in split_post_sections(body):
+        for part_index, part in enumerate(_split_long_section(content)):
+            stable_key = (
+                f"{document_id}|{post.source_version}|{section}|{part_index}"
+            )
+            suffix = hashlib.sha256(stable_key.encode("utf-8")).hexdigest()[:12]
+            chunks.append(
+                KnowledgeChunk(
+                    chunk_id=f"{document_id}#{suffix}",
+                    document_id=document_id,
+                    source_type="POST",
+                    source_id=str(post.id),
+                    category="community_post",
+                    title=post.title,
+                    section=section,
+                    chunk_index=len(chunks),
+                    content=part,
+                    embedding_text="\n".join([
+                        post.title,
+                        "community_post",
+                        *post.tags,
+                        *([section] if section else []),
+                        part,
+                    ]),
+                    metadata={
+                        "sourceVersion": post.source_version,
+                        "tags": post.tags,
+                        "createTime": post.create_time,
+                        "updateTime": post.update_time,
+                    },
+                )
+            )
     return chunks
 
 
@@ -129,14 +196,19 @@ def _split_long_section(content: str, limit: int = 1200) -> list[str]:
         current_lines: list[str] = []
         current_length = 0
         for line in paragraph.splitlines():
-            added_length = len(line) + (1 if current_lines else 0)
-            if current_lines and current_length + added_length > limit:
-                units.append("\n".join(current_lines))
-                current_lines = [line]
-                current_length = len(line)
-            else:
-                current_lines.append(line)
-                current_length += added_length
+            line_parts = [
+                line[start:start + limit]
+                for start in range(0, len(line), limit)
+            ] or [""]
+            for line_part in line_parts:
+                added_length = len(line_part) + (1 if current_lines else 0)
+                if current_lines and current_length + added_length > limit:
+                    units.append("\n".join(current_lines))
+                    current_lines = [line_part]
+                    current_length = len(line_part)
+                else:
+                    current_lines.append(line_part)
+                    current_length += added_length
         if current_lines:
             units.append("\n".join(current_lines))
 
