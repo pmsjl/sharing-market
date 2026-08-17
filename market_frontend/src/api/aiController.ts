@@ -56,6 +56,14 @@ export interface AiRagSourceVO {
   targetPath: string | null;
 }
 
+export interface AiRelatedPostVO {
+  postId: string;
+  title: string;
+  excerpt: string;
+  tags: string[];
+  targetPath: string;
+}
+
 export interface AiStructuredContentVO {
   intent?: string;
   summary?: string;
@@ -64,6 +72,7 @@ export interface AiStructuredContentVO {
   warnings?: string[];
   searchKeywords?: string[];
   sources?: AiRagSourceVO[];
+  relatedPosts?: AiRelatedPostVO[];
 }
 
 export interface AiMessageVO {

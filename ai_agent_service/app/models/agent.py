@@ -82,11 +82,24 @@ class AgentCitation(BaseModel):
 class AgentSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    sourceType: Literal["GUIDE"] = "GUIDE"
+    sourceType: Literal["GUIDE", "POST"]
     sourceId: str = Field(min_length=1, max_length=150)
     documentId: str = Field(min_length=1, max_length=150)
+    sourceVersion: str | None = Field(
+        default=None,
+        pattern=r"^[1-9]\d*$",
+    )
     title: str = Field(min_length=1, max_length=200)
     citations: list[AgentCitation] = Field(min_length=1, max_length=5)
+
+
+class AgentRelatedPostCandidate(BaseModel):
+    """由服务器按检索顺序生成，不暴露给模型的 Structured Output。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    postId: int = Field(gt=0)
+    sourceVersion: str = Field(pattern=r"^[1-9]\d*$")
 
 
 class AgentOutput(BaseModel):
@@ -202,6 +215,10 @@ class AgentResponseOutput(AgentOutput):
     """返回 Java 的结构；展示来源不允许由模型直接生成。"""
 
     sources: list[AgentSource] = Field(default_factory=list, max_length=5)
+    relatedPostCandidates: list[AgentRelatedPostCandidate] = Field(
+        default_factory=list,
+        max_length=3,
+    )
 
 
 def _inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:

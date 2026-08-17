@@ -3,6 +3,8 @@ package com.pmsjl.controller;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
+import com.pmsjl.model.dto.ai.internal.PostVersionValidationRequest;
+import com.pmsjl.model.dto.ai.internal.PostVersionValidationResponse;
 import com.pmsjl.model.vo.CommoditySearchToolResponse;
 import com.pmsjl.service.AiInternalToolService;
 import com.pmsjl.utils.ThrowUtils;
@@ -35,6 +37,17 @@ public class AiInternalToolController {
     ) {
         return aiInternalToolService.getMyPreferenceSignals(
                 userId,
+                request
+        );
+    }
+
+    @PostMapping("/posts/validate")
+    public PostVersionValidationResponse validatePostVersions(
+            @RequestBody PostVersionValidationRequest validationRequest,
+            HttpServletRequest request
+    ) {
+        return aiInternalToolService.validatePostVersions(
+                validationRequest,
                 request
         );
     }

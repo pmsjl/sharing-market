@@ -31,5 +31,8 @@ public class AiStructuredContentVO implements Serializable {
     /** 已由 Java 校验并生成安全跳转地址的 RAG 来源。 */
     private List<AiRagSourceVO> sources = new ArrayList<>();
 
+    /** 已由 Java 实时校验并填充展示字段的相关帖子。 */
+    private List<AiRelatedPostVO> relatedPosts = new ArrayList<>();
+
     private static final long serialVersionUID = 1L;
 }

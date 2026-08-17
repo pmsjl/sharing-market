@@ -11,16 +11,22 @@ import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.internal.AiCommoditySearchItem;
 import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
+import com.pmsjl.model.dto.ai.internal.PostVersionCandidate;
+import com.pmsjl.model.dto.ai.internal.PostVersionValidationRequest;
+import com.pmsjl.model.dto.ai.internal.PostVersionValidationResponse;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityType;
+import com.pmsjl.model.entity.Post;
 import com.pmsjl.model.enums.AiCommoditySortEnum;
 import com.pmsjl.model.enums.AiMessageRoleEnum;
 import com.pmsjl.model.vo.CommoditySearchToolResponse;
 import com.pmsjl.service.AiInternalToolService;
+import com.pmsjl.service.AiPostRagService;
 import com.pmsjl.service.AiUserPreferenceService;
 import com.pmsjl.service.CommodityService;
 import com.pmsjl.service.CommodityTypeService;
+import com.pmsjl.service.PostService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.BeanUtils;
@@ -30,6 +36,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -47,6 +55,10 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
     CommodityTypeService commodityTypeService;
     @Autowired
     AiUserPreferenceService aiUserPreferenceService;
+    @Autowired
+    PostService postService;
+    @Autowired
+    AiPostRagService aiPostRagService;
 
     @Override
     public CommoditySearchToolResponse searchCommodities(CommoditySearchToolRequest commoditySearchToolRequest, HttpServletRequest request) {
@@ -183,6 +195,49 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
         );
     }
 
+    @Override
+    public PostVersionValidationResponse validatePostVersions(
+            PostVersionValidationRequest validationRequest,
+            HttpServletRequest request
+    ) {
+        validateInternalRequest(request);
+        if (validationRequest == null
+                || validationRequest.getCandidates() == null
+                || validationRequest.getCandidates().size() > 10) {
+            throw invalidArguments("Post 版本校验候选最多 10 项");
+        }
+
+        Map<Long, PostVersionCandidate> uniqueCandidates = new LinkedHashMap<>();
+        for (PostVersionCandidate candidate : validationRequest.getCandidates()) {
+            if (candidate == null
+                    || candidate.getPostId() == null
+                    || candidate.getPostId() <= 0
+                    || StringUtils.isBlank(candidate.getSourceVersion())
+                    || !candidate.getSourceVersion().matches("[1-9]\\d*")) {
+                throw invalidArguments("Post 版本校验候选不合法");
+            }
+            uniqueCandidates.putIfAbsent(candidate.getPostId(), candidate);
+        }
+
+        Map<Long, Post> postsById = uniqueCandidates.isEmpty()
+                ? Map.of()
+                : postService.listByIds(uniqueCandidates.keySet()).stream()
+                .collect(Collectors.toMap(Post::getId, post -> post));
+        List<PostVersionCandidate> validCandidates = new ArrayList<>();
+        for (PostVersionCandidate candidate : uniqueCandidates.values()) {
+            Post post = postsById.get(candidate.getPostId());
+            if (aiPostRagService.isEligible(post, candidate.getSourceVersion())) {
+                validCandidates.add(candidate);
+            }
+        }
+
+        PostVersionValidationResponse response =
+                new PostVersionValidationResponse();
+        response.setRequestId(request.getHeader("X-Request-Id"));
+        response.setValidCandidates(validCandidates);
+        return response;
+    }
+
     private List<AiCommoditySearchItem> buildAiCommoditySearchItems(List<Commodity> records) {
         Set<Long> commodityTypeIds = records.stream()
                 .map(Commodity::getCommodityTypeId)
@@ -301,5 +356,14 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
             );
         }
         return requestMessage;
+    }
+
+    private AiInternalToolException invalidArguments(String message) {
+        return new AiInternalToolException(
+                HttpStatus.BAD_REQUEST,
+                "AI_JAVA_TOOL_ARGUMENTS_INVALID",
+                message,
+                false
+        );
     }
 }

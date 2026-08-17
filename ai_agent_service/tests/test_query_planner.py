@@ -79,6 +79,7 @@ def test_non_keyword_query_uses_non_course_semantic_fallback(tmp_path):
     plan = plan_query("帮我找一台便宜的二手电脑", _index(tmp_path))
 
     assert plan.should_retrieve is True
+    assert plan.include_posts is True
     assert plan.course_document_ids == []
     assert plan.extra_categories == []
     assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)
@@ -88,6 +89,7 @@ def test_blank_query_skips_retrieval(tmp_path):
     plan = plan_query("   ", _index(tmp_path))
 
     assert plan.should_retrieve is False
+    assert plan.include_posts is False
     assert plan.fallback_categories == []
 
 

@@ -15,9 +15,9 @@ import numpy as np
 from app.core.config import Settings
 from app.rag.document_loader import MANIFEST_FILES
 from app.rag.embedding_client import EmbeddingClient, l2_normalize
-from app.rag.models import DocumentMeta, KnowledgeChunk
+from app.rag.models import DocumentMeta, KnowledgeChunk, PostSnapshot
 
-CHUNKING_VERSION = "four-category-v1"
+CHUNKING_VERSION = "guide-post-v2"
 KNOWLEDGE_ROOT = Path(__file__).resolve().parents[2] / "knowledge"
 
 
@@ -38,12 +38,42 @@ def _build_id() -> str:
     return f"{timestamp}-{uuid4().hex}"
 
 
+def current_build_name(settings: Settings) -> str | None:
+    """读取并校验 CURRENT 中的单级不可变构建目录名。"""
+    try:
+        build_name = (Path(settings.rag_index_dir) / "CURRENT").read_text(
+            encoding="utf-8"
+        ).strip()
+    except OSError:
+        return None
+    if not build_name or Path(build_name).name != build_name:
+        return None
+    return build_name
+
+
+def post_snapshot_sha256(posts: list[PostSnapshot]) -> str:
+    """计算稳定快照摘要，记录本次构建实际使用的完整 Post 集合。"""
+    payload = [
+        post.model_dump(mode="json", by_alias=True)
+        for post in sorted(posts, key=lambda item: item.id)
+    ]
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 async def build_index(
     settings: Settings,
     metas: list[DocumentMeta],
     chunks: list[KnowledgeChunk],
     embedder: EmbeddingClient | None = None,
     knowledge_root: Path = KNOWLEDGE_ROOT,
+    posts: list[PostSnapshot] | None = None,
+    snapshot_at: str | None = None,
 ) -> Path:
     """先完整构建新索引，再原子切换为当前版本。
 
@@ -76,13 +106,23 @@ async def build_index(
         for chunk in chunks:
             file.write(chunk.model_dump_json() + "\n")
 
+    posts = posts or []
+    guide_chunks = [chunk for chunk in chunks if chunk.source_type == "GUIDE"]
+    post_chunks = [chunk for chunk in chunks if chunk.source_type == "POST"]
     metadata = {
+        "buildId": build_dir.name,
         "embeddingModel": settings.embedding_model,
         "embeddingDimensions": settings.embedding_dimensions,
         "chunkingVersion": CHUNKING_VERSION,
-        "documentCount": len(metas),
+        "documentCount": len(metas) + len(posts),
+        "guideDocumentCount": len(metas),
+        "postDocumentCount": len(posts),
+        "guideChunkCount": len(guide_chunks),
+        "postChunkCount": len(post_chunks),
         "chunkCount": len(chunks),
         "manifestSha256": manifest_sha256(knowledge_root),
+        "postSnapshotSha256": post_snapshot_sha256(posts),
+        "postSnapshotAt": snapshot_at or datetime.now(timezone.utc).isoformat(),
     }
     (build_dir / "meta.json").write_text(json.dumps(metadata,
                                                     ensure_ascii=False),
@@ -107,17 +147,20 @@ class IndexStore:
         vectors: np.ndarray,
         chunks: list[KnowledgeChunk],
         metadata: dict,
+        build_name: str | None = None,
     ) -> None:
         self.index = index
         self.vectors = vectors
         self.chunks = chunks
         self.metadata = metadata
+        self.build_name = build_name or metadata.get("buildId")
 
     @classmethod
     def load(
         cls,
         settings: Settings,
         knowledge_root: Path = KNOWLEDGE_ROOT,
+        build_name: str | None = None,
     ) -> "IndexStore | None":
         """加载 CURRENT；缓存缺失、过期或损坏时返回 ``None``。
 
@@ -126,14 +169,10 @@ class IndexStore:
         """
         try:
             index_dir = Path(settings.rag_index_dir)
-            build_name = (index_dir /
-                          "CURRENT").read_text(encoding="utf-8").strip()
-            if not build_name or Path(build_name).name != build_name:
-                #这里是判断CURRENT文件有没有被篡改，如果被篡改为多级目录
-                #那么Path().name只取最后一级名称和
-                #篡改的build_name的多级目录字符串自然不相等
+            selected_build = build_name or current_build_name(settings)
+            if not selected_build or Path(selected_build).name != selected_build:
                 return None
-            build_dir = index_dir / "versions" / build_name
+            build_dir = index_dir / "versions" / selected_build
             metadata = json.loads(
                 (build_dir / "meta.json").read_text(encoding="utf-8"))
             if not isinstance(metadata, dict):
@@ -153,7 +192,36 @@ class IndexStore:
                 return None
             if metadata.get("chunkingVersion") != CHUNKING_VERSION:
                 return None
+            if metadata.get("buildId") != selected_build:
+                return None
             if metadata.get("chunkCount") != len(chunks):
+                return None
+            guide_chunk_count = sum(
+                chunk.source_type == "GUIDE" for chunk in chunks
+            )
+            post_chunk_count = sum(
+                chunk.source_type == "POST" for chunk in chunks
+            )
+            if metadata.get("guideChunkCount") != guide_chunk_count:
+                return None
+            if metadata.get("postChunkCount") != post_chunk_count:
+                return None
+            guide_document_count = metadata.get("guideDocumentCount")
+            post_document_count = metadata.get("postDocumentCount")
+            if (
+                isinstance(guide_document_count, bool)
+                or not isinstance(guide_document_count, int)
+                or guide_document_count < 0
+                or isinstance(post_document_count, bool)
+                or not isinstance(post_document_count, int)
+                or post_document_count < 0
+                or metadata.get("documentCount")
+                != guide_document_count + post_document_count
+            ):
+                return None
+            if not isinstance(metadata.get("postSnapshotSha256"), str):
+                return None
+            if not isinstance(metadata.get("postSnapshotAt"), str):
                 return None
             if vectors.ndim != 2 or vectors.shape[
                     1] != settings.embedding_dimensions:
@@ -175,4 +243,4 @@ class IndexStore:
                 RuntimeError,
         ):
             return None
-        return cls(index, vectors, chunks, metadata)
+        return cls(index, vectors, chunks, metadata, selected_build)

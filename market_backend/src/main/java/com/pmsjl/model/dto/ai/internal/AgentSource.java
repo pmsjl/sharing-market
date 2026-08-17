@@ -18,6 +18,9 @@ public class AgentSource implements Serializable {
     /** RAG 索引文档 ID，固定由 sourceType 与 sourceId 定位。 */
     private String documentId;
 
+    /** POST 必填的索引版本；GUIDE 保持为空。 */
+    private String sourceVersion;
+
     /** 适合展示给用户的来源标题。 */
     private String title;
 

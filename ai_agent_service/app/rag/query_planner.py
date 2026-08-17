@@ -150,18 +150,19 @@ COURSE_MATERIAL_TERMS: set[str] = {
     "要买什么书",
     "需要买什么书",
 }
-COURSE_INTENT_TERMS: set[str] = COURSE_CATALOG_TERMS | COURSE_MATERIAL_TERMS | {
-    "课程",
-    "专业课",
-    "必修课",
-    "选修课",
-    "选课",
-    "上课",
-    "教学",
-    "学分",
-    "授课",
-    "学业",
-}
+COURSE_INTENT_TERMS: set[
+    str] = COURSE_CATALOG_TERMS | COURSE_MATERIAL_TERMS | {
+        "课程",
+        "专业课",
+        "必修课",
+        "选修课",
+        "选课",
+        "上课",
+        "教学",
+        "学分",
+        "授课",
+        "学业",
+    }
 #注意set和dict都是使用大括号，因为这里不是键值对所以是set
 #然后使用|就是取并集的意思
 COURSE_PURCHASE_TERMS: set[str] = {
@@ -237,6 +238,7 @@ def plan_query(query: str, relations: CourseRelationIndex) -> RagQueryPlan:
 
     return RagQueryPlan(
         should_retrieve=True,
+        include_posts=True,
         course_document_ids=course_document_ids,
         extra_categories=extra_categories,
         fallback_categories=list(NON_COURSE_CATEGORIES),

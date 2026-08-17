@@ -33,6 +33,10 @@ public class AgentOutput implements Serializable {
     /** RAG 检索命中的来源候选，返回用户前仍需 Java 校验。 */
     private List<AgentSource> sources = new ArrayList<>();
 
+    /** Python 按检索分数生成，展示字段仍由 Java 查询数据库。 */
+    private List<AgentRelatedPostCandidate> relatedPostCandidates =
+            new ArrayList<>();
+
     /** 模型实际使用且已经由 Python 校验的知识 chunk ID。 */
     private List<String> knowledgeChunkIds = new ArrayList<>();
 
