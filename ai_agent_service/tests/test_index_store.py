@@ -8,12 +8,14 @@ import pytest
 from app.core.config import Settings
 from app.rag.document_loader import MANIFEST_FILES
 from app.rag.index_store import IndexStore, build_index
-from app.rag.models import DocumentMeta, KnowledgeChunk, PostSnapshot
+from app.rag.models import GuideDocumentMeta, KnowledgeChunk, PostSnapshot
 
 
 class _FakeEmbedder:
+
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        return [[1.0, 0.0] if index == 0 else [0.0, 1.0] for index, _ in enumerate(texts)]
+        return [[1.0, 0.0] if index == 0 else [0.0, 1.0]
+                for index, _ in enumerate(texts)]
 
 
 def _settings(tmp_path: Path) -> Settings:
@@ -33,8 +35,8 @@ def _knowledge_root(tmp_path: Path) -> Path:
     return root
 
 
-def _meta() -> DocumentMeta:
-    return DocumentMeta(
+def _meta() -> GuideDocumentMeta:
+    return GuideDocumentMeta(
         document_id="GUIDE:test-document",
         category="course_materials",
         status="effective",
@@ -80,11 +82,11 @@ def test_build_publishes_unique_version_and_load_validates_it(tmp_path):
     knowledge_root = _knowledge_root(tmp_path)
 
     first = asyncio.run(
-        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(), knowledge_root)
-    )
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
+                    knowledge_root))
     second = asyncio.run(
-        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(), knowledge_root)
-    )
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
+                    knowledge_root))
 
     assert first.name != second.name
     current = Path(settings.rag_index_dir) / "CURRENT"
@@ -101,16 +103,17 @@ def test_load_degrades_for_manifest_drift_or_corrupt_vectors(tmp_path):
     settings = _settings(tmp_path)
     knowledge_root = _knowledge_root(tmp_path)
     build_dir = asyncio.run(
-        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(), knowledge_root)
-    )
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
+                    knowledge_root))
 
-    (knowledge_root / MANIFEST_FILES[0]).write_text("changed", encoding="utf-8")
+    (knowledge_root / MANIFEST_FILES[0]).write_text("changed",
+                                                    encoding="utf-8")
     assert IndexStore.load(settings, knowledge_root) is None
 
     # 使用新 manifest 重建后，再主动破坏缓存 ndarray 的形状。
     build_dir = asyncio.run(
-        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(), knowledge_root)
-    )
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
+                    knowledge_root))
     np.save(build_dir / "vectors.npy", np.array([1.0, 0.0], dtype=np.float32))
     assert IndexStore.load(settings, knowledge_root) is None
 
@@ -141,19 +144,19 @@ def test_mixed_build_records_guide_and_post_snapshot_metadata(tmp_path):
         metadata={"sourceVersion": post.source_version},
     )
 
-    build_dir = asyncio.run(build_index(
-        settings,
-        [_meta()],
-        [_chunks()[0], post_chunk],
-        _FakeEmbedder(),
-        knowledge_root,
-        posts=[post],
-        snapshot_at="2026-08-17T08:00:00+00:00",
-    ))
+    build_dir = asyncio.run(
+        build_index(
+            settings,
+            [_meta()],
+            [_chunks()[0], post_chunk],
+            _FakeEmbedder(),
+            knowledge_root,
+            posts=[post],
+            snapshot_at="2026-08-17T08:00:00+00:00",
+        ))
 
     metadata = json.loads(
-        (build_dir / "meta.json").read_text(encoding="utf-8")
-    )
+        (build_dir / "meta.json").read_text(encoding="utf-8"))
     assert metadata["documentCount"] == 2
     assert metadata["guideDocumentCount"] == 1
     assert metadata["postDocumentCount"] == 1
@@ -165,24 +168,27 @@ def test_mixed_build_records_guide_and_post_snapshot_metadata(tmp_path):
 
 
 def test_failed_rebuild_does_not_switch_current(tmp_path):
+
     class _FailingEmbedder:
+
         async def embed_batch(self, texts):
             raise RuntimeError("embedding unavailable")
 
     settings = _settings(tmp_path)
     knowledge_root = _knowledge_root(tmp_path)
     first = asyncio.run(
-        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(), knowledge_root)
-    )
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
+                    knowledge_root))
     current = Path(settings.rag_index_dir) / "CURRENT"
 
     with pytest.raises(RuntimeError, match="embedding unavailable"):
-        asyncio.run(build_index(
-            settings,
-            [_meta()],
-            _chunks(),
-            _FailingEmbedder(),
-            knowledge_root,
-        ))
+        asyncio.run(
+            build_index(
+                settings,
+                [_meta()],
+                _chunks(),
+                _FailingEmbedder(),
+                knowledge_root,
+            ))
 
     assert current.read_text(encoding="utf-8") == first.name

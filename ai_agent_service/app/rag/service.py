@@ -87,7 +87,8 @@ class RagService:
                 degraded=True,
             )
         try:
-            retrieved = await self.retriever.retrieve(query, plan)  # type: ignore
+            assert self.retriever is not None
+            retrieved = await self.retriever.retrieve(query, plan)
         except Exception:
             # RAG 是可选增强；这里不能阻断既有商品 Tool 和普通回答。
             return RagContext(

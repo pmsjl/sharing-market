@@ -2,7 +2,7 @@ package com.pmsjl.service.Impl;
 
 import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.exception.AiInternalToolException;
-import com.pmsjl.mapper.AiMessageMapper;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
 import com.pmsjl.model.dto.ai.internal.PostVersionCandidate;
@@ -11,6 +11,7 @@ import com.pmsjl.model.dto.ai.internal.PostVersionValidationResponse;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.Post;
 import com.pmsjl.model.enums.AiMessageRoleEnum;
+import com.pmsjl.service.AiMessageService;
 import com.pmsjl.service.AiUserPreferenceService;
 import com.pmsjl.service.AiPostRagService;
 import com.pmsjl.service.PostService;
@@ -26,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,7 +37,9 @@ import java.util.List;
 class AiInternalToolServiceImplTest {
 
     @Mock
-    private AiMessageMapper aiMessageMapper;
+    private AiMessageService aiMessageService;
+    @Mock
+    private LambdaQueryChainWrapper<AiMessage> aiMessageQuery;
     @Mock
     private AiUserPreferenceService preferenceService;
     @Mock
@@ -53,7 +57,9 @@ class AiInternalToolServiceImplTest {
         AiAgentProperties properties = new AiAgentProperties();
         properties.setInternalToken("internal-token");
         service.aiAgentProperties = properties;
-        service.aiMessageMapper = aiMessageMapper;
+        service.aiMessageService = aiMessageService;
+        lenient().when(aiMessageService.lambdaQuery()).thenReturn(aiMessageQuery);
+        lenient().when(aiMessageQuery.eq(any(), any())).thenReturn(aiMessageQuery);
         service.aiUserPreferenceService = preferenceService;
         service.postService = postService;
         service.aiPostRagService = aiPostRagService;
@@ -65,7 +71,7 @@ class AiInternalToolServiceImplTest {
                 .thenReturn("internal-token");
         when(request.getHeader("X-Request-Id"))
                 .thenReturn("request-1");
-        when(aiMessageMapper.selectOne(any()))
+        when(aiMessageQuery.one())
                 .thenReturn(userMessage(7L));
         UserPreferenceToolResponse expected =
                 new UserPreferenceToolResponse();
@@ -86,7 +92,7 @@ class AiInternalToolServiceImplTest {
                 .thenReturn("internal-token");
         when(request.getHeader("X-Request-Id"))
                 .thenReturn("request-1");
-        when(aiMessageMapper.selectOne(any()))
+        when(aiMessageQuery.one())
                 .thenReturn(userMessage(8L));
 
         AiInternalToolException exception = assertThrows(
@@ -112,7 +118,7 @@ class AiInternalToolServiceImplTest {
         );
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
-        verify(aiMessageMapper, never()).selectOne(any());
+        verify(aiMessageService, never()).lambdaQuery();
     }
 
     @Test
@@ -121,7 +127,7 @@ class AiInternalToolServiceImplTest {
                 .thenReturn("internal-token");
         when(request.getHeader("X-Request-Id"))
                 .thenReturn("request-1");
-        when(aiMessageMapper.selectOne(any()))
+        when(aiMessageQuery.one())
                 .thenReturn(userMessage(7L));
         CommoditySearchToolRequest toolRequest =
                 new CommoditySearchToolRequest();
@@ -144,7 +150,7 @@ class AiInternalToolServiceImplTest {
                 .thenReturn("internal-token");
         when(request.getHeader("X-Request-Id"))
                 .thenReturn("request-1");
-        when(aiMessageMapper.selectOne(any()))
+        when(aiMessageQuery.one())
                 .thenReturn(userMessage(7L));
         CommoditySearchToolRequest toolRequest =
                 new CommoditySearchToolRequest();
@@ -168,7 +174,7 @@ class AiInternalToolServiceImplTest {
                 .thenReturn("internal-token");
         when(request.getHeader("X-Request-Id"))
                 .thenReturn("request-1");
-        when(aiMessageMapper.selectOne(any()))
+        when(aiMessageQuery.one())
                 .thenReturn(userMessage(7L));
         Post current = new Post();
         current.setId(11L);

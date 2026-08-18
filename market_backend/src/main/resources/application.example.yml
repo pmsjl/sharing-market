@@ -101,6 +101,6 @@ ai:
   agent:
     base-url: ${AI_AGENT_BASE_URL:http://127.0.0.1:8103}
     internal-token: ${AI_AGENT_INTERNAL_TOKEN:}
-    connect-timeout-ms: ${AI_AGENT_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${AI_AGENT_READ_TIMEOUT_MS:60000}
-    pending-timeout-ms: ${AI_AGENT_PENDING_TIMEOUT_MS:80000}
+    connect-timeout-ms: ${AI_AGENT_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${AI_AGENT_READ_TIMEOUT_MS:120000}
+    pending-timeout-ms: ${AI_AGENT_PENDING_TIMEOUT_MS:140000}

@@ -15,7 +15,7 @@ import numpy as np
 from app.core.config import Settings
 from app.rag.document_loader import MANIFEST_FILES
 from app.rag.embedding_client import EmbeddingClient, l2_normalize
-from app.rag.models import DocumentMeta, KnowledgeChunk, PostSnapshot
+from app.rag.models import GuideDocumentMeta, KnowledgeChunk, PostSnapshot
 
 CHUNKING_VERSION = "guide-post-v2"
 KNOWLEDGE_ROOT = Path(__file__).resolve().parents[2] / "knowledge"
@@ -41,9 +41,8 @@ def _build_id() -> str:
 def current_build_name(settings: Settings) -> str | None:
     """读取并校验 CURRENT 中的单级不可变构建目录名。"""
     try:
-        build_name = (Path(settings.rag_index_dir) / "CURRENT").read_text(
-            encoding="utf-8"
-        ).strip()
+        build_name = (Path(settings.rag_index_dir) /
+                      "CURRENT").read_text(encoding="utf-8").strip()
     except OSError:
         return None
     if not build_name or Path(build_name).name != build_name:
@@ -61,14 +60,16 @@ def post_snapshot_sha256(posts: list[PostSnapshot]) -> str:
         payload,
         ensure_ascii=False,
         sort_keys=True,
+        #json按照键值对中的键这个字母顺序进行排序，确保不同字典键值对顺序一致
         separators=(",", ":"),
+        #不同键值对用，隔开，键值之间用冒号隔开
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
 async def build_index(
     settings: Settings,
-    metas: list[DocumentMeta],
+    guideMetas: list[GuideDocumentMeta],
     chunks: list[KnowledgeChunk],
     embedder: EmbeddingClient | None = None,
     knowledge_root: Path = KNOWLEDGE_ROOT,
@@ -114,15 +115,16 @@ async def build_index(
         "embeddingModel": settings.embedding_model,
         "embeddingDimensions": settings.embedding_dimensions,
         "chunkingVersion": CHUNKING_VERSION,
-        "documentCount": len(metas) + len(posts),
-        "guideDocumentCount": len(metas),
+        "documentCount": len(guideMetas) + len(posts),
+        "guideDocumentCount": len(guideMetas),
         "postDocumentCount": len(posts),
         "guideChunkCount": len(guide_chunks),
         "postChunkCount": len(post_chunks),
         "chunkCount": len(chunks),
         "manifestSha256": manifest_sha256(knowledge_root),
         "postSnapshotSha256": post_snapshot_sha256(posts),
-        "postSnapshotAt": snapshot_at or datetime.now(timezone.utc).isoformat(),
+        "postSnapshotAt": snapshot_at
+        or datetime.now(timezone.utc).isoformat(),
     }
     (build_dir / "meta.json").write_text(json.dumps(metadata,
                                                     ensure_ascii=False),
@@ -170,7 +172,8 @@ class IndexStore:
         try:
             index_dir = Path(settings.rag_index_dir)
             selected_build = build_name or current_build_name(settings)
-            if not selected_build or Path(selected_build).name != selected_build:
+            if not selected_build or Path(
+                    selected_build).name != selected_build:
                 return None
             build_dir = index_dir / "versions" / selected_build
             metadata = json.loads(
@@ -196,28 +199,23 @@ class IndexStore:
                 return None
             if metadata.get("chunkCount") != len(chunks):
                 return None
-            guide_chunk_count = sum(
-                chunk.source_type == "GUIDE" for chunk in chunks
-            )
-            post_chunk_count = sum(
-                chunk.source_type == "POST" for chunk in chunks
-            )
+            guide_chunk_count = sum(chunk.source_type == "GUIDE"
+                                    for chunk in chunks)
+            post_chunk_count = sum(chunk.source_type == "POST"
+                                   for chunk in chunks)
             if metadata.get("guideChunkCount") != guide_chunk_count:
                 return None
             if metadata.get("postChunkCount") != post_chunk_count:
                 return None
             guide_document_count = metadata.get("guideDocumentCount")
             post_document_count = metadata.get("postDocumentCount")
-            if (
-                isinstance(guide_document_count, bool)
-                or not isinstance(guide_document_count, int)
-                or guide_document_count < 0
-                or isinstance(post_document_count, bool)
-                or not isinstance(post_document_count, int)
-                or post_document_count < 0
-                or metadata.get("documentCount")
-                != guide_document_count + post_document_count
-            ):
+            if (isinstance(guide_document_count, bool)
+                    or not isinstance(guide_document_count, int)
+                    or guide_document_count < 0
+                    or isinstance(post_document_count, bool)
+                    or not isinstance(post_document_count, int)
+                    or post_document_count < 0 or metadata.get("documentCount")
+                    != guide_document_count + post_document_count):
                 return None
             if not isinstance(metadata.get("postSnapshotSha256"), str):
                 return None

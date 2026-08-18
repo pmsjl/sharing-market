@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from app.rag.models import DocumentMeta
+from app.rag.models import GuideDocumentMeta
 
 MANIFEST_FILES = (
     "normalized/platform_rag_document_manifest.jsonl",
@@ -12,8 +12,8 @@ MANIFEST_FILES = (
 )
 
 
-def load_document_metas(knowledge_root: Path) -> list[DocumentMeta]:
-    records: list[DocumentMeta] = []
+def load_document_metas(knowledge_root: Path) -> list[GuideDocumentMeta]:
+    records: list[GuideDocumentMeta] = []
     seen_ids: set[str] = set()
 
     for relative_manifest in MANIFEST_FILES:
@@ -22,7 +22,7 @@ def load_document_metas(knowledge_root: Path) -> list[DocumentMeta]:
             if not line.strip():
                 continue
             raw = json.loads(line)
-            meta = DocumentMeta.model_validate(raw)
+            meta = GuideDocumentMeta.model_validate(raw)
             if meta.document_id in seen_ids:
                 raise ValueError(f"重复 document_id：{meta.document_id}")
             seen_ids.add(meta.document_id)
@@ -32,7 +32,7 @@ def load_document_metas(knowledge_root: Path) -> list[DocumentMeta]:
     return records
 
 
-def _validate_document(knowledge_root: Path, meta: DocumentMeta) -> None:
+def _validate_document(knowledge_root: Path, meta: GuideDocumentMeta) -> None:
     root = knowledge_root.resolve()
     path = (root / meta.relative_path).resolve()
     if not path.is_relative_to(root / "documents" / "effective"):

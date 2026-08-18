@@ -33,11 +33,11 @@ import java.util.Set;
 @Component
 public class AiStructuredContentAssembler {
 
-    private static final int MAX_SOURCE_COUNT = 5;
+    private static final int MAX_SOURCE_COUNT = 8;
     private static final int MAX_SOURCE_ID_LENGTH = 150;
     private static final int MAX_DOCUMENT_ID_LENGTH = 150;
     private static final int MAX_SOURCE_TITLE_LENGTH = 200;
-    private static final int MAX_CITATION_COUNT = 5;
+    private static final int MAX_CITATION_COUNT = 2;
     private static final int MAX_CHUNK_ID_LENGTH = 200;
     private static final int MAX_SECTION_LENGTH = 200;
     private static final int MAX_CITATION_EXCERPT_LENGTH = 300;
@@ -254,7 +254,6 @@ public class AiStructuredContentAssembler {
             item.setTitle(post.getTitle());
             item.setExcerpt(cleanPostExcerpt(post.getContent(), 180));
             item.setTags(snapshot.getTags().stream().limit(5).toList());
-            item.setTargetPath("/user/post/" + post.getId());
             results.add(item);
             if (results.size() >= 3) {
                 break;

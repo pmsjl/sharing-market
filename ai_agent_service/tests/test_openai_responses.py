@@ -19,6 +19,8 @@ from app.clients.openai_responses import (
 from app.core.config import Settings
 from app.models.agent import (
     AGENT_FINAL_RESULT_TEXT_FORMAT,
+    AgentOutput,
+    AgentResponseOutput,
     AgentRunRequest,
 )
 from app.models.tools import (
@@ -412,6 +414,73 @@ def structured_output_message(
 
 
 class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
+    def test_eight_retrieved_chunks_can_be_returned_as_eight_sources(self):
+        chunks = [
+            RetrievedChunk(
+                chunk_id=f"GUIDE:guide-{index}#chunk",
+                document_id=f"GUIDE:guide-{index}",
+                source_type="GUIDE",
+                source_id=f"guide-{index}",
+                category="platform_policy",
+                title=f"指南 {index}",
+                section="规则",
+                content=f"指南正文 {index}",
+                score=1 - index / 100,
+                metadata={},
+            )
+            for index in range(5)
+        ]
+        chunks.extend(
+            RetrievedChunk(
+                chunk_id=f"POST:{post_id}#chunk",
+                document_id=f"POST:{post_id}",
+                source_type="POST",
+                source_id=str(post_id),
+                category="community_post",
+                title=f"帖子 {post_id}",
+                section=None,
+                content=f"帖子正文 {post_id}",
+                score=0.8,
+                metadata={"sourceVersion": str(1000 + post_id)},
+            )
+            for post_id in range(11, 14)
+        )
+        context = RagContext(
+            query="校园二手交易建议",
+            plan=RagQueryPlan(should_retrieve=True),
+            retrieved=chunks,
+        )
+        output = AgentOutput.model_validate({
+            "intent": "GENERAL_GUIDE",
+            "summary": "综合参考资料回答",
+            "memorySummary": "用户正在咨询校园二手交易建议",
+            "recommendations": [],
+            "purchaseAdvice": [],
+            "warnings": [],
+            "searchKeywords": [],
+            "knowledgeChunkIds": [item.chunk_id for item in chunks],
+            "courseRelationIds": [],
+        })
+        service = AgentService(
+            make_settings(),
+            openai_client=StubOpenAIClient([]),
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        sources = service._validate_model_references(output, set(), context)
+        response = AgentResponseOutput.model_validate({
+            **output.model_dump(),
+            "sources": [source.model_dump() for source in sources],
+        })
+
+        self.assertEqual(len(response.sources), 8)
+        self.assertEqual(
+            [source.sourceType for source in response.sources],
+            ["GUIDE"] * 5 + ["POST"] * 3,
+        )
+        self.assertTrue(all(len(source.citations) == 1
+                            for source in response.sources))
+
     async def test_request_uses_responses_payload(self):
         captured = {}
 
@@ -489,6 +558,10 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             },
         )
         self.assertIs(output_schema["additionalProperties"], False)
+        self.assertEqual(
+            output_schema["properties"]["knowledgeChunkIds"]["maxItems"],
+            8,
+        )
         self.assertIs(captured["payload"]["store"], False)
         self.assertIs(captured["payload"]["stream"], False)
         self.assertNotIn("temperature", captured["payload"])
