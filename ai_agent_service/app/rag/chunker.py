@@ -2,7 +2,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from app.rag.models import DocumentMeta, KnowledgeChunk, PostSnapshot
+from app.rag.models import GuideDocumentMeta, KnowledgeChunk, PostSnapshot
 
 H2_PATTERN = re.compile(r"(?m)^##\s+(.+?)\s*$")
 COURSE_SECTIONS = {"教材", "参考资料", "软件环境", "实验器材"}
@@ -53,16 +53,17 @@ def split_post_sections(body: str) -> list[tuple[str | None, str]]:
         sections.append((None, introduction))
     for index, match in enumerate(matches):
         start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        end = matches[index +
+                      1].start() if index + 1 < len(matches) else len(body)
         content = body[start:end].strip()
         if content:
             sections.append((match.group(1).strip(), content))
     return sections
 
 
-def chunk_document(
+def chunk_guide(
     knowledge_root: Path,
-    meta: DocumentMeta,
+    meta: GuideDocumentMeta,
 ) -> list[KnowledgeChunk]:
     body = read_body(knowledge_root / meta.relative_path)
 
@@ -94,7 +95,7 @@ def chunk_document(
                     section=section,
                     chunk_index=chunk_index,
                     content=part,
-                    embedding_text=_embedding_text(meta, section, part),
+                    embedding_text=_embedding_guide_text(meta, section, part),
                     # 上方的数据则是用于结合content用来embedding
                     #这里的metadata用于后续query construction过滤
                     metadata={
@@ -132,9 +133,9 @@ def chunk_post(post: PostSnapshot) -> list[KnowledgeChunk]:
     for section, content in split_post_sections(body):
         for part_index, part in enumerate(_split_long_section(content)):
             stable_key = (
-                f"{document_id}|{post.source_version}|{section}|{part_index}"
-            )
-            suffix = hashlib.sha256(stable_key.encode("utf-8")).hexdigest()[:12]
+                f"{document_id}|{post.source_version}|{section}|{part_index}")
+            suffix = hashlib.sha256(
+                stable_key.encode("utf-8")).hexdigest()[:12]
             chunks.append(
                 KnowledgeChunk(
                     chunk_id=f"{document_id}#{suffix}",
@@ -146,26 +147,28 @@ def chunk_post(post: PostSnapshot) -> list[KnowledgeChunk]:
                     section=section,
                     chunk_index=len(chunks),
                     content=part,
-                    embedding_text="\n".join([
-                        post.title,
-                        "community_post",
-                        *post.tags,
-                        *([section] if section else []),
-                        part,
-                    ]),
+                    embedding_text=_embedding_post_text(post,section,part),
                     metadata={
                         "sourceVersion": post.source_version,
                         "tags": post.tags,
                         "createTime": post.create_time,
                         "updateTime": post.update_time,
                     },
-                )
-            )
+                ))
     return chunks
 
+def _embedding_post_text(post:PostSnapshot,section:str|None,part:str)->str:
+    return "\n".join([
+        post.title,
+        "community_post",
+        *post.tags,
+        *([section] if section else []),
+        part,
+    ])
 
-def _embedding_text(
-    meta: DocumentMeta,
+
+def _embedding_guide_text(
+    meta: GuideDocumentMeta,
     section: str | None,
     content: str,
 ) -> str:

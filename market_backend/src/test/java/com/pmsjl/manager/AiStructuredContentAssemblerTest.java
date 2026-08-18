@@ -92,7 +92,8 @@ class AiStructuredContentAssemblerTest {
         firstSource.setCitations(List.of(
                 firstSource.getCitations().get(0),
                 citation("GUIDE:1#test", "重复章节", "重复摘录", "重复正文"),
-                citation("GUIDE:1#second", "第二章节", "摘录 2", "完整正文 2")
+                citation("GUIDE:1#second", "第二章节", "摘录 2", "完整正文 2"),
+                citation("GUIDE:1#third", "第三章节", "摘录 3", "完整正文 3")
         ));
         output.setSources(List.of(
                 source("POST", "1", "帖子", "不受支持"),
@@ -110,15 +111,18 @@ class AiStructuredContentAssemblerTest {
                 source("GUIDE", "3", "来源 3", "摘录 3"),
                 source("GUIDE", "4", "来源 4", "摘录 4"),
                 source("GUIDE", "5", "来源 5", "摘录 5"),
-                source("GUIDE", "6", "来源 6", "摘录 6")
+                source("GUIDE", "6", "来源 6", "摘录 6"),
+                source("GUIDE", "7", "来源 7", "摘录 7"),
+                source("GUIDE", "8", "来源 8", "摘录 8"),
+                source("GUIDE", "9", "来源 9", "摘录 9")
         ));
 
         AiStructuredContentVO result =
                 assembler().assemble(output);
 
-        assertEquals(5, result.getSources().size());
+        assertEquals(8, result.getSources().size());
         assertEquals(
-                List.of("1", "2", "3", "4", "5"),
+                List.of("1", "2", "3", "4", "5", "6", "7", "8"),
                 result.getSources().stream().map(item -> item.getSourceId()).toList()
         );
         assertEquals("GUIDE:1", result.getSources().get(0).getDocumentId());
@@ -174,12 +178,11 @@ class AiStructuredContentAssemblerTest {
         assertEquals("数据库中的当前标题", result.getSources().get(0).getTitle());
         assertEquals("/user/post/11", result.getSources().get(0).getTargetPath());
         assertEquals(1, result.getRelatedPosts().size());
+        assertEquals(11L, result.getRelatedPosts().get(0).getPostId());
         assertEquals("数据库中的当前标题",
                 result.getRelatedPosts().get(0).getTitle());
         assertEquals(List.of("数码", "验货"),
                 result.getRelatedPosts().get(0).getTags());
-        assertEquals("/user/post/11",
-                result.getRelatedPosts().get(0).getTargetPath());
     }
 
     private static AgentOutput outputWithRecommendations(

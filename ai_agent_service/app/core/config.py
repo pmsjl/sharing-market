@@ -20,7 +20,7 @@ class Settings:
     openai_base_url: str = os.getenv("OPENAI_BASE_URL", "")
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-5.6-terra")
     openai_timeout_seconds: float = float(
-        os.getenv("OPENAI_TIMEOUT_SECONDS", "70"))
+        os.getenv("OPENAI_TIMEOUT_SECONDS", "90"))
     openai_reasoning_effort: str = os.getenv("OPENAI_REASONING_EFFORT",
                                              "medium")
     openai_text_verbosity: str = os.getenv("OPENAI_TEXT_VERBOSITY", "high")

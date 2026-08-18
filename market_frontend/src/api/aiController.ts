@@ -1,8 +1,12 @@
 import request from "@/utils/request";
 
-// Java 会等待 Python Agent 完成工具循环并在约 90 秒后返回受控结果；
-// 浏览器应比服务端多保留回写余量，避免商品工具成功后提前断开。
-const AI_CHAT_TIMEOUT_MS = 120000;
+// Java 最多等待 Python Agent 整轮运行 120 秒，PENDING 清理窗口为 140 秒；
+// 浏览器再保留 20 秒网络与回写余量，避免服务端成功后客户端提前断开。
+const AI_CHAT_TIMEOUT_MS = 160000;
+
+/** 与 Python Agent 和 Java 展示白名单保持一致。 */
+export const AI_RAG_MAX_SOURCE_COUNT = 8;
+export const AI_RAG_MAX_CITATION_COUNT = 2;
 
 export type AiMessageRoleEnum = "USER" | "ASSISTANT";
 export type AiMessageStatusEnum = "PENDING" | "SUCCESS" | "FAILED";
@@ -48,6 +52,7 @@ export interface AiRagSourceVO {
   sourceId: string;
   documentId?: string;
   title: string;
+  /** 单个 GUIDE 最多 2 个引用；POST 当前最多 1 个。 */
   citations?: AiRagCitationVO[];
   /** 兼容升级前保存的历史消息。 */
   excerpt?: string;
@@ -57,11 +62,10 @@ export interface AiRagSourceVO {
 }
 
 export interface AiRelatedPostVO {
-  postId: string;
+  postId: number;
   title: string;
   excerpt: string;
   tags: string[];
-  targetPath: string;
 }
 
 export interface AiStructuredContentVO {
@@ -71,6 +75,7 @@ export interface AiStructuredContentVO {
   purchaseAdvice?: string[];
   warnings?: string[];
   searchKeywords?: string[];
+  /** 本轮最多返回 5 个 GUIDE chunk 与 3 个 POST chunk 聚合出的 8 个来源。 */
   sources?: AiRagSourceVO[];
   relatedPosts?: AiRelatedPostVO[];
 }

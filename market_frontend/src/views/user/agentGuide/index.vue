@@ -396,14 +396,14 @@
               </div>
               <div class="related-post-grid">
                 <button
-                  v-for="post in message.structuredContent.relatedPosts"
+                  v-for="post in orderedRelatedPosts(message)"
                   :key="post.postId"
                   type="button"
                   class="related-post-card"
-                  @click="openRelatedPost(post.targetPath)"
+                  @click="openRelatedPost(post.postId)"
                 >
                   <span
-                    v-if="citedPostIds(message).has(post.postId)"
+                    v-if="citedPostIds(message).has(String(post.postId))"
                     class="cited-post-badge"
                     >回答引用</span
                   >
@@ -567,14 +567,14 @@
       <section class="source-detail-body" aria-label="来源引用正文">
         <div class="source-detail-label">
           本次回答引用
-          {{ selectedSource?.citations?.length || 1 }} 个片段
+          {{ sourceCitations(selectedSource).length || 1 }} 个片段
         </div>
         <div
-          v-if="selectedSource?.citations?.length"
+          v-if="sourceCitations(selectedSource).length"
           class="source-citation-list"
         >
           <article
-            v-for="citation in selectedSource.citations"
+            v-for="citation in sourceCitations(selectedSource)"
             :key="citation.chunkId"
             class="source-citation"
           >
@@ -612,6 +612,8 @@ import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
 import useLayOutSettingStore from "@/store/modules/setting";
 import {
+  AI_RAG_MAX_CITATION_COUNT,
+  AI_RAG_MAX_SOURCE_COUNT,
   AiChatVO,
   AiConversationVO,
   AiMessageVO,
@@ -1348,20 +1350,41 @@ const openSource = (source: AiRagSourceVO) => {
 const sourcePreview = (source: AiRagSourceVO) =>
   source.citations?.[0]?.excerpt || source.excerpt || "查看本次引用片段";
 
+const boundedSources = (message: AiMessageVO) =>
+  (message.structuredContent?.sources || []).slice(0, AI_RAG_MAX_SOURCE_COUNT);
+
+const sourceCitations = (source?: AiRagSourceVO | null) =>
+  (source?.citations || []).slice(0, AI_RAG_MAX_CITATION_COUNT);
+
 const guideSources = (message: AiMessageVO) =>
-  (message.structuredContent?.sources || []).filter(
-    (source) => source.sourceType === "GUIDE"
-  );
+  boundedSources(message).filter((source) => source.sourceType === "GUIDE");
 
 const citedPostIds = (message: AiMessageVO) =>
   new Set(
-    (message.structuredContent?.sources || [])
+    boundedSources(message)
       .filter((source) => source.sourceType === "POST")
       .map((source) => source.sourceId)
   );
 
-const openRelatedPost = (targetPath: string) => {
-  if (targetPath) void router.push(targetPath);
+const orderedRelatedPosts = (message: AiMessageVO) => {
+  const posts = message.structuredContent?.relatedPosts || [];
+  const citedIds = citedPostIds(message);
+  return [
+    ...posts.filter((post) => citedIds.has(String(post.postId))),
+    ...posts.filter((post) => !citedIds.has(String(post.postId)))
+  ];
+};
+
+const openRelatedPost = (postId: number) => {
+  void router.push({
+    path: `/user/post/${postId}`,
+    query: {
+      from: "agent",
+      ...(activeConversationId.value
+        ? { conversationId: activeConversationId.value }
+        : {})
+    }
+  });
 };
 
 const openCommodity = (commodityId: string) => {

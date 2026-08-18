@@ -1,5 +1,12 @@
 <template>
   <div class="post-detail">
+    <div v-if="isAgentEntry" class="agent-return-bar">
+      <el-button :icon="ArrowLeft" plain @click="returnToAgent">
+        返回智能导购
+      </el-button>
+      <span>继续查看刚才的咨询与推荐理由</span>
+    </div>
+
     <!-- 帖子详情 -->
     <div class="post-content">
       <div class="post-header">
@@ -136,6 +143,7 @@ import QRCodeVue3 from "qrcode-vue3";
 import useClipboard from "vue-clipboard3";
 import { MdPreview } from "md-editor-v3";
 import { GET_ID } from "@/utils/token";
+import { ArrowLeft } from "@element-plus/icons-vue";
 // 获取路由参数
 const route = useRoute();
 const router = useRouter();
@@ -143,10 +151,22 @@ const postId = Array.isArray(route.params.id)
   ? route.params.id[0]
   : String(route.params.id || "");
 const currentUserId = String(GET_ID() || "");
+const routeValue = (value: unknown) =>
+  Array.isArray(value) ? String(value[0] || "") : String(value || "");
+const isAgentEntry = computed(() => routeValue(route.query.from) === "agent");
+const sourceConversationId = computed(() =>
+  routeValue(route.query.conversationId)
+);
 // 分享对话框的显示状态
 const shareDialogVisible = ref(false);
 // 当前页面地址
-const currentPageUrl = ref(window.location.href);
+const buildShareUrl = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("from");
+  url.searchParams.delete("conversationId");
+  return url.toString();
+};
+const currentPageUrl = ref(buildShareUrl());
 
 // 帖子详情数据
 const post = ref<API.PostVO>({
@@ -295,6 +315,19 @@ const getPostLikeAndCollect = async () => {
 const handleShare = () => {
   shareDialogVisible.value = true;
 };
+const returnToAgent = () => {
+  const previousPath = String(window.history.state?.back || "");
+  if (previousPath.startsWith("/user/agentGuide")) {
+    router.back();
+    return;
+  }
+  void router.push({
+    path: "/user/agentGuide",
+    query: sourceConversationId.value
+      ? { conversationId: sourceConversationId.value }
+      : {}
+  });
+};
 const goToPrivateChat = () => {
   if (!canChatWithAuthor.value) return;
   router.push({
@@ -318,6 +351,24 @@ onMounted(async () => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+
+  .agent-return-bar {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 8px 12px;
+    border: 1px dashed var(--market-line);
+    border-radius: 8px;
+    color: var(--market-muted);
+    background: var(--market-surface);
+    font-size: 13px;
+
+    .el-button {
+      min-height: 40px;
+    }
+  }
 
   .post-content {
     position: relative;
@@ -472,6 +523,13 @@ onMounted(async () => {
         font-size: 14px;
       }
     }
+  }
+}
+
+@media (max-width: 520px) {
+  .post-detail .agent-return-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

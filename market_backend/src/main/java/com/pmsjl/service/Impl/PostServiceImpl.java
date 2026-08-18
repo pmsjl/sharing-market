@@ -1,5 +1,6 @@
 package com.pmsjl.service.Impl;
 
+import cn.hutool.core.date.DateTime;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
@@ -73,6 +74,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         post.setThumbNum(0);
         post.setFavourNum(0);
         validPost(post, true);
+        post.setCreateTime(DateTime.now());
+        post.setUpdateTime(DateTime.now());
         boolean result = save(post);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return post.getId();
@@ -129,6 +132,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         post.setThumbNum(null);
         post.setFavourNum(null);
         validPost(post, false);
+        post.setUpdateTime(DateTime.now());
         boolean result = updateById(post);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return true;

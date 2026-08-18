@@ -247,7 +247,7 @@ class JavaBackendClient:
                     ) from exception
 
                 try:
-                    page = PostSnapshotPage.model_validate(response.json())
+                    post_page = PostSnapshotPage.model_validate(response.json())
                 except (ValueError, TypeError) as exception:
                     raise JavaBackendClientError(
                         "AI_JAVA_RAG_SNAPSHOT_RESPONSE_INVALID",
@@ -255,13 +255,13 @@ class JavaBackendClient:
                         False,
                     ) from exception
 
-                self._validate_post_snapshot_page(page, after_id, seen_ids)
-                posts.extend(page.items)
-                seen_ids.update(item.id for item in page.items)
+                self._validate_post_snapshot_page(post_page, after_id, seen_ids)
+                posts.extend(post_page.items)
+                seen_ids.update(item.id for item in post_page.items)
 
-                if not page.has_more:
+                if not post_page.has_more:
                     return posts
-                after_id = page.next_after_id
+                after_id = post_page.next_after_id
 
     def _raise_post_snapshot_status_error(
         self,
@@ -288,43 +288,43 @@ class JavaBackendClient:
 
     def _validate_post_snapshot_page(
         self,
-        page: PostSnapshotPage,
+        post_page: PostSnapshotPage,
         after_id: int,
         seen_ids: set[int],
     ) -> None:
-        if page.next_after_id < after_id:
+        if post_page.next_after_id < after_id:
             raise JavaBackendClientError(
                 "AI_JAVA_RAG_SNAPSHOT_CURSOR_INVALID",
                 "Post 快照分页游标发生倒退",
                 False,
             )
-        if page.has_more and page.next_after_id <= after_id:
+        if post_page.has_more and post_page.next_after_id <= after_id:
             raise JavaBackendClientError(
                 "AI_JAVA_RAG_SNAPSHOT_CURSOR_STALLED",
                 "Post 快照分页游标没有向前推进",
                 False,
             )
 
-        page_ids = [item.id for item in page.items]
-        page_seen: set[int] = set()
-        for post_id in page_ids:
-            if post_id in seen_ids or post_id in page_seen:
+        post_page_ids = [item.id for item in post_page.items]
+        post_page_seen: set[int] = set()
+        for post_id in post_page_ids:
+            if post_id in seen_ids or post_id in post_page_seen:
                 raise JavaBackendClientError(
                     "AI_JAVA_RAG_SNAPSHOT_DUPLICATE_ID",
                     f"Post 快照包含重复 ID：{post_id}",
                     False,
                 )
-            page_seen.add(post_id)
+            post_page_seen.add(post_id)
 
-        if page_ids != sorted(page_ids):
+        if post_page_ids != sorted(post_page_ids):
             raise JavaBackendClientError(
                 "AI_JAVA_RAG_SNAPSHOT_ORDER_INVALID",
                 "Post 快照页内 ID 未按升序返回",
                 False,
             )
         if any(
-            post_id <= after_id or post_id > page.next_after_id
-            for post_id in page_ids
+            post_id <= after_id or post_id > post_page.next_after_id
+            for post_id in post_page_ids
         ):
             raise JavaBackendClientError(
                 "AI_JAVA_RAG_SNAPSHOT_CURSOR_INVALID",

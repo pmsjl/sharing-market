@@ -21,12 +21,7 @@ import com.pmsjl.model.entity.Post;
 import com.pmsjl.model.enums.AiCommoditySortEnum;
 import com.pmsjl.model.enums.AiMessageRoleEnum;
 import com.pmsjl.model.vo.CommoditySearchToolResponse;
-import com.pmsjl.service.AiInternalToolService;
-import com.pmsjl.service.AiPostRagService;
-import com.pmsjl.service.AiUserPreferenceService;
-import com.pmsjl.service.CommodityService;
-import com.pmsjl.service.CommodityTypeService;
-import com.pmsjl.service.PostService;
+import com.pmsjl.service.*;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.BeanUtils;
@@ -48,7 +43,7 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
     @Autowired
     AiAgentProperties aiAgentProperties;
     @Autowired
-    AiMessageMapper aiMessageMapper;
+    AiMessageService aiMessageService;
     @Autowired
     CommodityService commodityService;
     @Autowired
@@ -102,15 +97,15 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
                                 CollUtil.isNotEmpty(keywords),
                                 wrapper -> {
                                     String firstKeyword = keywords.get(0);
-                                    wrapper.nested(lambdaQueryWrapper->{
-                                        lambdaQueryWrapper.like(Commodity::getCommodityName,firstKeyword)
-                                                .or().like(Commodity::getCommodityDescription,firstKeyword);
+                                    wrapper.nested(lambdaQueryWrapper -> {
+                                        lambdaQueryWrapper.like(Commodity::getCommodityName, firstKeyword)
+                                                .or().like(Commodity::getCommodityDescription, firstKeyword);
                                     });
-                                    for(int i=1;i<keywords.size();i++){
-                                        String keyword=keywords.get(i);
-                                        wrapper.or(lambdaQueryWrapper->{
-                                            lambdaQueryWrapper.like(Commodity::getCommodityName,keyword)
-                                                .or().like(Commodity::getCommodityDescription,keyword);
+                                    for (int i = 1; i < keywords.size(); i++) {
+                                        String keyword = keywords.get(i);
+                                        wrapper.or(lambdaQueryWrapper -> {
+                                            lambdaQueryWrapper.like(Commodity::getCommodityName, keyword)
+                                                    .or().like(Commodity::getCommodityDescription, keyword);
                                         });
                                     }
                                 }
@@ -296,11 +291,9 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
             AiCommoditySortEnum sortOrder) {
 
         switch (sortOrder) {
-            case PRICE_ASC ->
-                    page.addOrder(OrderItem.asc("price"));
+            case PRICE_ASC -> page.addOrder(OrderItem.asc("price"));
 
-            case PRICE_DESC ->
-                    page.addOrder(OrderItem.desc("price"));
+            case PRICE_DESC -> page.addOrder(OrderItem.desc("price"));
 
             case FAVOUR_DESC -> {
                 page.addOrder(OrderItem.desc("favourNum"));
@@ -338,15 +331,12 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
             );
         }
 
-        AiMessage requestMessage = aiMessageMapper.selectOne(
-                com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<AiMessage>lambdaQuery()
+        AiMessage requestMessage = aiMessageService.lambdaQuery()
                 .eq(AiMessage::getRequestId, requestId)
                 .eq(
                         AiMessage::getRole,
                         AiMessageRoleEnum.USER.getValue()
-                )
-        );
+                ).one();
         if (requestMessage == null) {
             throw new AiInternalToolException(
                     HttpStatus.FORBIDDEN,

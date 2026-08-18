@@ -63,7 +63,7 @@ public class AiPostRagServiceImpl implements AiPostRagService {
 
     @Override
     public boolean isEligible(Post post, String sourceVersion) {
-        PostRagSnapshotItem item = toSnapshotItem(post);
-        return item != null && item.getSourceVersion().equals(sourceVersion);
+        String currentSourceVersion = Long.toString(post.getUpdateTime().getTime());
+        return post!=null&&currentSourceVersion.equals(sourceVersion);
     }
 }

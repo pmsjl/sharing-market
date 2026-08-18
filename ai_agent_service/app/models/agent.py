@@ -90,7 +90,8 @@ class AgentSource(BaseModel):
         pattern=r"^[1-9]\d*$",
     )
     title: str = Field(min_length=1, max_length=200)
-    citations: list[AgentCitation] = Field(min_length=1, max_length=5)
+    # Retriever 对单个 GUIDE 文档最多保留 2 个 chunk；POST 最多保留 1 个。
+    citations: list[AgentCitation] = Field(min_length=1, max_length=2)
 
 
 class AgentRelatedPostCandidate(BaseModel):
@@ -162,9 +163,10 @@ class AgentOutput(BaseModel):
     )
 
     knowledgeChunkIds: list[str] = Field(
-        max_length=5,
+        max_length=8,
         description=(
             "本轮回答实际使用的知识 chunk ID；只能从本轮参考消息中选择，"
+            "最多覆盖本轮 5 个 GUIDE 与 3 个 POST 候选；"
             "未使用时返回空数组。"
         ),
     )
@@ -214,7 +216,7 @@ class AgentFinalResult(BaseModel):
 class AgentResponseOutput(AgentOutput):
     """返回 Java 的结构；展示来源不允许由模型直接生成。"""
 
-    sources: list[AgentSource] = Field(default_factory=list, max_length=5)
+    sources: list[AgentSource] = Field(default_factory=list, max_length=8)
     relatedPostCandidates: list[AgentRelatedPostCandidate] = Field(
         default_factory=list,
         max_length=3,

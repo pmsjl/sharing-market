@@ -13,6 +13,5 @@ public class AiRelatedPostVO implements Serializable {
     private String title;
     private String excerpt;
     private List<String> tags = new ArrayList<>();
-    private String targetPath;
     private static final long serialVersionUID = 1L;
 }

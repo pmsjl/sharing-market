@@ -20,7 +20,7 @@ CourseMatchMode = Literal[
 ]
 
 
-class DocumentMeta(BaseModel):
+class GuideDocumentMeta(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     document_id: str = Field(pattern=r"^GUIDE:[a-zA-Z0-9:-]+$")
@@ -195,6 +195,7 @@ class RagContext(BaseModel):
 
     query: str
     plan: RagQueryPlan
-    retrieved: list[RetrievedChunk] = Field(max_length=8)  # 5 个 GUIDE + 3 个 POST
+    retrieved: list[RetrievedChunk] = Field(
+        max_length=8)  # 5 个 GUIDE + 3 个 POST
     post_degraded: bool = False
     degraded: bool = False
