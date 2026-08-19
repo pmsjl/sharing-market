@@ -98,35 +98,64 @@
       />
     </el-card>
 
-    <!-- 修改帖子的对话框 -->
+    <!-- 修改帖子：全屏编辑工作区 -->
     <el-dialog
-      title="修改帖子"
       v-model="editDialogVisible"
-      width="50%"
-      @close="resetEditField(editFormRef)"
+      title="修改帖子"
+      fullscreen
+      class="admin-post-edit-dialog"
+      :close-on-click-modal="false"
+      @closed="resetEditField(editFormRef)"
     >
-      <el-form :model="editForm" ref="editFormRef" label-width="100px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="editForm.title" />
-        </el-form-item>
-        <el-form-item label="内容" prop="content">
-          <el-input type="textarea" v-model="editForm.content" />
-        </el-form-item>
-        <el-form-item label="标签" prop="tags">
-          <el-input-tag
-            v-model="editForm.tagList"
-            placeholder="请输入标签"
-            :max="5"
-            :validate="validateTag"
-          />
-        </el-form-item>
-      </el-form>
-      <span class="dialog-footer">
-        <slot name="footer">
-          <el-button @click="resetEditField(editFormRef)">取消</el-button>
-          <el-button type="primary" @click="editPost">确定</el-button>
-        </slot>
-      </span>
+      <div class="post-edit-workspace">
+        <div class="post-edit-intro">
+          <span>POST EDITOR · 校园内容运营</span>
+          <p>可在左侧编辑 Markdown，并在右侧实时预览帖子最终效果。</p>
+        </div>
+        <el-form
+          ref="editFormRef"
+          :model="editForm"
+          label-position="top"
+          class="admin-post-edit-form"
+        >
+          <div class="post-edit-meta">
+            <el-form-item label="标题" prop="title">
+              <el-input
+                v-model="editForm.title"
+                maxlength="80"
+                show-word-limit
+                placeholder="请输入帖子标题"
+              />
+            </el-form-item>
+            <el-form-item label="标签" prop="tagList">
+              <el-input-tag
+                v-model="editForm.tagList"
+                placeholder="请输入标签，最多 5 个"
+                :max="5"
+                :validate="validateTag"
+              />
+            </el-form-item>
+          </div>
+          <el-form-item label="内容" prop="content" class="post-editor-field">
+            <MdEditor
+              class="admin-post-edit-md"
+              :modelValue="editForm.content"
+              previewTheme="github"
+              showCodeRowNumber
+              @on-change="handleEditContentChange"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <div class="post-edit-footer">
+          <span>修改完成后点击保存，帖子内容与标签会同步更新。</span>
+          <div>
+            <el-button @click="editDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="editPost">保存修改</el-button>
+          </div>
+        </div>
+      </template>
     </el-dialog>
 
     <!-- 添加帖子的对话框 -->
@@ -204,6 +233,10 @@ const loading = ref<boolean>(false);
 // 处理内容变化
 const handleContentChange = (content) => {
   addForm.value.content = content;
+};
+// 处理编辑内容变化
+const handleEditContentChange = (content: string) => {
+  editForm.value.content = content;
 };
 // 分页配置
 const paginationConfig = ref({
@@ -393,8 +426,169 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .post-admin {
   padding: 20px;
+}
+
+.post-edit-workspace {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.post-edit-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--market-line);
+  border-radius: 10px 16px 10px 16px;
+  background: var(--market-primary-soft);
+
+  span {
+    color: var(--market-primary);
+    font-family: var(--market-font-display);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.8px;
+  }
+
+  p {
+    margin: 0;
+    color: var(--market-muted);
+    font-size: 13px;
+  }
+}
+
+.admin-post-edit-form {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.post-edit-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 18px;
+}
+
+.post-editor-field {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  margin-bottom: 0;
+
+  :deep(.el-form-item__content) {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+  }
+}
+
+.admin-post-edit-md {
+  width: 100%;
+  height: 100%;
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid var(--market-line);
+  border-radius: 12px;
+}
+
+.post-edit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+
+  > span {
+    color: var(--market-muted);
+    font-size: 13px;
+  }
+
+  > div {
+    display: flex;
+    gap: 10px;
+  }
+}
+
+:global(.admin-post-edit-dialog) {
+  display: flex;
+  height: 100dvh;
+  margin: 0;
+  flex-direction: column;
+  border: 0;
+  border-radius: 0;
+  background: var(--market-canvas);
+}
+
+:global(.admin-post-edit-dialog .el-dialog__header) {
+  flex: none;
+  margin: 0;
+  padding: 17px 24px;
+  border-bottom: 1px solid var(--market-line);
+  background: var(--market-surface);
+}
+
+:global(.admin-post-edit-dialog .el-dialog__body) {
+  flex: 1;
+  min-height: 0;
+  padding: 18px 24px;
+  overflow: hidden;
+  color: var(--market-ink);
+}
+
+:global(.admin-post-edit-dialog .el-dialog__footer) {
+  flex: none;
+  padding: 14px 24px;
+  border-top: 1px solid var(--market-line);
+  background: var(--market-surface);
+}
+
+@media (max-width: 760px) {
+  .post-admin {
+    padding: 12px;
+  }
+
+  .post-edit-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .post-edit-meta {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .admin-post-edit-md {
+    min-height: 340px;
+  }
+
+  .post-edit-footer {
+    align-items: stretch;
+    flex-direction: column;
+
+    > span {
+      display: none;
+    }
+
+    > div {
+      justify-content: flex-end;
+    }
+  }
+
+  :global(.admin-post-edit-dialog .el-dialog__header),
+  :global(.admin-post-edit-dialog .el-dialog__body),
+  :global(.admin-post-edit-dialog .el-dialog__footer) {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
 }
 </style>

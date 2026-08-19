@@ -208,7 +208,6 @@ ai_agent_service/scratch/
 # 一次性种子/语料生成器及采集产物不进入仓库。
 /ai_agent_service/*_commodity_seed.py
 /ai_agent_service/tests/test_*_commodity_seed.py
-/tools/build_post_corpus.py
 /docs/post-corpus/*
 !/docs/post-corpus/README.md
 
@@ -223,6 +222,7 @@ ai_agent_service/scratch/
 /校园二手交易导购助手_RAG四类Document规划.md
 /docs/UI_REDESIGN_PLAN.md
 /docs/UI_REDESIGN_PROGRESS.md
+*.md
 
 ### 操作系统 ###
 # macOS
@@ -272,3 +272,8 @@ upload/
 *.rar
 *.7z
 
+/tools/post_corpus/.generated_batches/
+/tools/post_corpus/.generated_v2_batches/
+/tools/post_corpus/posts_v2_additions.jsonl
+/tools/post_corpus/posts_v2_preview.jsonl
+/tools/post_corpus/.backups/

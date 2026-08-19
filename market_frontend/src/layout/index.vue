@@ -69,7 +69,6 @@ export default {
   overflow: hidden;
   background: var(--market-body-bg);
 }
-
 .layout_slider {
   position: sticky;
   top: 0;
@@ -78,76 +77,80 @@ export default {
   height: 100dvh;
   border-right: 1px solid var(--market-line);
   background: var(--market-sidebar-bg);
-  box-shadow: 8px 0 28px rgba(62, 45, 24, 0.08);
-  transition: flex-basis 0.24s ease, width 0.24s ease;
+  box-shadow: 8px 0 30px rgba(30, 64, 109, 0.08);
+  transition: flex-basis 0.24s var(--market-ease-standard),
+    width 0.24s var(--market-ease-standard);
   z-index: 20;
-  @include paper-grain(0.3);
-
   &::before {
-    height: 6px;
-    @include awning-strip(6px);
-    content: "";
     display: block;
-    position: relative;
-    z-index: 1;
+    width: 100%;
+    height: 7px;
+    background: linear-gradient(
+      90deg,
+      var(--market-primary) 0 60%,
+      var(--market-orange) 60% 76%,
+      var(--market-yellow) 76% 100%
+    );
+    content: "";
   }
-
   &.fold {
     flex-basis: $base-menu-min-width;
     width: $base-menu-min-width;
   }
-
   .scrollbar {
-    height: calc(100dvh - $base-menu-logo-height - 6px);
     position: relative;
-    z-index: 1;
+    height: calc(100dvh - $base-menu-logo-height - 7px);
   }
-
   :deep(.el-menu) {
     border-right: none;
-    padding: 10px;
+    padding: 10px 11px 18px;
   }
-
   :deep(.el-menu-item),
   :deep(.el-sub-menu__title) {
     position: relative;
-    height: 46px;
-    margin: 4px 0;
-    border-radius: 8px;
-    font-weight: 700;
-    transition: transform var(--market-dur-fast) ease;
+    height: 47px;
+    margin: 5px 0;
+    border: 1px solid transparent;
+    border-radius: 9px 13px 9px 13px;
+    color: var(--market-muted);
+    font-weight: 720;
+    transition: transform var(--market-dur-fast), color var(--market-dur-fast),
+      background var(--market-dur-fast), border-color var(--market-dur-fast);
   }
-
   :deep(.el-menu-item:hover),
   :deep(.el-sub-menu__title:hover) {
+    border-color: rgba(37, 99, 235, 0.09);
+    color: var(--market-primary);
     background: var(--market-menu-hover-bg);
-    transform: translateY(-2px);
+    transform: translateX(3px);
   }
-
-  // 激活项：左侧橙色邮票齿孔条 + 浅绿底
   :deep(.el-menu-item.is-active) {
-    color: var(--market-green);
+    border-color: rgba(37, 99, 235, 0.18);
+    color: var(--market-primary);
     background: var(--market-menu-active-bg);
-
+    box-shadow: 0 7px 18px rgba(37, 99, 235, 0.08);
+    &::after {
+      position: absolute;
+      top: 9px;
+      bottom: 9px;
+      left: -1px;
+      width: 4px;
+      border-radius: 0 5px 5px 0;
+      background: var(--market-primary);
+      content: "";
+    }
     &::before {
       position: absolute;
-      top: 8px;
-      bottom: 8px;
-      left: 0;
-      width: 4px;
-      border-radius: 0 4px 4px 0;
-      background-image: radial-gradient(
-        circle 1.6px at 2px 3px,
-        var(--market-orange) 1.6px,
-        transparent 1.6px
-      );
-      background-size: 4px 7px;
-      background-color: rgba(224, 101, 31, 0.35);
+      right: 10px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--market-orange);
+      box-shadow: 0 0 0 4px var(--market-orange-soft);
       content: "";
     }
   }
 }
-
 .layout_content {
   display: grid;
   grid-template-rows: $base-tabbar-height minmax(0, 1fr);
@@ -157,77 +160,66 @@ export default {
   min-height: 0;
   overflow: hidden;
 }
-
 .layout_tabbar {
   position: relative;
   min-width: 0;
   min-height: 0;
   border-bottom: 1px solid var(--market-line);
   background: var(--market-topbar-bg);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px) saturate(1.2);
   z-index: 18;
 }
-
 .layout_main {
   min-width: 0;
   min-height: 0;
-  padding: 22px;
+  padding: 24px;
   overflow: auto;
-
-  &.workspace-mode {
-    display: grid;
-    grid-template-rows: minmax(0, 1fr);
-    height: 100%;
-    max-height: 100%;
-    padding: 12px;
-    overflow: hidden;
-  }
+  scrollbar-color: var(--market-line-strong) transparent;
 }
-
+.layout_main.workspace-mode {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  max-height: 100%;
+  padding: 12px;
+  overflow: hidden;
+}
 .layout_container.focus-mode {
   position: fixed;
   inset: 0;
   width: 100%;
   height: auto;
   max-height: none;
-
   .layout_slider,
   .layout_tabbar {
     display: none;
   }
-
   .layout_content {
     grid-template-rows: minmax(0, 1fr);
   }
-
   .layout_main {
     padding: 0;
     overflow: hidden;
   }
 }
-
 @media (max-width: 768px) {
   .layout_container {
     display: block;
   }
-
   .layout_slider {
     position: fixed;
     left: 0;
     transform: translateX(-100%);
-    transition: transform 0.24s ease;
+    transition: transform 0.24s var(--market-ease-standard);
   }
-
   .layout_slider.fold {
     transform: translateX(0);
   }
-
   .layout_main {
-    padding: 14px;
-
-    &.workspace-mode {
-      padding: 0;
-    }
+    padding: 15px;
+  }
+  .layout_main.workspace-mode {
+    padding: 0;
   }
 }
 </style>

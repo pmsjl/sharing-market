@@ -71,7 +71,7 @@
           >
             <el-icon>
               <Star v-if="initStatus === 0" />
-              <StarFilled v-if="initStatus === 1" color="#e0651f" />
+              <StarFilled v-if="initStatus === 1" color="#f97316" />
             </el-icon>
             <span>{{ favourCount }} 收藏</span>
             <i v-if="initStatus === 1" ref="favourStamp" class="favour-stamp"
@@ -458,10 +458,12 @@ onMounted(async () => {
 }
 
 .detail-media {
-  position: relative;
-  aspect-ratio: 4 / 3;
+  display: grid;
+  aspect-ratio: 1 / 1;
+  min-height: 420px;
   padding: 14px;
   overflow: hidden;
+  place-items: center;
   border: 1px solid rgba(143, 93, 51, 0.2);
   border-radius: 8px;
   background: var(--market-paper-deep);
@@ -472,7 +474,7 @@ onMounted(async () => {
     width: 100%;
     height: 100%;
     border-radius: 4px;
-    object-fit: cover;
+    object-fit: contain;
   }
 }
 
@@ -664,6 +666,9 @@ html.dark .link-container {
 }
 
 @media (max-width: 520px) {
+  .detail-media {
+    min-height: 300px;
+  }
   .agent-return-bar {
     align-items: flex-start;
     flex-direction: column;

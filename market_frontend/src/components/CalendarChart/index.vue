@@ -48,7 +48,7 @@ const renderChart = async () => {
     itemStyle:
       item.date === today
         ? {
-            borderColor: "#e0651f",
+            borderColor: "#f97316",
             borderWidth: 2
           }
         : undefined
@@ -82,7 +82,7 @@ const renderChart = async () => {
         min: 0,
         max: maxValue,
         inRange: {
-          color: ["#f7ecd8", "#f2b8a0", "#e0651f", "#2b6e50"]
+          color: ["#edf4fc", "#f2b8a0", "#f97316", "#2563eb"]
         }
       },
       calendar: {
@@ -128,7 +128,7 @@ const renderChart = async () => {
           },
           emphasis: {
             itemStyle: {
-              borderColor: "#e0651f",
+              borderColor: "#f97316",
               borderWidth: 2,
               shadowBlur: 8,
               shadowColor: "rgba(224, 101, 31, 0.32)"

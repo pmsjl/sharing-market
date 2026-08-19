@@ -1,12 +1,14 @@
 # AI Agent Service
 
-第一阶段 Python Agent 服务。
+当前 Python Agent 与 GUIDE + Post RAG 服务（状态更新：2026-08-19）。
 
 - 启动入口：`app.main:app`
 - 健康检查：`GET /health`
 - Java 内部调用：`POST /agent/v1/runs`
-- 当前能力：通过 OpenAI Responses 兼容中转调用 `gpt-5.6-terra`，并执行商品搜索工具后返回同步导购建议
+- 当前能力：通过 OpenAI Responses 兼容中转调用 `gpt-5.6-terra`，使用 Structured Outputs、滚动会话摘要、商品搜索与当前用户脱敏偏好工具返回同步导购建议
 - 当前 RAG：GUIDE 与社区 Post 独立配额检索、不可变 FAISS 索引、`CURRENT` 热加载、请求内 Post 版本校验、引用来源和相关帖子卡片，已接入 Agent 主调用链
+- 当前后置项：SSE、管理员 knowledge job、文档 upsert/delete 和独立 retrieve HTTP API
+- 自动化基线：`103 passed`、`23 subtests passed`；在受限工作区可能仅出现 `.pytest_cache` 不可写警告
 
 运行配置从环境变量读取；可参考 `.env.example`。`OPENAI_BASE_URL`
 必须包含中转服务的 `/v1` 前缀，真实 API Key 不得提交到仓库。

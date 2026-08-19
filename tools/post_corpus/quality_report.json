@@ -1,0 +1,52 @@
+{
+  "postCount": 260,
+  "uniqueTitleCount": 260,
+  "authorCount": 20,
+  "topicCounts": {
+    "digital": 46,
+    "course_office": 52,
+    "dorm_daily": 46,
+    "clothing_sports_travel": 30,
+    "books_food_beauty_pet": 38,
+    "transaction": 48
+  },
+  "lengthBandCounts": {
+    "comprehensive": 24,
+    "detailed": 54,
+    "standard": 182
+  },
+  "hanCount": {
+    "total": 302357,
+    "minimum": 706,
+    "maximum": 2670,
+    "average": 1162.91
+  },
+  "headingCount": {
+    "minimum": 3,
+    "maximum": 6
+  },
+  "similarity": {
+    "legacy20Shingle": {
+      "maximum": 0.0,
+      "pair": [
+        null,
+        null
+      ],
+      "limitExclusive": 0.35
+    },
+    "strict4Shingle": {
+      "maximum": 0.045116,
+      "pair": [
+        "课程讲义整包转让前：怎样删掉姓名、学号、评语和共享链接痕迹？",
+        "毕业论文装订本转让或回收：封面信息、致谢页、批注 PDF 为什么要分别处理？"
+      ],
+      "limitExclusive": 0.18
+    }
+  },
+  "repeatedLongParagraphCount": 0,
+  "repeatedLongSentenceCount": 0,
+  "titleFamilyOveruse": {},
+  "corpusSha256": "de5aaa74da10b9f0a22e0525031f68d6f79325d19bd34a9a3d2c46bf4cfb7b3e",
+  "errors": [],
+  "accepted": true
+}

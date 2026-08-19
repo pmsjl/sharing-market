@@ -3,7 +3,7 @@
     <section class="home-hero market-board">
       <div class="hero-copy">
         <span class="market-eyebrow">今日校园集市</span>
-        <h1>在公告栏里发现同校好物</h1>
+        <h1>课间逛一圈，把同校好物带回宿舍</h1>
         <p>
           把教材、数码、运动装备和生活用品重新流转起来。先逛一圈，再决定要不要发布自己的闲置。
         </p>
@@ -18,7 +18,7 @@
       </div>
       <div class="hero-board" aria-label="平台亮点">
         <div class="hero-board-title">
-          <span>MARKET TODAY</span>
+          <span>AFTER CLASS MARKET</span>
         </div>
         <div class="pin-card card-book">
           <small>TEXTBOOK</small>教材换季<br />价格友好
@@ -49,8 +49,8 @@
 
     <section class="carousel-note market-panel">
       <div class="section-heading">
-        <span class="market-eyebrow">公告栏精选</span>
-        <h2>最近值得看看的校园交易场景</h2>
+        <span class="market-eyebrow">逛摊路线</span>
+        <h2>从教材摊、数码摊逛到宿舍生活区</h2>
       </div>
       <div class="carousel-frame">
         <el-carousel height="320px" motion-blur>

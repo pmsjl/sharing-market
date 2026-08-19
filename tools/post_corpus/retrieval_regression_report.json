@@ -1,0 +1,288 @@
+{
+  "buildName": "20260819T050151Z-0c31a60e8d134492b9ab55a741241a17",
+  "caseCount": 20,
+  "topHitCount": 20,
+  "topTitleKeywordCoverage": 20,
+  "results": [
+    {
+      "topic": "digital",
+      "query": "计算机专业买二手笔记本需要独显吗",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "按下学期课程负载挑二手笔记本：把“能写代码”拆成四种需求",
+      "topScore": 0.7654,
+      "matchedNeedles": 2,
+      "needles": [
+        "课程负载",
+        "二手笔记本"
+      ],
+      "sourceId": "2088602105676820480"
+    },
+    {
+      "topic": "digital",
+      "query": "Docker、WSL2和数据库一起开，16GB内存够不够",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "Docker、WSL2 与数据库多开：二手本内存和硬盘该留多少余量",
+      "topScore": 0.9039,
+      "matchedNeedles": 2,
+      "needles": [
+        "Docker",
+        "内存"
+      ],
+      "sourceId": "2088602105681014784"
+    },
+    {
+      "topic": "digital",
+      "query": "二手笔记本电池健康和满充容量怎么查",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "看电池不是看“循环次数”一项：二手笔记本续航的三层核验",
+      "topScore": 0.8134,
+      "matchedNeedles": 2,
+      "needles": [
+        "电池",
+        "笔记本"
+      ],
+      "sourceId": "2088602105714569216"
+    },
+    {
+      "topic": "digital",
+      "query": "二手手机账号退出和设备锁怎么验",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "买二手手机前，账号退出和设备锁要在面交时完成核验",
+      "topScore": 0.8574,
+      "matchedNeedles": 2,
+      "needles": [
+        "账号",
+        "设备锁"
+      ],
+      "sourceId": "2088602105764900864"
+    },
+    {
+      "topic": "course_office",
+      "query": "二手教材怎么核对ISBN和版次",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "买二手教材前：用 ISBN 把“同名不同版”排除掉",
+      "topScore": 0.8563,
+      "matchedNeedles": 2,
+      "needles": [
+        "ISBN",
+        "教材"
+      ],
+      "sourceId": "2088602105852981248"
+    },
+    {
+      "topic": "course_office",
+      "query": "开发板买回来如何确认课程例程兼容",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "开发板不是“能亮灯”就够：USB 接口、芯片与课程例程的兼容检查",
+      "topScore": 0.841,
+      "matchedNeedles": 2,
+      "needles": [
+        "开发板",
+        "兼容"
+      ],
+      "sourceId": "2088602105865564160"
+    },
+    {
+      "topic": "course_office",
+      "query": "二手万用表要看表笔保险丝和量程吗",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手万用表怎么验：量程、表笔、保险丝和校准边界",
+      "topScore": 0.9101,
+      "matchedNeedles": 2,
+      "needles": [
+        "万用表",
+        "表笔"
+      ],
+      "sourceId": "2088602105869758464"
+    },
+    {
+      "topic": "dorm_daily",
+      "query": "二手电热水壶面交应该检查什么",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手电热水壶：从铭牌功率到烧水跳闸，面交时怎么验",
+      "topScore": 0.8468,
+      "matchedNeedles": 2,
+      "needles": [
+        "电热水壶",
+        "铭牌"
+      ],
+      "sourceId": "2088602105995587584"
+    },
+    {
+      "topic": "dorm_daily",
+      "query": "排插二手验货要看哪些安全点",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手排插的插头、线材和过载保护，不能只看孔位够不够",
+      "topScore": 0.7622,
+      "matchedNeedles": 2,
+      "needles": [
+        "排插",
+        "过载"
+      ],
+      "sourceId": "2088602105999781888"
+    },
+    {
+      "topic": "dorm_daily",
+      "query": "小冰箱搬进宿舍前要算什么",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "小冰箱进宿舍前：门洞、楼梯、散热间隙和搬运人手怎么算",
+      "topScore": 0.819,
+      "matchedNeedles": 2,
+      "needles": [
+        "小冰箱",
+        "搬运"
+      ],
+      "sourceId": "2088602106003976192"
+    },
+    {
+      "topic": "clothing_sports_travel",
+      "query": "二手跑鞋怎么看中底和外底磨损",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手跑鞋还能跑多远：从中底回弹、外底磨偏到试跑退出条件",
+      "topScore": 0.8205,
+      "matchedNeedles": 2,
+      "needles": [
+        "跑鞋",
+        "中底"
+      ],
+      "sourceId": "2088602106117222400"
+    },
+    {
+      "topic": "clothing_sports_travel",
+      "query": "二手头盔有撞击痕迹还能买吗",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手头盔的安全边界：有过撞击、壳体异常或来源不明时为何不接手",
+      "topScore": 0.8203,
+      "matchedNeedles": 2,
+      "needles": [
+        "头盔",
+        "撞击"
+      ],
+      "sourceId": "2088602106121416704"
+    },
+    {
+      "topic": "clothing_sports_travel",
+      "query": "拉杆箱面交怎么验轮子和拉杆",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手行李箱面交：轮子、拉杆、密码锁和内部异味的检查顺序",
+      "topScore": 0.8256,
+      "matchedNeedles": 1,
+      "needles": [
+        "拉杆箱",
+        "轮子"
+      ],
+      "sourceId": "2088602106402435072"
+    },
+    {
+      "topic": "books_food_beauty_pet",
+      "query": "开封食品能不能跟行李箱一起转让",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "行李箱打包捆绑出售时，开封食品、美妆和不明液体为什么要拆开处理",
+      "topScore": 0.7382,
+      "matchedNeedles": 2,
+      "needles": [
+        "开封食品",
+        "行李箱"
+      ],
+      "sourceId": "2088602106188525568"
+    },
+    {
+      "topic": "books_food_beauty_pet",
+      "query": "有霉味的旧书应该怎么判断",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "有霉味的旧诗集能不能收：霉斑位置、纸张状态与退出交易的判断",
+      "topScore": 0.8093,
+      "matchedNeedles": 2,
+      "needles": [
+        "霉味",
+        "旧书"
+      ],
+      "sourceId": "2088602106201108480"
+    },
+    {
+      "topic": "books_food_beauty_pet",
+      "query": "开封美妆二手交易有哪些卫生风险",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "开封过的口红、粉底和面霜为什么不适合宿舍转手：污染路径对照表",
+      "topScore": 0.6534,
+      "matchedNeedles": 1,
+      "needles": [
+        "美妆",
+        "开封"
+      ],
+      "sourceId": "2088602106234662912"
+    },
+    {
+      "topic": "transaction",
+      "query": "二手交易发生描述不符证据应该怎么保存",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "为二手交易建一条时间线：从发布截图到交付确认，证据该按什么顺序保存",
+      "topScore": 0.8207,
+      "matchedNeedles": 2,
+      "needles": [
+        "证据",
+        "时间线"
+      ],
+      "sourceId": "2088602106389852160"
+    },
+    {
+      "topic": "transaction",
+      "query": "卖二手笔记本发布时型号要写到哪一层",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "发布二手笔记本：型号页该写到哪一层，买家才能判断配置是否对课",
+      "topScore": 0.8738,
+      "matchedNeedles": 2,
+      "needles": [
+        "笔记本",
+        "完整型号"
+      ],
+      "sourceId": "2088602106264023040"
+    },
+    {
+      "topic": "transaction",
+      "query": "面交时卖家临时换机器应该怎么办",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "二手游戏机面交时被临时换成“同款”：哪些变化必须重新核价或离场",
+      "topScore": 0.7586,
+      "matchedNeedles": 1,
+      "needles": [
+        "面交",
+        "换机"
+      ],
+      "sourceId": "2088602106310160384"
+    },
+    {
+      "topic": "transaction",
+      "query": "物流收货开箱视频应该怎么拍",
+      "includePosts": true,
+      "hitCount": 3,
+      "topTitle": "收到有争议的包裹后：连续开箱录像里必须出现哪些画面",
+      "topScore": 0.7768,
+      "matchedNeedles": 2,
+      "needles": [
+        "物流",
+        "开箱"
+      ],
+      "sourceId": "2088602106343714816"
+    }
+  ]
+}

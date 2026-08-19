@@ -1,6 +1,6 @@
-# 前两类 RAG Document 数据集
+# RAG GUIDE Document 数据集
 
-本目录是通过硬验收后发布的可审计快照，覆盖平台正式知识以及2019–2025级全部本科培养方案。
+本目录是通过硬验收后发布的 GUIDE 可审计快照，覆盖平台正式知识以及 2019–2025 级全部本科培养方案。社区 Post 不固化在本目录的 Markdown 中；离线重建时通过 Java `GET /api/internal/ai/rag/posts` 分页读取，并与 GUIDE 一起发布为不可变 FAISS 构建。
 
 ## 验收结论
 
@@ -20,6 +20,7 @@
 - 第三、四类校园指南：10份面向用户的文档位于 `documents/effective/dorm/` 与 `documents/effective/lifecycle/`；来源见 `sources/campus_sources.json`，清单见 `normalized/campus_guidance_manifest.jsonl`
 - 六个平台研究、法规与校规证据位于 `documents/reference/`；依赖新功能或待确认校规的内容位于 `documents/draft/platform/`，不参与普通用户RAG
 - 正式/参考/草案文档总数：118份
+- 当前已发布索引基线：99 篇 GUIDE、180 篇 Post、1209 个 chunks；Post 在每次进入模型前仍需通过 Java 版本校验
 
 课程中的“教材与参考资料”只证明来源曾提及该书，不证明当前学期必须购买。实时价格、库存、成色和上架状态继续由商品工具查询。
 
