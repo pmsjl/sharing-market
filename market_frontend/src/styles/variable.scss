@@ -1,6 +1,6 @@
 // ============================================================
-// 「学院市集 · Collegiate Market」设计基座
-// 校园公告栏 → 市集摊位 / 活页纸 / 票根 / 印章 / 粉笔字
+// 「海盐蓝 · 校园跳蚤市场」设计基座
+// 校牌 / 摊位 / 公告墙 / 值班导购台
 // ============================================================
 
 $base-menu-width: 248px;
@@ -9,171 +9,272 @@ $base-menu-logo-height: 72px;
 $base-tabbar-height: 64px;
 $base-logo-title-fontSize: 18px;
 
-$market-ink: #23313f;
-$market-muted: #667085;
-$market-paper: #fffaf0;
-$market-paper-deep: #f7ecd8;
-$market-surface: #fffdf8;
-$market-board: #d7b98c;
-$market-green: #2b6e50;
-$market-green-dark: #1f5f46;
-$market-blue: #26547c;
-$market-orange: #e0651f;
-$market-yellow: #f4c95d;
-$market-red: #c64545;
-$market-chalk: #fdf6e3;
-$market-ticket-pink: #f2b8a0;
-$market-stamp-red: #c0392b;
-$market-line: rgba(35, 49, 63, 0.12);
-$market-shadow: 0 16px 38px rgba(62, 45, 24, 0.16);
-$market-shadow-soft: 0 10px 24px rgba(62, 45, 24, 0.08);
-$market-shadow-lift: 0 22px 44px rgba(62, 45, 24, 0.18);
-
-$base-menu-background: #fff7e8;
+// 编译期兼容色：组件应优先使用下方语义 CSS variables。
+$market-ink: #1e293b;
+$market-muted: #64748b;
+$market-paper: #f4f7fb;
+$market-paper-deep: #edf4fc;
+$market-surface: #ffffff;
+$market-board: #b8c9dd;
+$market-green: #2563eb;
+$market-green-dark: #1d4ed8;
+$market-blue: #0284c7;
+$market-orange: #f97316;
+$market-yellow: #f6c453;
+$market-red: #c2414b;
+$market-chalk: #f8fafc;
+$market-ticket-pink: #f7b79c;
+$market-stamp-red: #e45532;
+$market-line: #d7e0ea;
+$market-shadow: 0 18px 42px rgba(30, 64, 109, 0.14);
+$market-shadow-soft: 0 8px 22px rgba(30, 64, 109, 0.09);
+$market-shadow-lift: 0 24px 50px rgba(30, 64, 109, 0.18);
+$base-menu-background: #edf4fc;
 
 :root {
-  --market-ink: #{$market-ink};
-  --market-muted: #{$market-muted};
-  --market-paper: #{$market-paper};
-  --market-paper-deep: #{$market-paper-deep};
-  --market-surface: #{$market-surface};
-  --market-board: #{$market-board};
-  --market-green: #{$market-green};
-  --market-green-dark: #{$market-green-dark};
-  --market-blue: #{$market-blue};
-  --market-orange: #{$market-orange};
-  --market-yellow: #{$market-yellow};
-  --market-red: #{$market-red};
-  --market-chalk: #{$market-chalk};
-  --market-ticket-pink: #{$market-ticket-pink};
-  --market-stamp-red: #{$market-stamp-red};
-  --market-line: #{$market-line};
-  --market-shadow: #{$market-shadow};
-  --market-shadow-soft: #{$market-shadow-soft};
-  --market-shadow-lift: #{$market-shadow-lift};
-  --market-wash: rgba(43, 110, 80, 0.06);
-  --market-body-bg:
-    linear-gradient(rgba(255, 250, 240, 0.9), rgba(255, 250, 240, 0.9)),
-    radial-gradient(circle at 12% 18%, rgba(244, 201, 93, 0.28), transparent 28%),
-    radial-gradient(circle at 88% 8%, rgba(43, 110, 80, 0.16), transparent 26%),
-    #f8edd9;
-  --market-card-bg:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 250, 240, 0.94)),
-    var(--market-surface);
-  --market-header-bg: linear-gradient(90deg, rgba(255, 247, 232, 0.9), rgba(255, 253, 248, 0.94));
-  --market-sidebar-bg:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(247, 236, 216, 0.96)),
-    repeating-linear-gradient(
-      45deg,
-      rgba(215, 185, 140, 0.1),
-      rgba(215, 185, 140, 0.1) 8px,
-      transparent 8px,
-      transparent 16px
-    );
-  --market-soft-bg: #fff7e8;
-  --market-note-green-bg: #e9f4ee;
-  --market-note-yellow-bg: #fff0bd;
-  --market-board-overlay: rgba(215, 185, 140, 0.34);
-  --market-pin-border: rgba(255, 255, 255, 0.72);
-  --market-menu-hover-bg: rgba(244, 201, 93, 0.24);
-  --market-menu-active-bg: rgba(43, 110, 80, 0.13);
-  --market-topbar-bg: rgba(255, 253, 248, 0.86);
-  --market-radius: 8px;
-  --market-radius-lg: 14px;
-  --market-radius-ticket: 4px;
-  --market-focus: 0 0 0 3px rgba(224, 101, 31, 0.22);
-  --market-font-display: "Smiley Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  --market-font-body: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  color-scheme: light;
+
+  // 核心语义 token
+  --market-canvas: #f4f7fb;
+  --market-surface: #ffffff;
+  --market-surface-soft: #edf4fc;
+  --market-surface-raised: #ffffff;
+  --market-ink: #1e293b;
+  --market-muted: #64748b;
+  --market-faint: #94a3b8;
+  --market-line: #d7e0ea;
+  --market-line-strong: #b9c7d8;
+  --market-primary: #2563eb;
+  --market-primary-hover: #1d4ed8;
+  --market-primary-soft: #e8f0ff;
+  --market-lake: #0284c7;
+  --market-orange: #f97316;
+  --market-orange-soft: #fff0e6;
+  --market-yellow: #f6c453;
+  --market-yellow-soft: #fff7d6;
+  --market-success: #16835d;
+  --market-success-soft: #e8f7f1;
+  --market-warning: #b86b00;
+  --market-danger: #c2414b;
+  --market-danger-soft: #fff0f2;
+
+  // 校园材质 token
+  --market-paper: var(--market-canvas);
+  --market-paper-deep: var(--market-surface-soft);
+  --market-card-bg: var(--market-surface);
+  --market-soft-bg: var(--market-surface-soft);
+  --market-board: #b8c9dd;
+  --market-board-overlay: rgba(184, 201, 221, 0.34);
+  --market-chalk: #f8fafc;
+  --market-ticket-pink: #f7b79c;
+  --market-stamp-red: #e45532;
+  --market-note-green-bg: var(--market-primary-soft);
+  --market-note-yellow-bg: var(--market-yellow-soft);
+  --market-pin-border: rgba(255, 255, 255, 0.82);
+  --market-wash: rgba(37, 99, 235, 0.07);
+
+  // 旧变量兼容别名
+  --market-green: var(--market-primary);
+  --market-green-dark: var(--market-primary-hover);
+  --market-blue: var(--market-lake);
+  --market-red: var(--market-danger);
+
+  --market-body-bg: radial-gradient(
+      circle at 10% 0%,
+      rgba(37, 99, 235, 0.1),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 92% 12%,
+      rgba(246, 196, 83, 0.16),
+      transparent 25%
+    ),
+    linear-gradient(180deg, #f8fbff 0, var(--market-canvas) 38%, #f1f5fa 100%);
+  --market-header-bg: rgba(255, 255, 255, 0.86);
+  --market-sidebar-bg: linear-gradient(
+    180deg,
+    rgba(237, 244, 252, 0.98),
+    rgba(244, 247, 251, 0.98)
+  );
+  --market-topbar-bg: rgba(255, 255, 255, 0.86);
+  --market-menu-hover-bg: rgba(37, 99, 235, 0.08);
+  --market-menu-active-bg: rgba(37, 99, 235, 0.13);
+
+  --market-shadow: 0 18px 42px rgba(30, 64, 109, 0.14);
+  --market-shadow-soft: 0 8px 22px rgba(30, 64, 109, 0.09);
+  --market-shadow-lift: 0 24px 50px rgba(30, 64, 109, 0.18);
+  --market-radius: 10px;
+  --market-radius-lg: 16px;
+  --market-radius-ticket: 6px;
+  --market-focus: 0 0 0 3px rgba(37, 99, 235, 0.24);
+  --market-font-display: "Smiley Sans", "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", sans-serif;
+  --market-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --market-font-mono: "DIN Alternate", "Bahnschrift", "Courier New", monospace;
   --market-font: var(--market-font-body);
   --market-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --market-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --market-dur-fast: 0.18s;
-  --market-dur-med: 0.32s;
-  --market-grain-opacity: 0.35;
+  --market-dur-med: 0.28s;
+  --market-grain-opacity: 0.14;
 
-  --el-color-primary: #{$market-green};
-  --el-color-primary-light-3: #4d9373;
-  --el-color-primary-light-5: #72ab90;
-  --el-color-primary-light-7: #a8cbb8;
-  --el-color-primary-light-9: #e6f2ec;
-  --el-color-primary-dark-2: #{$market-green-dark};
-  --el-color-success: #{$market-green};
-  --el-color-warning: #{$market-orange};
-  --el-color-danger: #{$market-red};
-  --el-border-radius-base: 8px;
+  --el-bg-color: var(--market-surface);
+  --el-bg-color-page: var(--market-canvas);
+  --el-bg-color-overlay: var(--market-surface-raised);
+  --el-text-color-primary: var(--market-ink);
+  --el-text-color-regular: var(--market-ink);
+  --el-text-color-secondary: var(--market-muted);
+  --el-text-color-placeholder: var(--market-faint);
+  --el-text-color-disabled: var(--market-faint);
+  --el-border-color: var(--market-line);
+  --el-border-color-light: var(--market-line);
+  --el-border-color-lighter: rgba(215, 224, 234, 0.72);
+  --el-fill-color: var(--market-surface-soft);
+  --el-fill-color-light: var(--market-surface-soft);
+  --el-fill-color-lighter: #f5f8fc;
+  --el-fill-color-blank: var(--market-surface);
+  --el-mask-color: rgba(15, 23, 42, 0.45);
+  --el-color-white: #ffffff;
+  --el-input-text-color: var(--market-ink);
+  --el-input-placeholder-color: var(--market-faint);
+  --el-input-bg-color: var(--market-surface);
+  --el-input-border-color: var(--market-line);
+  --el-input-hover-border-color: var(--market-line-strong);
+  --el-input-focus-border-color: var(--market-primary);
+  --el-input-icon-color: var(--market-muted);
+  --el-select-input-color: var(--market-ink);
+  --el-select-input-focus-border-color: var(--market-primary);
+  --el-select-border-color-hover: var(--market-line-strong);
+  --el-table-header-bg-color: var(--market-surface-soft);
+  --el-table-header-text-color: var(--market-ink);
+  --el-table-text-color: var(--market-ink);
+  --el-table-tr-bg-color: var(--market-surface);
+  --el-table-bg-color: var(--market-surface);
+  --el-table-row-hover-bg-color: var(--market-primary-soft);
+  --el-pagination-text-color: var(--market-muted);
+  --el-pagination-button-color: var(--market-muted);
+  --el-button-text-color: var(--market-ink);
+  --el-color-primary: var(--market-primary);
+  --el-color-primary-light-3: #5b86ed;
+  --el-color-primary-light-5: #8aa8f3;
+  --el-color-primary-light-7: #bacbf9;
+  --el-color-primary-light-9: #e8f0ff;
+  --el-color-primary-dark-2: var(--market-primary-hover);
+  --el-color-success: var(--market-success);
+  --el-color-warning: var(--market-warning);
+  --el-color-danger: var(--market-danger);
+  --el-border-radius-base: 10px;
   --el-font-family: var(--market-font);
 }
 
 html.dark,
 html[data-theme="night"] {
-  --market-ink: #f3eadb;
-  --market-muted: #c7bda9;
-  --market-paper: #161d22;
-  --market-paper-deep: #1f2b31;
-  --market-surface: #232d30;
-  --market-board: #6f5636;
-  --market-green: #74c69d;
-  --market-green-dark: #a3d9b8;
-  --market-blue: #8fb7dd;
-  --market-orange: #f2a35e;
-  --market-yellow: #f6d879;
-  --market-red: #ff8a8a;
-  --market-chalk: #f7ecd8;
-  --market-ticket-pink: #d98a6c;
-  --market-stamp-red: #ff7a66;
-  --market-line: rgba(243, 234, 219, 0.16);
-  --market-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
-  --market-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.28);
-  --market-shadow-lift: 0 24px 48px rgba(0, 0, 0, 0.46);
-  --market-wash: rgba(116, 198, 157, 0.09);
-  // 熄灯自习室：顶部一条低透明暖光带
-  --market-body-bg:
-    linear-gradient(180deg, rgba(242, 163, 94, 0.07), transparent 260px),
-    linear-gradient(rgba(22, 29, 34, 0.92), rgba(22, 29, 34, 0.96)),
-    radial-gradient(circle at 18% 14%, rgba(242, 163, 94, 0.16), transparent 28%),
-    radial-gradient(circle at 86% 10%, rgba(116, 198, 157, 0.12), transparent 30%),
-    #11181d;
-  --market-card-bg:
-    linear-gradient(135deg, rgba(43, 55, 60, 0.94), rgba(35, 45, 48, 0.96)),
-    var(--market-surface);
-  --market-header-bg: linear-gradient(90deg, rgba(46, 58, 62, 0.96), rgba(31, 43, 49, 0.96));
-  --market-sidebar-bg:
-    linear-gradient(180deg, rgba(31, 43, 49, 0.98), rgba(22, 29, 34, 0.98)),
-    repeating-linear-gradient(
-      45deg,
-      rgba(242, 163, 94, 0.08),
-      rgba(242, 163, 94, 0.08) 8px,
-      transparent 8px,
-      transparent 16px
-    );
-  --market-soft-bg: #27343a;
-  --market-note-green-bg: #27473a;
-  --market-note-yellow-bg: #4a3f24;
-  --market-board-overlay: rgba(111, 86, 54, 0.46);
-  --market-pin-border: rgba(243, 234, 219, 0.56);
-  --market-menu-hover-bg: rgba(242, 163, 94, 0.16);
-  --market-menu-active-bg: rgba(116, 198, 157, 0.18);
-  --market-topbar-bg: rgba(35, 45, 48, 0.88);
-  --market-focus: 0 0 0 3px rgba(242, 163, 94, 0.34);
-  --market-grain-opacity: 0.22;
+  color-scheme: dark;
+  --market-canvas: #0c1426;
+  --market-surface: #141f33;
+  --market-surface-soft: #19263b;
+  --market-surface-raised: #1c2940;
+  --market-ink: #e8eef7;
+  --market-muted: #a8b5c8;
+  --market-faint: #7f90a8;
+  --market-line: #33445f;
+  --market-line-strong: #465b79;
+  --market-primary: #60a5fa;
+  --market-primary-hover: #93c5fd;
+  --market-primary-soft: rgba(96, 165, 250, 0.15);
+  --market-lake: #38bdf8;
+  --market-orange: #fb923c;
+  --market-orange-soft: rgba(251, 146, 60, 0.14);
+  --market-yellow: #f6c453;
+  --market-yellow-soft: rgba(246, 196, 83, 0.13);
+  --market-success: #4fd1a1;
+  --market-success-soft: rgba(79, 209, 161, 0.13);
+  --market-warning: #f0b95a;
+  --market-danger: #fb7185;
+  --market-danger-soft: rgba(251, 113, 133, 0.13);
+
+  --market-paper: var(--market-canvas);
+  --market-paper-deep: var(--market-surface-soft);
+  --market-card-bg: var(--market-surface);
+  --market-soft-bg: var(--market-surface-soft);
+  --market-board: #415875;
+  --market-board-overlay: rgba(65, 88, 117, 0.38);
+  --market-chalk: #f8fafc;
+  --market-ticket-pink: #c97970;
+  --market-stamp-red: #fb7c5c;
+  --market-note-green-bg: var(--market-primary-soft);
+  --market-note-yellow-bg: var(--market-yellow-soft);
+  --market-pin-border: rgba(232, 238, 247, 0.55);
+  --market-wash: rgba(96, 165, 250, 0.09);
+  --market-green: var(--market-primary);
+  --market-green-dark: var(--market-primary-hover);
+  --market-blue: var(--market-lake);
+  --market-red: var(--market-danger);
+
+  --market-body-bg: radial-gradient(
+      circle at 12% 0%,
+      rgba(96, 165, 250, 0.12),
+      transparent 32%
+    ),
+    radial-gradient(circle at 88% 4%, rgba(251, 146, 60, 0.08), transparent 24%),
+    linear-gradient(180deg, #0f1a30 0, var(--market-canvas) 42%, #09101f 100%);
+  --market-header-bg: rgba(20, 31, 51, 0.88);
+  --market-sidebar-bg: linear-gradient(
+    180deg,
+    rgba(20, 31, 51, 0.99),
+    rgba(12, 20, 38, 0.99)
+  );
+  --market-topbar-bg: rgba(20, 31, 51, 0.88);
+  --market-menu-hover-bg: rgba(96, 165, 250, 0.1);
+  --market-menu-active-bg: rgba(96, 165, 250, 0.16);
+  --market-shadow: 0 20px 48px rgba(0, 0, 0, 0.36);
+  --market-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.26);
+  --market-shadow-lift: 0 26px 56px rgba(0, 0, 0, 0.44);
+  --market-focus: 0 0 0 3px rgba(96, 165, 250, 0.32);
+  --market-grain-opacity: 0.08;
 
   --el-bg-color: var(--market-surface);
-  --el-bg-color-overlay: #27343a;
+  --el-bg-color-page: var(--market-canvas);
+  --el-bg-color-overlay: var(--market-surface-raised);
   --el-text-color-primary: var(--market-ink);
-  --el-text-color-regular: var(--market-muted);
+  --el-text-color-regular: var(--market-ink);
+  --el-text-color-secondary: var(--market-muted);
+  --el-text-color-placeholder: var(--market-faint);
+  --el-text-color-disabled: var(--market-faint);
+  --el-color-white: #ffffff;
+  --el-input-text-color: var(--market-ink);
+  --el-input-placeholder-color: var(--market-faint);
+  --el-input-bg-color: var(--market-surface);
+  --el-input-border-color: var(--market-line);
+  --el-input-hover-border-color: var(--market-line-strong);
+  --el-input-focus-border-color: var(--market-primary);
+  --el-input-icon-color: var(--market-muted);
+  --el-select-input-color: var(--market-ink);
+  --el-select-input-focus-border-color: var(--market-primary);
+  --el-select-border-color-hover: var(--market-line-strong);
+  --el-table-header-bg-color: var(--market-surface-soft);
+  --el-table-header-text-color: var(--market-ink);
+  --el-table-text-color: var(--market-ink);
+  --el-table-tr-bg-color: var(--market-surface);
+  --el-table-bg-color: var(--market-surface);
+  --el-table-row-hover-bg-color: var(--market-primary-soft);
+  --el-pagination-text-color: var(--market-muted);
+  --el-pagination-button-color: var(--market-muted);
+  --el-button-text-color: var(--market-ink);
   --el-border-color: var(--market-line);
-  --el-border-color-light: rgba(243, 234, 219, 0.12);
-  --el-fill-color-blank: #232d30;
-  --el-fill-color-light: #27343a;
-  --el-color-primary: var(--market-green);
-  --el-color-primary-light-3: #8fd5b0;
-  --el-color-primary-light-5: #559a78;
-  --el-color-primary-light-7: #355f4d;
-  --el-color-primary-light-9: #233c34;
-  --el-color-primary-dark-2: #a3d9b8;
-  --el-color-success: var(--market-green);
-  --el-color-warning: var(--market-orange);
-  --el-color-danger: var(--market-red);
+  --el-border-color-light: rgba(168, 181, 200, 0.16);
+  --el-fill-color-blank: var(--market-surface);
+  --el-fill-color-light: var(--market-surface-soft);
+  --el-color-primary: var(--market-primary);
+  --el-color-primary-light-3: #7eb7fb;
+  --el-color-primary-light-5: #4b78ad;
+  --el-color-primary-light-7: #2f4e73;
+  --el-color-primary-light-9: #1b3150;
+  --el-color-primary-dark-2: var(--market-primary-hover);
+  --el-color-success: var(--market-success);
+  --el-color-warning: var(--market-warning);
+  --el-color-danger: var(--market-danger);
 }
 
 // ------------------------------------------------------------
@@ -211,8 +312,13 @@ html[data-theme="night"] {
 
 // 活页笔记本纸：横线 + 左侧红边线
 @mixin ruled-paper($line-height: 28px, $margin-left: 44px) {
-  background-image:
-    linear-gradient(90deg, transparent #{$margin-left - 5px}, rgba(192, 57, 43, 0.35) #{$margin-left - 5px}, rgba(192, 57, 43, 0.35) #{$margin-left - 3px}, transparent #{$margin-left - 3px}),
+  background-image: linear-gradient(
+      90deg,
+      transparent #{$margin-left - 5px},
+      rgba(192, 57, 43, 0.35) #{$margin-left - 5px},
+      rgba(192, 57, 43, 0.35) #{$margin-left - 3px},
+      transparent #{$margin-left - 3px}
+    ),
     repeating-linear-gradient(
       180deg,
       transparent,
@@ -225,12 +331,18 @@ html[data-theme="night"] {
 
 // 票根：左右半圆缺口 + 打孔（需配合锯齿边元素使用）
 @mixin ticket-notch($notch-color: var(--market-paper)) {
-  -webkit-mask-image:
-    radial-gradient(circle 9px at left center, transparent 8px, #000 8.5px),
+  -webkit-mask-image: radial-gradient(
+      circle 9px at left center,
+      transparent 8px,
+      #000 8.5px
+    ),
     radial-gradient(circle 9px at right center, transparent 8px, #000 8.5px);
   -webkit-mask-composite: source-in;
-  mask-image:
-    radial-gradient(circle 9px at left center, transparent 8px, #000 8.5px),
+  mask-image: radial-gradient(
+      circle 9px at left center,
+      transparent 8px,
+      #000 8.5px
+    ),
     radial-gradient(circle 9px at right center, transparent 8px, #000 8.5px);
   mask-composite: intersect;
 }

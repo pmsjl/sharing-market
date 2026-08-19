@@ -1,0 +1,443 @@
+/* ============================================================
+   校园跳蚤市场页面层：每页一个主场景
+   ============================================================ */
+
+/* 登录 / 注册：校园市集通行证 */
+.auth-page.login_container,
+.auth-page.register_container {
+  isolation: isolate;
+  background: linear-gradient(
+      90deg,
+      transparent 0 48px,
+      rgba(37, 99, 235, 0.08) 48px 50px,
+      transparent 50px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 31px,
+      rgba(37, 99, 235, 0.055) 31px 32px
+    ),
+    var(--market-body-bg);
+}
+.auth-page.login_container::before,
+.auth-page.register_container::before {
+  position: fixed;
+  right: clamp(18px, 5vw, 72px);
+  bottom: 28px;
+  z-index: -1;
+  width: 190px;
+  height: 78px;
+  border: 10px solid rgba(37, 99, 235, 0.07);
+  border-radius: 50%;
+  color: rgba(37, 99, 235, 0.13);
+  font-family: var(--market-font-mono);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 58px;
+  text-align: center;
+  content: "CAMPUS MARKET";
+  transform: rotate(-9deg);
+}
+.auth-page .auth-form.market-board {
+  overflow: hidden;
+  border-radius: 12px 22px 12px 22px;
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-lift);
+}
+.auth-page .form-awning {
+  height: 8px !important;
+  background: linear-gradient(
+    90deg,
+    var(--market-primary) 0 58%,
+    var(--market-orange) 58% 76%,
+    var(--market-yellow) 76%
+  ) !important;
+}
+.auth-page .notice-note {
+  border: 1px solid var(--market-line) !important;
+  border-radius: 7px 13px 7px 13px !important;
+  box-shadow: var(--market-shadow-soft) !important;
+}
+.auth-page .note-green,
+.auth-page .note-blue {
+  background: var(--market-primary-soft) !important;
+}
+.auth-page .note-yellow {
+  background: var(--market-yellow-soft) !important;
+}
+
+/* 首页：跳蚤市场入口 */
+.market-page.home-page .home-hero {
+  overflow: hidden;
+  border-radius: 18px 28px 18px 28px;
+  background: radial-gradient(
+      circle at 12% 12%,
+      rgba(246, 196, 83, 0.18),
+      transparent 28%
+    ),
+    linear-gradient(128deg, var(--market-surface), var(--market-primary-soft));
+}
+.market-page.home-page .home-hero::after {
+  position: absolute;
+  right: -54px;
+  bottom: -66px;
+  width: 230px;
+  height: 130px;
+  border: 18px solid rgba(37, 99, 235, 0.08);
+  border-radius: 50%;
+  content: "";
+  transform: rotate(-14deg);
+}
+.market-page.home-page .hero-board {
+  border-color: rgba(37, 99, 235, 0.28) !important;
+  background: linear-gradient(rgba(30, 78, 143, 0.9), rgba(24, 61, 112, 0.94)),
+    var(--market-primary) !important;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.09), var(--market-shadow) !important;
+}
+.market-page.home-page .quick-note {
+  border-radius: 8px 16px 8px 16px !important;
+  background: var(--market-surface) !important;
+}
+.market-page.home-page .quick-note:hover {
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  transform: translateY(-4px) rotate(0) !important;
+}
+.market-page.home-page .carousel-frame {
+  border-color: var(--market-line) !important;
+  background: var(--market-surface-soft) !important;
+}
+.market-page.home-page .photo-caption {
+  background: linear-gradient(
+    90deg,
+    rgba(18, 56, 108, 0.96),
+    rgba(37, 99, 235, 0.76)
+  ) !important;
+}
+
+/* 欢迎页：开市公告 */
+.market-page.welcome-page .welcome-hero {
+  overflow: hidden;
+  border-radius: 16px 26px 16px 26px;
+  background: linear-gradient(
+    125deg,
+    var(--market-surface),
+    var(--market-primary-soft)
+  );
+}
+.market-page.welcome-page .feature-card {
+  border: 1px solid var(--market-line) !important;
+  border-radius: 8px 16px 8px 16px !important;
+  background: var(--market-surface) !important;
+  box-shadow: var(--market-shadow-soft) !important;
+}
+
+/* 商品：摊位分区与价签 */
+.market-page.commodity-page .stall-header {
+  position: relative;
+  padding: 20px 22px;
+  border: 1px solid var(--market-line);
+  border-radius: 14px 22px 14px 22px;
+  background: linear-gradient(
+    110deg,
+    var(--market-surface),
+    var(--market-primary-soft)
+  );
+  box-shadow: var(--market-shadow-soft);
+}
+.market-page.commodity-page .market-filter-card {
+  padding: 18px;
+  border: 1px solid var(--market-line);
+  border-radius: 12px 18px 12px 18px;
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
+}
+.commodity-list .commodity-note {
+  overflow: hidden;
+  border-color: var(--market-line) !important;
+  border-radius: 8px 17px 9px 15px !important;
+  background: var(--market-surface) !important;
+  box-shadow: var(--market-shadow-soft) !important;
+  transition: transform var(--market-dur-fast) var(--market-ease-spring),
+    box-shadow var(--market-dur-fast), border-color var(--market-dur-fast) !important;
+}
+.commodity-list .commodity-note:hover {
+  border-color: rgba(37, 99, 235, 0.34) !important;
+  box-shadow: var(--market-shadow-lift) !important;
+  transform: translateY(-4px) !important;
+}
+.commodity-list .stall-awning {
+  background: linear-gradient(
+    90deg,
+    var(--market-primary) 0 62%,
+    var(--market-orange) 62% 78%,
+    var(--market-yellow) 78%
+  ) !important;
+}
+.commodity-list .image-wrap img {
+  transition: transform 0.28s var(--market-ease-standard);
+}
+.commodity-list .commodity-note:hover .image-wrap img {
+  transform: scale(1.035);
+}
+.commodity-list .price-tag {
+  border-radius: 5px 11px 5px 11px !important;
+  color: #fff !important;
+  background: var(--market-orange) !important;
+  box-shadow: 0 7px 16px rgba(249, 115, 22, 0.2) !important;
+}
+.market-page.commodity-detail .detail-hero {
+  border-radius: 14px 24px 14px 24px;
+  background: linear-gradient(
+    125deg,
+    var(--market-surface),
+    var(--market-primary-soft)
+  );
+}
+.market-page.commodity-detail .price-board {
+  border-color: var(--market-line) !important;
+  background: var(--market-surface-soft) !important;
+}
+.market-page.commodity-detail .price-cell strong {
+  color: var(--market-orange) !important;
+}
+.market-page.commodity-detail .stock-stamp {
+  color: var(--market-primary) !important;
+}
+
+/* 订单：校园取货回执 */
+.market-page.my-orders-page .orders-panel {
+  padding: 20px;
+  border-radius: 14px 22px 14px 22px;
+}
+.order-list-container .order-item {
+  border-radius: 7px 16px 7px 16px !important;
+  background: var(--market-surface) !important;
+}
+.order-list-container .order-item::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  border-radius: 7px 0 0 16px;
+  background: var(--market-primary);
+  content: "";
+}
+.order-list-container .order-item.status-0::before {
+  background: var(--market-orange);
+}
+.order-list-container .order-item.status-2::before {
+  background: var(--market-faint);
+}
+
+/* 个人中心：校园卡与个人摊位档案 */
+.market-page.personal-home-page .profile-hero {
+  overflow: hidden;
+  border-radius: 14px 24px 14px 24px;
+  background: linear-gradient(
+      115deg,
+      var(--market-primary-soft),
+      transparent 54%
+    ),
+    var(--market-surface);
+}
+.market-page.personal-home-page .profile-hero::after {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  width: 86px;
+  height: 32px;
+  border: 2px solid var(--market-orange);
+  border-radius: 5px;
+  color: var(--market-orange);
+  font-family: var(--market-font-display);
+  font-weight: 900;
+  line-height: 28px;
+  text-align: center;
+  content: "个人摊位";
+  transform: rotate(-5deg);
+}
+.market-page.personal-home-page .field-card,
+.market-page.personal-home-page .tab-panel {
+  border-color: var(--market-line) !important;
+  background: var(--market-surface) !important;
+}
+
+/* 社区：同学交流墙 */
+.post-browse .search-bar {
+  border: 1px solid var(--market-line);
+  border-radius: 11px 18px 11px 18px;
+  background: linear-gradient(
+    110deg,
+    var(--market-surface),
+    var(--market-primary-soft)
+  );
+  box-shadow: var(--market-shadow-soft);
+}
+.post-browse .post-item {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--market-line) !important;
+  border-radius: 8px 17px 8px 17px !important;
+  background: var(--market-surface) !important;
+  box-shadow: var(--market-shadow-soft) !important;
+  transition: transform var(--market-dur-fast),
+    box-shadow var(--market-dur-fast), border-color var(--market-dur-fast);
+}
+.post-browse .post-item::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: var(--market-primary);
+  content: "";
+}
+.post-browse .post-item:hover {
+  border-color: rgba(37, 99, 235, 0.34) !important;
+  box-shadow: var(--market-shadow-lift) !important;
+  transform: translateY(-3px);
+}
+.post-browse .handwritten-tag {
+  border-color: rgba(249, 115, 22, 0.26) !important;
+  color: var(--market-orange) !important;
+  background: var(--market-orange-soft) !important;
+}
+.post-detail .post-content {
+  border-radius: 10px 20px 10px 20px !important;
+  background-color: var(--market-surface) !important;
+}
+.post-detail .agent-return-bar {
+  background: var(--market-primary-soft) !important;
+}
+
+/* 404：校园指路黑板 */
+.not-found-page .classroom-board {
+  border-color: var(--market-line-strong) !important;
+  border-radius: 16px 25px 16px 25px !important;
+  background: linear-gradient(145deg, #1d4f82, #17365f) !important;
+  box-shadow: var(--market-shadow-lift) !important;
+}
+
+html.dark .auth-page.login_container,
+html.dark .auth-page.register_container {
+  background: linear-gradient(
+      90deg,
+      transparent 0 48px,
+      rgba(96, 165, 250, 0.07) 48px 50px,
+      transparent 50px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 31px,
+      rgba(96, 165, 250, 0.045) 31px 32px
+    ),
+    var(--market-body-bg);
+}
+html.dark .market-page.home-page .home-hero,
+html.dark .market-page.welcome-page .welcome-hero,
+html.dark .market-page.commodity-detail .detail-hero,
+html.dark .market-page.personal-home-page .profile-hero {
+  background: linear-gradient(
+    125deg,
+    var(--market-surface),
+    var(--market-primary-soft)
+  );
+}
+
+@media (max-width: 760px) {
+  .market-page.commodity-page .stall-header {
+    padding: 17px;
+  }
+  .market-page.personal-home-page .profile-hero::after {
+    display: none;
+  }
+}
+
+/* 对比度修复：浅色表面上的校园便签与运营后台 */
+.auth-page .note-green,
+.auth-page .note-yellow,
+.auth-page .note-blue {
+  color: var(--market-ink) !important;
+}
+.auth-page .form-brand h2,
+.auth-page .form-brand span,
+.auth-page .auth-form .el-form-item__label,
+.auth-page .auth-form .el-input__inner,
+.auth-page .auth-form .el-input__inner::placeholder {
+  color: var(--market-ink);
+}
+.auth-page .auth-form .el-input__inner::placeholder {
+  color: var(--market-faint);
+}
+.auth-page .login_footer {
+  color: var(--market-muted);
+  opacity: 1;
+}
+.auth-page .register-link:hover,
+.auth-page .register-link:focus {
+  color: #fff;
+}
+
+.admin-page,
+.admin-page .el-card,
+.admin-page .el-card__header,
+.admin-page .el-card__body,
+.admin-page .el-form-item__label,
+.admin-page .el-form-item__content,
+.admin-page .el-table,
+.admin-page .el-table th.el-table__cell,
+.admin-page .el-table td.el-table__cell {
+  color: var(--market-ink);
+}
+.admin-page .el-card,
+.admin-page .el-card__header,
+.admin-page .el-card__body,
+.admin-page .el-table,
+.admin-page .el-table tr,
+.admin-page .el-table td.el-table__cell {
+  background: var(--market-surface);
+}
+.admin-page .el-table th.el-table__cell {
+  background: var(--market-surface-soft);
+}
+.admin-page .el-input__inner,
+.admin-page .el-textarea__inner,
+.admin-page .el-select__selected-item,
+.admin-page .el-select__placeholder,
+.admin-page .el-input__inner::placeholder,
+.admin-page .el-textarea__inner::placeholder {
+  color: var(--market-ink);
+}
+.admin-page .el-input__inner::placeholder,
+.admin-page .el-textarea__inner::placeholder,
+.admin-page .el-select__placeholder {
+  color: var(--market-faint);
+}
+.admin-page .el-card__header {
+  border-bottom-color: var(--market-line);
+}
+.admin-page .el-table td.el-table__cell,
+.admin-page .el-table th.el-table__cell {
+  border-bottom-color: var(--market-line);
+}
+.admin-page .el-button:not(.el-button--primary):not(.el-button--danger) {
+  color: var(--market-ink);
+}
+html.dark .admin-page .el-card,
+html.dark .admin-page .el-card__header,
+html.dark .admin-page .el-card__body,
+html.dark .admin-page .el-table,
+html.dark .admin-page .el-table tr,
+html.dark .admin-page .el-table td.el-table__cell {
+  background: var(--market-surface);
+}
+html.dark .admin-page .el-table th.el-table__cell {
+  background: var(--market-surface-soft);
+}
+html.dark .admin-page .el-input__inner,
+html.dark .admin-page .el-textarea__inner,
+html.dark .admin-page .el-select__selected-item {
+  color: var(--market-ink);
+}

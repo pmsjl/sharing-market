@@ -2,10 +2,10 @@
   <div class="market-page welcome-page" ref="pageRef">
     <section class="welcome-hero market-board">
       <div>
-        <span class="market-eyebrow">Campus Bulletin</span>
-        <h1>欢迎来到智能 AI 校园二手交易平台</h1>
+        <span class="market-eyebrow">CAMPUS FLEA MARKET</span>
+        <h1>欢迎来到课间开放的校园跳蚤市场</h1>
         <p>
-          这里是面向校园场景的二手交易公告栏：买家快速发现好物，卖家清晰发布商品，管理员集中维护秩序。
+          教材、数码和宿舍闲置在这里继续流转：同学轻松逛摊，卖家管理自己的小摊位，运营同学维护交易秩序。
         </p>
       </div>
       <el-button type="primary" @click="$router.push(homePath)">

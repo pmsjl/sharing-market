@@ -3,9 +3,9 @@
     <div class="market-page-header stall-header">
       <div>
         <span class="market-eyebrow">MARKET BOARD</span>
-        <h1 class="market-title">商品公告栏</h1>
+        <h1 class="market-title">商品栏</h1>
         <p class="market-subtitle">
-          按名称、分类、成色和库存查找校园好物，也可以把自己的闲置贴到公告栏。
+          按名称、分类、成色和库存查找校园好物，也可以把自己的闲置贴到商品栏。
         </p>
       </div>
       <el-button type="primary" @click="addDialogVisible = true">
@@ -314,18 +314,6 @@ const resetAddForm = () => {
 .stall-header {
   position: relative;
   padding-bottom: 16px;
-
-  &::after {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 10px;
-    border-radius: 4px;
-    content: "";
-    @include awning-strip(10px);
-    opacity: 0.9;
-  }
 }
 
 .upload-row {
