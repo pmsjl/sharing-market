@@ -3,23 +3,23 @@
   "uniqueTitleCount": 260,
   "authorCount": 20,
   "topicCounts": {
-    "digital": 46,
-    "course_office": 52,
-    "dorm_daily": 46,
-    "clothing_sports_travel": 30,
-    "books_food_beauty_pet": 38,
-    "transaction": 48
+    "digital": 50,
+    "course_office": 54,
+    "dorm_daily": 44,
+    "clothing_sports_travel": 28,
+    "books_food_beauty_pet": 44,
+    "transaction": 40
   },
   "lengthBandCounts": {
-    "comprehensive": 24,
-    "detailed": 54,
-    "standard": 182
+    "comprehensive": 19,
+    "detailed": 36,
+    "standard": 205
   },
   "hanCount": {
-    "total": 302357,
-    "minimum": 706,
+    "total": 277758,
+    "minimum": 675,
     "maximum": 2670,
-    "average": 1162.91
+    "average": 1068.3
   },
   "headingCount": {
     "minimum": 3,
@@ -35,18 +35,36 @@
       "limitExclusive": 0.35
     },
     "strict4Shingle": {
-      "maximum": 0.045116,
+      "maximum": 0.039024,
       "pair": [
-        "课程讲义整包转让前：怎样删掉姓名、学号、评语和共享链接痕迹？",
-        "毕业论文装订本转让或回收：封面信息、致谢页、批注 PDF 为什么要分别处理？"
+        "宿舍面交预包装零食：封口、包装鼓胀和日期应怎样逐项看",
+        "毕业季囤货转让的边界清单：哪些食品即使没过期也不该挂到二手区"
       ],
       "limitExclusive": 0.18
+    },
+    "fullTextTfidfCosine": {
+      "ngramWidths": [
+        2,
+        3,
+        4
+      ],
+      "overallMaximum": 0.127648,
+      "overallPair": [
+        "宿舍面交预包装零食：封口、包装鼓胀和日期应怎样逐项看",
+        "毕业季囤货转让的边界清单：哪些食品即使没过期也不该挂到二手区"
+      ],
+      "expansionMaximum": 0.074403,
+      "expansionPair": [
+        "体测训练买二手跑步鞋：鞋底看着新，中底也可能已经累了",
+        "帆布鞋别只按鞋盒尺码：先量鞋垫，再走一段校园坡路"
+      ],
+      "expansionLimitExclusive": 0.08
     }
   },
   "repeatedLongParagraphCount": 0,
   "repeatedLongSentenceCount": 0,
   "titleFamilyOveruse": {},
-  "corpusSha256": "de5aaa74da10b9f0a22e0525031f68d6f79325d19bd34a9a3d2c46bf4cfb7b3e",
+  "corpusSha256": "1199d91a69e1056a74548581d75b8945e093507e4eff681f0ba227fdba4dee90",
   "errors": [],
   "accepted": true
 }

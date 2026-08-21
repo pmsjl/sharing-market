@@ -7,7 +7,8 @@
 运行时 Post 的唯一权威来源是数据库。可审计的本地编辑源和构建入口为：
 
 - `tools/post_corpus/posts.jsonl`：260 篇通过静态门禁的标题、标签、正文、主题和固定作者分配；
-- `tools/post_corpus/expand_post_corpus_v2.py`：按当前八类商品生成第 180～259 篇扩充语料，先产出预览，通过校验后才允许发布；
+- `tools/post_corpus/purchase_experience_sample.md` 与 `manual_purchase_batch_*.md`：人工编写并复核的 80 篇校园二手商品购买经验；
+- `tools/post_corpus/rewrite_purchase_experience_posts.py`：只做离线 Markdown 编译与元数据装配，不调用外部生成模型；
 - `tools/build_post_corpus.py`：执行字数、主题、重复段落、重复句、标题模板和相似度门禁，并生成 SQL；
 - `tools/post_corpus/quality_report.json`：最近一次静态质量报告；
 - `market_backend/sql/20260815_seed_campus_trade_posts.sql`：幂等更新数据库中固定 seed Post 的 SQL；
@@ -26,14 +27,14 @@
 
 截至 **2026-08-19**：
 
-- 本地审核源和生成 SQL 已扩充为 260 篇 seed Post、20 个演示作者；原 180 篇索引不变，第 180～259 篇为追加内容；
-- 中文汉字总数 302,357；
+- 本地审核源、生成 SQL 和数据库均已扩充为 260 篇 seed Post、20 个演示作者；第 180～259 篇为人工购买经验内容；
+- 中文汉字总数 277,758，数据库正文总字符数 323,131；
 - 标题唯一，长段落和长句跨帖重复检查通过；
-- 20 字符 shingle 最大相似度 0，4 字符 shingle 最大相似度 0.045116；
+- 20 字符 shingle 最大相似度 0，4 字符 shingle 最大相似度 0.039024；新增文章全文 TF-IDF 余弦最大值 0.074403，低于 0.08；
 - 新增 80 篇只映射到当前八类商品，没有新增笔记本主题；
 - 260 篇 SQL 已通过确定性生成与静态守卫检查；执行时保留旧帖作者、创建时间、点赞和收藏，且不修改非 seed 用户帖子；
-- 当前已发布的数据库/RAG 索引仍是 180 篇 Post、99 篇 GUIDE、共 1209 个 chunks；需执行新版 SQL 并重建索引后才切换到 260 篇运行时语料；
-- 20 条代表性校园二手问题全部命中 Post，Top 1 均覆盖预设主题关键词；
-- 2026-08-19 全量 Python Agent 测试为 103 passed、23 subtests passed。
+- 数据库与 RAG 均已发布 260 篇 Post；当前不可变索引版本为 `20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71`，包含 99 篇 GUIDE、260 篇 Post 和 1,611 个 chunks；
+- 最新端到端抽查覆盖阅读架、床帘、防晒霜和考研数学辅导书，4 个问题的 Top 1 均命中目标购买经验帖，且 Java Post 版本校验均通过；
+- 2026-08-19 全量 Python Agent 测试为 104 passed、23 subtests passed；Java 测试为 38 passed。
 
 仓库不保存演示账号明文密码。需要登录演示账号时，应在执行种子 SQL 前，于同一个 MySQL 会话中设置 `@seed_post_author_password_hash`；未设置或格式不正确时，这些账号会写入不可登录的禁用值。演示账号不得直接用于公网环境。
