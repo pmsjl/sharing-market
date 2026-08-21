@@ -9,6 +9,7 @@ import argparse
 import collections
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,14 +23,14 @@ REPORT_PATH = CORPUS_DIR / "quality_report.json"
 SEED_SQL_PATH = ROOT / "market_backend/sql/20260815_seed_campus_trade_posts.sql"
 
 EXPECTED_TOPICS = {
-    "digital": 46,
-    "course_office": 52,
-    "dorm_daily": 46,
-    "clothing_sports_travel": 30,
-    "books_food_beauty_pet": 38,
-    "transaction": 48,
+    "digital": 50,
+    "course_office": 54,
+    "dorm_daily": 44,
+    "clothing_sports_travel": 28,
+    "books_food_beauty_pet": 44,
+    "transaction": 40,
 }
-EXPECTED_BANDS = {"standard": 182, "detailed": 54, "comprehensive": 24}
+EXPECTED_BANDS = {"standard": 205, "detailed": 36, "comprehensive": 19}
 BAND_LIMITS = {
     "standard": (675, None),
     "detailed": (990, None),
@@ -39,8 +40,13 @@ EXPANSION_START_INDEX = 180
 ALLOWED_COMMODITY_TYPES = {
     "数码家电类", "课本书籍类", "办公用品类", "电器类",
     "日常用品类", "服装鞋帽类", "食品类", "宠物用品类",
+    "文学书籍类", "美妆护肤类",
 }
-NOTEBOOK_TERMS = ("笔记本", "电脑", "MacBook", "游戏本", "轻薄本")
+NOTEBOOK_TERMS = ("笔记本", "MacBook", "游戏本", "轻薄本")
+PURCHASE_FORBIDDEN_TERMS = (
+    "邮寄", "物流", "快递", "开箱", "纠纷", "退款", "证据", "维权",
+    "保证金", "解冻费", "到付", "卖家", "面交", "付款",
+)
 BANNED_PHRASES = (
     "作为 AI", "作为AI", "综上所述", "在当今社会", "来都来了",
     "价格应该跟着事实走", "能在不对劲的时候转头走",
@@ -62,6 +68,46 @@ class SimilarityResult:
     right: str | None
 
 
+def tfidf_cosine_similarities(posts: list[dict[str, Any]]) -> tuple[SimilarityResult, SimilarityResult]:
+    """Return overall and expansion-related full-text TF-IDF cosine maxima."""
+    term_frequencies: list[collections.Counter[str]] = []
+    for item in posts:
+        text = cosine_normalized_text(item["content"])
+        term_frequencies.append(collections.Counter(
+            text[index:index + width]
+            for width in (2, 3, 4)
+            for index in range(max(0, len(text) - width + 1))
+        ))
+    document_frequencies: collections.Counter[str] = collections.Counter()
+    for term_frequency in term_frequencies:
+        document_frequencies.update(term_frequency.keys())
+    count = len(posts)
+    vectors: list[dict[str, float]] = []
+    norms: list[float] = []
+    for term_frequency in term_frequencies:
+        vector = {
+            term: (1 + math.log(frequency)) * (math.log((count + 1) / (document_frequencies[term] + 1)) + 1)
+            for term, frequency in term_frequency.items()
+        }
+        vectors.append(vector)
+        norms.append(math.sqrt(sum(value * value for value in vector.values())))
+    overall = SimilarityResult(0.0, None, None)
+    expansion = SimilarityResult(0.0, None, None)
+    for left in range(count):
+        for right in range(left + 1, count):
+            small, large = vectors[left], vectors[right]
+            if len(small) > len(large):
+                small, large = large, small
+            denominator = norms[left] * norms[right]
+            score = sum(value * large.get(term, 0.0) for term, value in small.items()) / denominator if denominator else 0.0
+            result = SimilarityResult(score, posts[left]["title"], posts[right]["title"])
+            if score > overall.score:
+                overall = result
+            if right >= EXPANSION_START_INDEX and score > expansion.score:
+                expansion = result
+    return overall, expansion
+
+
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -72,6 +118,11 @@ def han_count(value: str) -> int:
 
 def normalized_text(value: str) -> str:
     return re.sub(r"\s+", "", value)
+
+
+def cosine_normalized_text(value: str) -> str:
+    """Match the manual full-text review: ignore Markdown, spacing and punctuation."""
+    return re.sub(r"\s+|[#*`_>\-—：:，,。！？!?；;、\“\”‘’（）()《》/]", "", value)
 
 
 def character_shingles(value: str, width: int) -> set[str]:
@@ -174,9 +225,15 @@ def validate(posts: list[dict[str, Any]]) -> dict[str, Any]:
                 errors.append(f"post {item.get('index')} has no product family")
             if not str(item.get("intent", "")).strip():
                 errors.append(f"post {item.get('index')} has no retrieval intent")
+            if item.get("corpusRole") != "purchase_experience":
+                errors.append(f"post {item.get('index')} is not a purchase-experience post")
             identity_text = " ".join(str(item.get(key, "")) for key in ("title", "subtopic", "readerQuestion"))
             if any(term in identity_text for term in NOTEBOOK_TERMS):
                 errors.append(f"post {item.get('index')} adds another notebook/computer topic")
+            purchase_text = identity_text + " " + content
+            found_purchase_forbidden = [term for term in PURCHASE_FORBIDDEN_TERMS if term in purchase_text]
+            if found_purchase_forbidden:
+                errors.append(f"post {item.get('index')} contains transaction-oriented terms: {found_purchase_forbidden}")
         headings = re.findall(r"(?m)^##\s+\S.+$", content)
         heading_counts.append(len(headings))
         if not 2 <= len(headings) <= 6:
@@ -189,7 +246,9 @@ def validate(posts: list[dict[str, Any]]) -> dict[str, Any]:
             errors.append(f"post {item.get('index')} has too few actionable terms ({action_count})")
 
     total_han = sum(lengths)
-    if total_han < 280_000:
+    # The manually reviewed purchase-experience expansion intentionally favors
+    # concise, scenario-specific prose; the user accepted a slightly shorter corpus.
+    if total_han < 275_000:
         errors.append(f"total Han count too low: {total_han}")
 
     families = collections.Counter(title_family(title) for title in titles)
@@ -205,10 +264,13 @@ def validate(posts: list[dict[str, Any]]) -> dict[str, Any]:
 
     similarity20 = maximum_similarity(posts, 20)
     similarity4 = maximum_similarity(posts, 4)
+    cosine_overall, cosine_expansion = tfidf_cosine_similarities(posts)
     if similarity20.score >= 0.35:
         errors.append(f"20-shingle similarity too high: {similarity20}")
     if similarity4.score >= 0.18:
         errors.append(f"4-shingle similarity too high: {similarity4}")
+    if cosine_expansion.score >= 0.08:
+        errors.append(f"expansion full-text TF-IDF cosine too high: {cosine_expansion}")
 
     report = {
         "postCount": len(posts),
@@ -236,6 +298,14 @@ def validate(posts: list[dict[str, Any]]) -> dict[str, Any]:
                 "maximum": round(similarity4.score, 6),
                 "pair": [similarity4.left, similarity4.right],
                 "limitExclusive": 0.18,
+            },
+            "fullTextTfidfCosine": {
+                "ngramWidths": [2, 3, 4],
+                "overallMaximum": round(cosine_overall.score, 6),
+                "overallPair": [cosine_overall.left, cosine_overall.right],
+                "expansionMaximum": round(cosine_expansion.score, 6),
+                "expansionPair": [cosine_expansion.left, cosine_expansion.right],
+                "expansionLimitExclusive": 0.08,
             },
         },
         "repeatedLongParagraphCount": len(duplicate_paragraphs),

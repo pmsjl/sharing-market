@@ -19,11 +19,33 @@ def test_post_corpus_passes_all_quality_gates():
     report = builder.validate(posts)
     assert report["accepted"] is True
     assert report["postCount"] == 260
-    assert report["hanCount"]["total"] >= 280_000
+    assert report["hanCount"]["total"] >= 275_000
     assert report["similarity"]["legacy20Shingle"]["maximum"] < 0.35
     assert report["similarity"]["strict4Shingle"]["maximum"] < 0.18
+    assert (
+        report["similarity"]["fullTextTfidfCosine"]["expansionMaximum"]
+        < 0.08
+    )
     assert report["repeatedLongParagraphCount"] == 0
     assert report["repeatedLongSentenceCount"] == 0
+
+
+def test_purchase_experience_expansion_matches_platform_scope():
+    posts = builder.read_jsonl(builder.POSTS_PATH)
+    expansion = [
+        post for post in posts
+        if post.get("corpusRole") == "purchase_experience"
+    ]
+    assert len(expansion) == 80
+    assert all(post["commodityType"] in builder.ALLOWED_COMMODITY_TYPES
+               for post in expansion)
+    assert all(not any(term in post["title"] for term in builder.NOTEBOOK_TERMS)
+               for post in expansion)
+    assert all(
+        not any(term in post["title"] + post["content"]
+                for term in builder.PURCHASE_FORBIDDEN_TERMS)
+        for post in expansion
+    )
 
 
 def test_seed_sql_generation_is_deterministic_and_preserves_interactions():

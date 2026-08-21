@@ -20,7 +20,7 @@
 - 第三、四类校园指南：10份面向用户的文档位于 `documents/effective/dorm/` 与 `documents/effective/lifecycle/`；来源见 `sources/campus_sources.json`，清单见 `normalized/campus_guidance_manifest.jsonl`
 - 六个平台研究、法规与校规证据位于 `documents/reference/`；依赖新功能或待确认校规的内容位于 `documents/draft/platform/`，不参与普通用户RAG
 - 正式/参考/草案文档总数：118份
-- 当前已发布索引基线：99 篇 GUIDE、180 篇 Post、1209 个 chunks；Post 在每次进入模型前仍需通过 Java 版本校验
+- 当前已发布索引基线：99 篇 GUIDE、260 篇 Post、1611 个 chunks；Post 在每次进入模型前仍需通过 Java 版本校验
 
 课程中的“教材与参考资料”只证明来源曾提及该书，不证明当前学期必须购买。实时价格、库存、成色和上架状态继续由商品工具查询。
 

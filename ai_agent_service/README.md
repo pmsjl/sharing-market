@@ -8,7 +8,7 @@
 - 当前能力：通过 OpenAI Responses 兼容中转调用 `gpt-5.6-terra`，使用 Structured Outputs、滚动会话摘要、商品搜索与当前用户脱敏偏好工具返回同步导购建议
 - 当前 RAG：GUIDE 与社区 Post 独立配额检索、不可变 FAISS 索引、`CURRENT` 热加载、请求内 Post 版本校验、引用来源和相关帖子卡片，已接入 Agent 主调用链
 - 当前后置项：SSE、管理员 knowledge job、文档 upsert/delete 和独立 retrieve HTTP API
-- 自动化基线：`103 passed`、`23 subtests passed`；在受限工作区可能仅出现 `.pytest_cache` 不可写警告
+- 自动化基线：`109 passed`、`23 subtests passed`；在受限工作区可能仅出现 `.pytest_cache` 不可写警告
 
 运行配置从环境变量读取；可参考 `.env.example`。`OPENAI_BASE_URL`
 必须包含中转服务的 `/v1` 前缀，真实 API Key 不得提交到仓库。
@@ -42,3 +42,25 @@ conda run -n fastapi python -m app.rag.rebuild_index
 重建会把 GUIDE 与 Post 合并为一个不可变版本；Java 快照或 Embedding 任一失败时不会切换 `CURRENT`。成功后下一条 Agent 请求自动热加载，无需重启 Python 服务。Post 在进入模型前还会调用 `POST /api/internal/ai/tools/posts/validate` 核对当前版本，校验失败时只丢弃 Post，GUIDE 和普通 Agent 继续工作。
 
 `GET /health` 会分别返回 `ragEnabled`、`ragReady`、`ragBuildId`、GUIDE/Post 文档数、Post 快照时间和最近一次热加载错误。
+
+## Retrieval Golden Dataset v1
+
+第一版检索真值集位于 `evaluation/golden/golden_dataset_v1.jsonl`，包含
+200 条单轮 Case、238 个分级 qrel，以及按文档/场景分组隔离的 140 条 Dev
+和 60 条 Test。它覆盖平台规则、课程资料、校园指南、260 篇 Post 和无证据、
+澄清、实时工具边界。
+
+从仓库根目录重建固定资产：
+
+```powershell
+conda run -n fastapi python tools/build_golden_dataset_v1.py
+```
+
+只验证现有 Dataset、Manifest Hash、当前索引文档兼容性和分层门禁：
+
+```powershell
+conda run -n fastapi python tools/build_golden_dataset_v1.py --check-only
+```
+
+数据结构、标注规则、已知限制和后续版本规则见 `evaluation/README.md`。
+独立人工复核完成前，不得把该数据集后续跑出的指标作为对外简历数字。
