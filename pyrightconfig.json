@@ -1,0 +1,27 @@
+{
+  "include": [
+    "ai_agent_service/app",
+    "ai_agent_service/tests",
+    "tools"
+  ],
+  "exclude": [
+    "ai_agent_service/.cache",
+    "ai_agent_service/evaluation/backups"
+  ],
+  "typeCheckingMode": "basic",
+  "executionEnvironments": [
+    {
+      "root": "ai_agent_service",
+      "extraPaths": [
+        "ai_agent_service/.cache/test-deps"
+      ]
+    },
+    {
+      "root": "tools",
+      "extraPaths": [
+        "ai_agent_service",
+        "ai_agent_service/.cache/test-deps"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,12 @@ import json
 from pathlib import Path
 
 from app.rag.course_relations import CourseRelationIndex
-from app.rag.query_planner import NON_COURSE_CATEGORIES, plan_query
+from app.rag.query_planner import (
+    NON_COURSE_CATEGORIES,
+    plan_query,
+    resolve_course_match,
+)
+from app.routing.query_router import RetrieveRouteDecision
 
 
 def _relation(**overrides):
@@ -25,8 +30,7 @@ def _relation(**overrides):
     return value
 
 
-def _index(tmp_path: Path,
-           rows: list[dict] | None = None) -> CourseRelationIndex:
+def _index(tmp_path: Path, rows: list[dict] | None = None) -> CourseRelationIndex:
     normalized = tmp_path / "normalized"
     normalized.mkdir()
     rows = rows or [_relation()]
@@ -37,63 +41,56 @@ def _index(tmp_path: Path,
     return CourseRelationIndex.load(tmp_path)
 
 
-def test_exact_course_uses_exact_documents_and_purchase_policy(tmp_path):
-    plan = plan_query("COMP2022 的教材怎么买", _index(tmp_path))
-
-    assert plan.should_retrieve is True
-    assert plan.course_document_ids == [
-        "GUIDE:course-repo-COMP2052",
-        "GUIDE:course-purchase-policy",
-    ]
-    assert plan.extra_categories == []
-    assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)
-    assert plan.course_match_mode == "alias"
-    assert len(plan.course_relation_summaries) == 1
+def _plan(
+    query: str,
+    relations: CourseRelationIndex,
+    decision: RetrieveRouteDecision,
+):
+    raw_match = relations.match(query, allow_dimension_only=True)
+    effective_match = resolve_course_match(raw_match, decision)
+    return plan_query(effective_match, decision), effective_match
 
 
-def test_exact_course_purchase_phrase_adds_policy_without_global_keyword(
-        tmp_path):
-    plan = plan_query("COMP2022 可以买二手吗", _index(tmp_path))
+def test_material_requirement_uses_exact_course_a_and_policy_b(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course"],
+        retrieval_strategy="targeted",
+    )
 
-    assert plan.course_document_ids == [
-        "GUIDE:course-repo-COMP2052",
-        "GUIDE:course-purchase-policy",
-    ]
+    plan, match = _plan("COMP2022 老师指定什么教材", _index(tmp_path), decision)
+
+    assert match.mode == "alias"
+    assert plan.course_document_ids == ["GUIDE:course-repo-COMP2052"]
+    assert plan.include_course_purchase_policy is True
 
 
-def test_generic_course_material_question_searches_all_course_categories(
-        tmp_path):
-    plan = plan_query("教材什么时候买比较合适", _index(tmp_path))
+def test_course_history_uses_a_with_uniform_policy_b(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course"],
+        retrieval_strategy="targeted",
+    )
 
-    assert plan.should_retrieve is True
+    plan, _ = _plan("COMP2022 资料以前提到什么", _index(tmp_path), decision)
+
+    assert plan.course_document_ids == ["GUIDE:course-repo-COMP2052"]
+    assert plan.include_course_purchase_policy is True
+
+
+def test_generic_course_planning_uses_policy_without_unrelated_course_a(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course"],
+        retrieval_strategy="targeted",
+    )
+
+    plan, match = _plan("教材什么时候买比较合适", _index(tmp_path), decision)
+
+    assert match.mode == "none"
     assert plan.course_document_ids == []
-    assert plan.extra_categories == [
-        "campus_lifecycle",
-        "course_materials",
-        "course_purchase_policy",
-    ]
-    assert plan.course_match_mode == "none"
+    assert plan.include_course_purchase_policy is True
+    assert plan.primary_guide_categories == []
 
 
-def test_non_keyword_query_uses_non_course_semantic_fallback(tmp_path):
-    plan = plan_query("帮我找一台便宜的二手电脑", _index(tmp_path))
-
-    assert plan.should_retrieve is True
-    assert plan.include_posts is True
-    assert plan.course_document_ids == []
-    assert plan.extra_categories == []
-    assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)
-
-
-def test_blank_query_skips_retrieval(tmp_path):
-    plan = plan_query("   ", _index(tmp_path))
-
-    assert plan.should_retrieve is False
-    assert plan.include_posts is False
-    assert plan.fallback_categories == []
-
-
-def test_course_catalog_query_returns_relations_and_parent_documents(tmp_path):
+def test_catalog_route_uses_relation_result_without_keyword_reclassification(tmp_path):
     rows = [
         _relation(),
         _relation(
@@ -103,49 +100,81 @@ def test_course_catalog_query_returns_relations_and_parent_documents(tmp_path):
             repo_id="COMP3001",
             relation_id="GUIDE:course-relation-networks",
         ),
-        _relation(
-            course_code="EE1001",
-            course_document_id="GUIDE:course-repo-EE1001",
-            course_name="电路基础",
-            repo_id="EE1001",
-            major="电子信息类",
-            major_code="0202",
-            relation_id="GUIDE:course-relation-circuits",
-        ),
     ]
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course"],
+        retrieval_strategy="targeted",
+    )
 
-    plan = plan_query("计算机类 2019 级有哪些课程", _index(tmp_path, rows))
+    plan, match = _plan("计算机类 2019 级有哪些课程", _index(tmp_path, rows), decision)
 
-    assert plan.course_match_mode == "constraints"
+    assert match.mode == "constraints"
+    assert plan.course_a_quota == 2
     assert plan.course_document_ids == [
         "GUIDE:course-repo-COMP2052",
         "GUIDE:course-repo-COMP3001",
     ]
-    assert {item.course_name
-            for item in plan.course_relation_summaries} == {
-                "数据结构",
-                "计算机网络",
-            }
-    assert "GUIDE:course-purchase-policy" not in plan.course_document_ids
+    assert plan.include_course_purchase_policy is True
 
 
-def test_user_background_does_not_trigger_course_dimension_selection(tmp_path):
-    plan = plan_query(
-        "我是计算机类 2019 级，帮我找一台便宜电脑",
-        _index(tmp_path),
+def test_non_course_route_discards_incidental_course_match(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["transaction_experience"],
+        retrieval_strategy="targeted",
     )
 
-    assert plan.course_match_mode == "none"
+    plan, match = _plan("COMP2022 用的电脑怎么验货", _index(tmp_path), decision)
+
+    assert match.mode == "none"
     assert plan.course_document_ids == []
-    assert plan.course_relation_summaries == []
+    assert plan.post_retrieval_mode == "primary"
 
 
-def test_mixed_course_and_dorm_query_keeps_both_scopes(tmp_path):
-    plan = plan_query("COMP2022 的教材能放宿舍吗", _index(tmp_path))
+def test_course_multilabel_maps_only_requested_c_channels(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course", "platform_policy", "transaction_experience"],
+        retrieval_strategy="targeted",
+    )
 
-    assert plan.course_document_ids == [
-        "GUIDE:course-repo-COMP2052",
-        "GUIDE:course-purchase-policy",
-    ]
-    assert plan.extra_categories == ["campus_dorm"]
-    assert plan.fallback_categories == list(NON_COURSE_CATEGORIES)
+    plan, _ = _plan("COMP2022 实验设备怎么买", _index(tmp_path), decision)
+
+    assert plan.course_auxiliary_categories == ["platform_policy"]
+    assert plan.post_retrieval_mode == "course_auxiliary"
+    assert plan.fallback_guide_categories == []
+
+
+def test_non_catalog_course_constraints_are_kept_as_candidate_scope(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course"],
+        retrieval_strategy="targeted",
+    )
+
+    plan, match = _plan("计算机类 2019 级指定什么教材", _index(tmp_path), decision)
+
+    assert match.mode == "constraints"
+    assert plan.course_document_ids == ["GUIDE:course-repo-COMP2052"]
+    assert plan.include_course_purchase_policy is True
+
+
+def test_broad_fallback_uses_fixed_non_course_lanes_without_topic_guessing(tmp_path):
+    decision = RetrieveRouteDecision(retrieval_strategy="broad_fallback")
+
+    plan, _ = _plan("这事儿该怎么处理", _index(tmp_path), decision)
+
+    assert plan.primary_guide_categories == []
+    assert plan.fallback_guide_categories == list(NON_COURSE_CATEGORIES)
+    assert plan.post_retrieval_mode == "primary"
+
+
+def test_broad_course_fallback_keeps_a_and_uniform_policy_b(tmp_path):
+    decision = RetrieveRouteDecision(
+        knowledge_domains=["course"],
+        retrieval_strategy="broad_fallback",
+    )
+
+    plan, _ = _plan("COMP2022 这事儿怎么处理", _index(tmp_path), decision)
+
+    assert plan.course_document_ids == ["GUIDE:course-repo-COMP2052"]
+    assert plan.include_course_purchase_policy is True
+    assert plan.course_auxiliary_categories == list(NON_COURSE_CATEGORIES)
+    assert plan.post_retrieval_mode == "course_auxiliary"

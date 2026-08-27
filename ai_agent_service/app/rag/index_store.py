@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Protocol
 from uuid import uuid4
 
 import faiss
@@ -19,6 +20,12 @@ from app.rag.models import GuideDocumentMeta, KnowledgeChunk, PostSnapshot
 
 CHUNKING_VERSION = "guide-post-v2"
 KNOWLEDGE_ROOT = Path(__file__).resolve().parents[2] / "knowledge"
+
+
+class BatchEmbeddingProtocol(Protocol):
+    """索引构建阶段批量生成向量所需的最小接口。"""
+
+    async def embed_batch(self, texts: list[str], /) -> list[list[float]]: ...
 
 
 def manifest_sha256(knowledge_root: Path) -> str:
@@ -71,7 +78,7 @@ async def build_index(
     settings: Settings,
     guideMetas: list[GuideDocumentMeta],
     chunks: list[KnowledgeChunk],
-    embedder: EmbeddingClient | None = None,
+    embedder: BatchEmbeddingProtocol | None = None,
     knowledge_root: Path = KNOWLEDGE_ROOT,
     posts: list[PostSnapshot] | None = None,
     snapshot_at: str | None = None,

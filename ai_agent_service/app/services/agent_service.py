@@ -1,7 +1,8 @@
 import json
+import logging
 import re
 import time
-from typing import Any
+from typing import Any, Protocol, Sequence, cast
 
 from pydantic import ValidationError
 
@@ -35,7 +36,21 @@ from app.models.tools import (
 )
 from app.prompts.shopping_guide import build_messages
 from app.rag.models import RagContext
+from app.rag.course_relations import CourseMatch
+from app.rag.models import RagResolution
 from app.rag.service import RagService
+from app.routing.query_router import (
+    CapabilityRedirectRouteDecision,
+    ClarifyRouteDecision,
+    DEFAULT_INSTITUTION,
+    HybridQueryRouter,
+    OutOfScopeRouteDecision,
+    RetrieveRouteDecision,
+    RouteDiagnostics,
+    RouteResoluton,
+    SkipRagRouteDecision,
+    ToolPolicy,
+)
 from app.tools.definitions import (
     GET_MY_PREFERENCE_SIGNALS_TOOL,
     SEARCH_COMMODITIES_TOOL,
@@ -54,8 +69,80 @@ class AgentServiceError(Exception):
         self.retryable = retryable
 
 
-def build_rag_reference_message(context: RagContext) -> str | None:
+logger = logging.getLogger(__name__)
+
+
+class OpenAIClientProtocol(Protocol):
+    """Agent编排实际使用的回答模型接口。"""
+
+    async def create_response(
+        self,
+        input_items: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        text_format: dict[str, Any],
+    ) -> dict[str, Any]: ...
+
+
+class CommodityItemProtocol(Protocol):
+    @property
+    def id(self) -> str: ...
+
+
+class CommoditySearchResponseProtocol(Protocol):
+    @property
+    def matchedCount(self) -> int: ...
+
+    @property
+    def items(self) -> Sequence[CommodityItemProtocol]: ...
+
+    def model_dump_json(self) -> str: ...
+
+
+class JavaToolClientProtocol(Protocol):
+    """Agent编排实际使用的两个只读Java工具接口。"""
+
+    async def search_commodities(
+        self,
+        request_id: str,
+        arguments: CommoditySearchArguments,
+    ) -> CommoditySearchResponseProtocol: ...
+
+    async def get_my_preference_signals(
+        self,
+        request_id: str,
+        user_id: int,
+    ) -> Any: ...
+
+
+class RagServiceProtocol(Protocol):
+    """Agent编排使用的课程匹配与RAG接口。"""
+
+    def match_course_query(self, query: str) -> CourseMatch: ...
+
+    async def get_context(
+        self,
+        query: str,
+        request_id: str,
+        route_decision: RetrieveRouteDecision,
+        course_match: CourseMatch,
+    ) -> RagResolution: ...
+
+
+class QueryRouterProtocol(Protocol):
+    """Agent编排使用的混合Router接口。"""
+
+    async def resolve(
+        self,
+        request: AgentRunRequest,
+        course_match: CourseMatch | None = None,
+        /,
+    ) -> RouteResolution: ...
+
+
+def build_rag_reference_message(context: RagContext | None) -> str | None:
     """把原始 chunk 与课程关系事实用不同 ID 注入模型上下文。"""
+    if context is None:
+        return None
     blocks: list[str] = []
     for item in context.retrieved:
         blocks.append(f"[knowledgeChunkId={item.chunk_id}]\n"
@@ -80,21 +167,55 @@ class AgentService:
     def __init__(
         self,
         settings: Settings,
-        openai_client: OpenAIResponsesClient | None = None,
-        java_backend_client: JavaBackendClient | None = None,
-        rag_service: RagService | None = None,
+        openai_client: OpenAIClientProtocol | None = None,
+        java_backend_client: JavaToolClientProtocol | None = None,
+        rag_service: RagServiceProtocol | None = None,
+        query_router: QueryRouterProtocol | None = None,
     ) -> None:
         self.settings = settings
-        self.openai_client = openai_client or OpenAIResponsesClient(settings)
-        self.java_backend_client = java_backend_client or JavaBackendClient(
-            settings)
+        self.openai_client: OpenAIClientProtocol = (
+            openai_client or OpenAIResponsesClient(settings))
+        self.java_backend_client: JavaToolClientProtocol = (
+            java_backend_client or JavaBackendClient(settings))
         self.rag_service = rag_service or RagService(
             settings,
-            java_backend_client=self.java_backend_client,
+            java_backend_client=cast(
+                JavaBackendClient,
+                self.java_backend_client,
+            ),
+        )
+        self.query_router = query_router or HybridQueryRouter(
+            settings,
+            self.openai_client,
         )
 
     async def run(self, request_id: str,
                   request: AgentRunRequest) -> AgentRunResponse:
+        started_at = time.perf_counter()
+        course_match = self.rag_service.match_course_query(request.message)
+        route_resolution = await self.query_router.resolve(
+            request,
+            course_match,
+        )
+        route_decision = route_resolution.decision
+        logger.info(
+            "agent_route request_id=%s decision=%s",
+            request_id,
+            route_resolution.model_dump_json(),
+        )
+        if isinstance(route_decision, (
+                ClarifyRouteDecision,
+                OutOfScopeRouteDecision,
+                CapabilityRedirectRouteDecision,
+        )):
+            return self._build_deterministic_response(
+                request_id,
+                request,
+                route_decision,
+                started_at=started_at,
+                route_diagnostics=route_resolution.diagnostics,
+            )
+
         if not self.settings.openai_api_key or not self.settings.openai_base_url:
             raise AgentServiceError(503, "AI_MODEL_NOT_CONFIGURED", "模型服务尚未配置",
                                     False)
@@ -124,31 +245,47 @@ class AgentService:
                 False,
             )
 
-        rag_context = await self.rag_service.get_context(
-            request.message,
-            request_id,
-        )
+        if isinstance(route_decision, RetrieveRouteDecision):
+            rag_resolution = await self.rag_service.get_context(
+                request.message,
+                request_id,
+                route_decision,
+                course_match,
+            )
+            rag_context: RagContext | None = rag_resolution.context
+            logger.info(
+                "agent_rag request_id=%s diagnostics=%s",
+                request_id,
+                rag_resolution.diagnostics.model_dump_json(),
+            )
+        else:
+            rag_context = None
         rag_reference = build_rag_reference_message(rag_context)
+        execution_context = self._build_execution_context(
+            route_decision,
+            rag_context,
+        )
         traces: list[AgentToolTrace] = []
         input_items: list[dict[str, Any]] = build_messages(
             request,
             rag_reference,
+            execution_context,
         )
-        input_tokens = 0
-        output_tokens = 0
+        input_tokens = route_resolution.diagnostics.input_tokens
+        output_tokens = route_resolution.diagnostics.output_tokens
         final_result: AgentFinalResult | None = None
         sources: list[AgentSource] = []
         allowed_commodity_ids: set[str] = set()
         model_name = self.settings.openai_model
-        started_at = time.perf_counter()
         for tool_rounds in range(self.settings.max_tool_rounds + 1):
+            available_tools = self._available_tools(
+                route_decision.tool_policy,
+                traces,
+            )
             try:
                 response_data = await self.openai_client.create_response(
                     input_items=input_items,
-                    tools=[
-                        SEARCH_COMMODITIES_TOOL,
-                        GET_MY_PREFERENCE_SIGNALS_TOOL,
-                    ],
+                    tools=available_tools,
                     text_format=AGENT_FINAL_RESULT_TEXT_FORMAT,
                 )
             except OpenAIResponsesClientError as exception:
@@ -179,6 +316,26 @@ class AgentService:
                 model_name = returned_model
 
             if not tool_calls:
+                missing_required = self._missing_required_tools(
+                    route_decision.tool_policy,
+                    traces,
+                )
+                if missing_required:
+                    if tool_rounds >= self.settings.max_tool_rounds:
+                        raise AgentServiceError(
+                            502,
+                            "AI_REQUIRED_TOOL_NOT_CALLED",
+                            "模型没有执行当前请求所需的工具",
+                            True,
+                        )
+                    input_items.extend(output_items)
+                    input_items.append({
+                        "role":
+                        "system",
+                        "content": (f"在给出最终答案前必须先调用工具 {missing_required[0]}；"
+                                    "不得用静态知识猜测实时结果。"),
+                    })
+                    continue
                 final_result = self._extract_final_result(output_items)
                 sources = self._validate_model_references(
                     final_result.output,
@@ -239,6 +396,141 @@ class AgentService:
             latencyMs=latency_ms,
             traces=traces,
         )
+
+    @staticmethod
+    def _build_deterministic_response(
+        request_id: str,
+        request: AgentRunRequest,
+        decision: (ClarifyRouteDecision | OutOfScopeRouteDecision |
+                   CapabilityRedirectRouteDecision),
+        *,
+        started_at: float,
+        route_diagnostics: RouteDiagnostics,
+    ) -> AgentRunResponse:
+        if isinstance(decision, OutOfScopeRouteDecision):
+            answer = ("这个问题不属于校园二手交易咨询范围。"
+                      "我可以帮你查找或比较平台商品，也可以提供二手选购、"
+                      "验货、面交和支付安全建议。")
+            summary = "该问题超出校园二手交易咨询范围。"
+            memory_summary = "用户提出了超出校园二手交易咨询范围的问题。"
+        elif isinstance(decision, CapabilityRedirectRouteDecision):
+            if decision.redirect_target == "orders":
+                answer = ("我目前不能读取或操作你的订单。"
+                          "请前往“我的订单”（/user/orders）查看订单状态，"
+                          "支付、取消等操作也请在该页面完成。")
+                summary = "当前AI不读取或操作订单，请到我的订单页面处理。"
+            else:
+                answer = ("我可以解释平台规则，但不能代你执行退款、投诉、举报或申诉。"
+                          "请使用平台现有入口办理；如果没有对应入口，请联系平台管理员。")
+                summary = "当前AI不能代办退款、投诉、举报或申诉。"
+            memory_summary = (
+                f"用户咨询：{request.message}；当前AI没有对应业务操作能力。")
+        else:
+            answer = decision.clarification_question
+            summary = "需要补充信息后才能继续判断。"
+            memory_summary = f"用户咨询：{request.message}；当前需要补充信息。"
+        output = AgentResponseOutput(
+            intent=AgentIntent.GENERAL_GUIDE,
+            summary=summary,
+            memorySummary=memory_summary,
+            recommendations=[],
+            purchaseAdvice=[],
+            warnings=[],
+            searchKeywords=[],
+            knowledgeChunkIds=[],
+            courseRelationIds=[],
+            sources=[],
+            relatedPostCandidates=[],
+        )
+        used_llm_router = route_diagnostics.decision_source == "llm"
+        router_model = route_diagnostics.router_model
+        return AgentRunResponse(
+            requestId=request_id,
+            answer=answer,
+            output=output,
+            model=AgentModelInfo(
+                provider="openai" if used_llm_router else "system",
+                name=(router_model
+                      if used_llm_router and router_model
+                      else "deterministic-router-v1"),
+            ),
+            usage=AgentUsage(
+                inputTokens=route_diagnostics.input_tokens or None,
+                outputTokens=route_diagnostics.output_tokens or None,
+            ),
+            latencyMs=int((time.perf_counter() - started_at) * 1000),
+            traces=[],
+        )
+
+    @staticmethod
+    def _build_execution_context(
+        decision: RetrieveRouteDecision | SkipRagRouteDecision,
+        rag_context: RagContext | None,
+    ) -> str:
+        lines = [
+            f"institution={DEFAULT_INSTITUTION}",
+            f"route={decision.route}",
+        ]
+        if decision.execution_constraints:
+            lines.append("executionConstraints=" + json.dumps(
+                decision.execution_constraints,
+                ensure_ascii=False,
+            ))
+            if "no_business_action" in decision.execution_constraints:
+                lines.append("只能解释相关规则或流程；不得声称已经查询、退款、取消、"
+                             "支付、投诉、举报或修改任何业务数据。")
+        state = rag_context.course_evidence_state if rag_context else None
+        if state:
+            lines.append(f"courseEvidenceState={state}")
+            if state in {"clue_only", "unknown_after_search"}:
+                lines.append("课程回答必须同时说明：现有证据能确认的线索、"
+                             "仍不能确认的当前课程专属结论、下一步应向教师/课程组/"
+                             "实验室核对的字段。条件化建议可以保留，但不得把资料提及"
+                             "升级为当前指定、必须购买或学校保证提供。")
+            else:
+                lines.append("课程关系只证明课程、专业、年级和学期；除非课程资料直接支持，"
+                             "不得据此推断当前指定版本、个人购买要求或学校供给。")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _missing_required_tools(
+        policy: ToolPolicy,
+        traces: list[AgentToolTrace],
+    ) -> list[str]:
+        called = {
+            trace.toolName
+            for trace in traces if trace.status == "SUCCESS"
+        }
+        ordered = [
+            (GET_MY_PREFERENCE_SIGNALS_TOOL["name"],
+             policy.get_my_preference_signals),
+            (SEARCH_COMMODITIES_TOOL["name"], policy.search_commodities),
+        ]
+        return [
+            name for name, requirement in ordered
+            if requirement == "required" and name not in called
+        ]
+
+    @classmethod
+    def _available_tools(
+        cls,
+        policy: ToolPolicy,
+        traces: list[AgentToolTrace],
+    ) -> list[dict[str, Any]]:
+        missing = cls._missing_required_tools(policy, traces)
+        if missing:
+            required = missing[0]
+            return [
+                GET_MY_PREFERENCE_SIGNALS_TOOL
+                if required == GET_MY_PREFERENCE_SIGNALS_TOOL["name"] else
+                SEARCH_COMMODITIES_TOOL
+            ]
+        tools: list[dict[str, Any]] = []
+        if policy.search_commodities != "forbidden":
+            tools.append(SEARCH_COMMODITIES_TOOL)
+        if policy.get_my_preference_signals != "forbidden":
+            tools.append(GET_MY_PREFERENCE_SIGNALS_TOOL)
+        return tools
 
     async def _execute_tool_calls(
         self,
@@ -556,7 +848,7 @@ class AgentService:
         self,
         output: AgentOutput,
         allowed_commodity_ids: set[str],
-        rag_context: RagContext,
+        rag_context: RagContext | None,
     ) -> list[AgentSource]:
         referenced_ids = {
             recommendation.commodityId
@@ -574,11 +866,12 @@ class AgentService:
 
         retrieved_by_id = {
             item.chunk_id: item
-            for item in rag_context.retrieved
+            for item in (rag_context.retrieved if rag_context else [])
         }
         relation_by_id = {
             relation_id: item
-            for item in rag_context.plan.course_relation_summaries
+            for item in (rag_context.plan.course_relation_summaries
+                          if rag_context else [])
             for relation_id in item.relation_ids
         }
         invalid_chunks = set(output.knowledgeChunkIds) - set(retrieved_by_id)
@@ -647,11 +940,9 @@ class AgentService:
             if (source.sourceId != source_id or source.sourceVersion != (
                     source_version if item.source_type == "POST" else None)):
                 continue
-            citation_limit = (
-                self.settings.rag_guide_max_chunks_per_document
-                if item.source_type == "GUIDE"
-                else self.settings.rag_post_max_chunks_per_document
-            )
+            citation_limit = (self.settings.rag_guide_max_chunks_per_document
+                              if item.source_type == "GUIDE" else
+                              self.settings.rag_post_max_chunks_per_document)
             # 公开响应契约最多允许单文档 2 个引用；配置只能进一步收紧。
             citation_limit = min(citation_limit, 2)
             if len(source.citations) < citation_limit:
@@ -661,7 +952,9 @@ class AgentService:
 
     @staticmethod
     def _build_related_post_candidates(
-        rag_context: RagContext, ) -> list[AgentRelatedPostCandidate]:
+        rag_context: RagContext | None, ) -> list[AgentRelatedPostCandidate]:
+        if rag_context is None:
+            return []
         """按检索顺序生成最多三篇、版本已实时确认的 Post 候选。"""
         candidates: list[AgentRelatedPostCandidate] = []
         seen_post_ids: set[int] = set()

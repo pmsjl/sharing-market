@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -44,7 +45,10 @@ def _validate_document(knowledge_root: Path, meta: GuideDocumentMeta) -> None:
     if not text.startswith("---\n"):
         raise ValueError(f"文档缺少 front matter：{meta.relative_path}")
     _, front_matter, _ = text.split("---", 2)
-    header = yaml.safe_load(front_matter)
+    raw_header: object = yaml.safe_load(front_matter)
+    if not isinstance(raw_header, dict):
+        raise ValueError(f"文档 front matter 不是对象：{meta.relative_path}")
+    header = cast(dict[str, object], raw_header)
     #把文件开头的yaml内容转换为字典，检查文件内容和jsonl的meta信息是否一致
     for key in ("document_id", "category", "status", "title"):
         if header.get(key) != getattr(meta, key):

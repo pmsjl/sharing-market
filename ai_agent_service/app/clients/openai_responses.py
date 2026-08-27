@@ -103,6 +103,69 @@ class OpenAIResponsesClient:
             )
         return response_data
 
+    async def create_router_response(
+        self,
+        input_items: list[dict[str, Any]],
+        text_format: dict[str, Any],
+    ) -> dict[str, Any]:
+        """调用独立可配置的只读意图Router，不向模型暴露任何工具。"""
+        payload = {
+            "model": self.settings.openai_router_model,
+            "input": input_items,
+            "tools": [],
+            "tool_choice": "none",
+            "reasoning": {
+                "effort": self.settings.openai_router_reasoning_effort,
+            },
+            "text": {
+                "verbosity": self.settings.openai_router_text_verbosity,
+                "format": text_format,
+            },
+            "store": False,
+            "stream": False,
+        }
+        return await self._post_payload(
+            payload,
+            timeout_seconds=self.settings.openai_router_timeout_seconds,
+        )
+
+    async def _post_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        timeout_seconds: float,
+    ) -> dict[str, Any]:
+        """供Router使用的同契约请求路径；生成调用暂保持原有代码。"""
+        try:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                response = await client.post(
+                    f"{self.settings.openai_base_url.rstrip('/')}/responses",
+                    headers={
+                        "Authorization": f"Bearer {self.settings.openai_api_key}",
+                        "Content-Type": "application/json",
+                        "User-Agent": "sharing-market-ai-agent/0.1",
+                        "Accept": "application/json",
+                    },
+                    json=payload,
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exception:
+            raise OpenAIResponsesClientError(
+                504, "AI_MODEL_TIMEOUT", "模型响应超时", True
+            ) from exception
+        except httpx.HTTPStatusError as exception:
+            raise self._map_status_error(exception) from exception
+        except httpx.HTTPError as exception:
+            raise OpenAIResponsesClientError(
+                503, "AI_MODEL_UNAVAILABLE", "模型服务暂不可用", True
+            ) from exception
+        response_data = self._parse_response_data(response)
+        if not isinstance(response_data, dict):
+            raise OpenAIResponsesClientError(
+                502, "AI_MODEL_RESPONSE_INVALID", "模型返回内容格式异常", True
+            )
+        return response_data
+
 
 #使用openai中转出现内容不兼容，
 #以下为对中转输出的内容进行解析提取实际格式对应的内容，无需重点关注

@@ -223,6 +223,7 @@ ai_agent_service/scratch/
 /docs/UI_REDESIGN_PLAN.md
 /docs/UI_REDESIGN_PROGRESS.md
 *.md
+!/docs/AI_AGENT_P0_CODE_ANALYSIS.md
 # Golden Dataset、正式评测轮次和人工复核文档需要随代码版本追溯。
 !/ai_agent_service/evaluation/README.md
 !/ai_agent_service/evaluation/**/*.md

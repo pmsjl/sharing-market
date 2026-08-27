@@ -24,6 +24,25 @@ class Settings:
     openai_reasoning_effort: str = os.getenv("OPENAI_REASONING_EFFORT",
                                              "medium")
     openai_text_verbosity: str = os.getenv("OPENAI_TEXT_VERBOSITY", "high")
+    intent_router_enabled: bool = os.getenv(
+        "INTENT_ROUTER_ENABLED", "true"
+    ).lower() == "true"
+    openai_router_model: str = os.getenv(
+        "OPENAI_ROUTER_MODEL",
+        os.getenv("OPENAI_MODEL", "gpt-5.6-terra"),
+    )
+    openai_router_timeout_seconds: float = float(
+        os.getenv("OPENAI_ROUTER_TIMEOUT_SECONDS", "45")
+    )
+    openai_router_reasoning_effort: str = os.getenv(
+        "OPENAI_ROUTER_REASONING_EFFORT", "low"
+    )
+    openai_router_text_verbosity: str = os.getenv(
+        "OPENAI_ROUTER_TEXT_VERBOSITY", "low"
+    )
+    intent_router_confidence_threshold: float = float(
+        os.getenv("INTENT_ROUTER_CONFIDENCE_THRESHOLD", "0.75")
+    )
     java_backend_base_url: str = os.getenv(
         "JAVA_BACKEND_BASE_URL",
         "http://127.0.0.1:8102",
@@ -61,10 +80,12 @@ class Settings:
             os.getenv("RAG_MAX_CHUNKS_PER_DOCUMENT", "2"),
         ))
     rag_post_top_k: int = int(os.getenv("RAG_POST_TOP_K", "3"))
+    rag_course_auxiliary_post_top_k: int = int(
+        os.getenv("RAG_COURSE_AUXILIARY_POST_TOP_K", "3"))
     rag_post_score_threshold: float = float(
         os.getenv("RAG_POST_SCORE_THRESHOLD", "0.50"))
     rag_post_max_chunks_per_document: int = int(
-        os.getenv("RAG_POST_MAX_CHUNKS_PER_DOCUMENT", "1"))
+        os.getenv("RAG_POST_MAX_CHUNKS_PER_DOCUMENT", "2"))
     rag_post_snapshot_page_size: int = int(
         os.getenv("RAG_POST_SNAPSHOT_PAGE_SIZE", "200"))
 
