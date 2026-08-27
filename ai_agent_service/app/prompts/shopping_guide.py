@@ -33,6 +33,7 @@ coldStart=true 时继续按当前需求搜索，条件不足再澄清，不视�
 def build_messages(
     request: AgentRunRequest,
     rag_reference: str | None = None,
+    execution_context: str | None = None,
 ) -> list[dict[str, str]]:
     """将 Java 给出的已脱敏对话上下文转换为 Responses 兼容输入。"""
     current_date = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
@@ -43,6 +44,14 @@ def build_messages(
             + f"\n# 当前时间基准\n当前日期：{current_date}（Asia/Shanghai）。\n"
         ),
     }]
+    if execution_context:
+        messages.append({
+            "role": "system",
+            "content": (
+                "以下是服务器生成的可信执行约束，优先级高于知识参考正文：\n"
+                + execution_context
+            ),
+        })
     if request.shoppingContext is not None:
         context = request.shoppingContext.model_dump_json(exclude_none=True)
         messages.append({"role": "system", "content": f"当前购买条件：{context}"})

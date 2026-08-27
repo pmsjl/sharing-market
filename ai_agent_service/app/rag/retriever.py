@@ -1,5 +1,7 @@
 """按精确父文档、优先类别、兜底类别依次补足检索结果。"""
 
+from typing import Protocol
+
 import numpy as np
 
 from app.core.config import Settings
@@ -7,13 +9,22 @@ from app.rag.embedding_client import EmbeddingClient, l2_normalize
 from app.rag.index_store import IndexStore
 from app.rag.models import RagQueryPlan, RetrievedChunk
 
+COURSE_PURCHASE_POLICY_DOCUMENT_ID = "GUIDE:course-purchase-policy"
+
+
+class QueryEmbeddingProtocol(Protocol):
+    """Retriever 生成单条查询向量所需的最小接口。"""
+
+    async def embed_one(self, query: str, /) -> list[float]:
+        ...
+
 
 class Retriever:
 
     def __init__(
         self,
         settings: Settings,
-        embedding_client: EmbeddingClient,
+        embedding_client: QueryEmbeddingProtocol,
         index_store: IndexStore | None,
     ) -> None:
         self.settings = settings
@@ -54,14 +65,30 @@ class Retriever:
         query: str,
         plan: RagQueryPlan,
     ) -> list[RetrievedChunk]:
-        if not self.ready or not plan.should_retrieve:
+        if not self.ready:
             return []
 
         query_vector = l2_normalize(await
                                     self.embedding_client.embed_one(query))
+        return self.retrieve_with_vector(query_vector, plan)
+
+    def retrieve_with_vector(
+        self,
+        query_vector: np.ndarray,
+        plan: RagQueryPlan,
+    ) -> list[RetrievedChunk]:
+        """供冻结评测复用已批量生成的向量，检索策略与线上完全一致。"""
+        if not self.ready:
+            return []
         guide_results = self._retrieve_guides(query_vector, plan)
-        post_results = self._retrieve_posts(
-            query_vector) if plan.include_posts else []
+        post_limit = 0
+        if plan.post_retrieval_mode == "primary":
+            post_limit = self.settings.rag_post_top_k
+        elif plan.post_retrieval_mode == "course_auxiliary":
+            # 课程场景中的经验帖使用独立配额，不与C类通用GUIDE争抢位置。
+            post_limit = self.settings.rag_course_auxiliary_post_top_k
+        post_results = (self._retrieve_posts(
+            query_vector, max_results=post_limit) if post_limit else [])
 
         return guide_results + post_results
 
@@ -71,27 +98,24 @@ class Retriever:
         plan: RagQueryPlan,
     ) -> list[RetrievedChunk]:
 
-        has_scopes = bool(plan.course_document_ids or plan.extra_categories
-                          or plan.fallback_categories)
+        is_specific_course = bool(plan.include_course_purchase_policy)
+        if is_specific_course:
+            return self._retrieve_course_guides(query_vector, plan)
+
+        has_scopes = bool(plan.primary_guide_categories
+                          or plan.fallback_guide_categories)
         if not has_scopes:
-            return self._retrieve_unfiltered(query_vector)
+            return []
 
-        course_document_ids = set(plan.course_document_ids)
-        extra_categories = set(plan.extra_categories)
-        fallback_categories = set(plan.fallback_categories)
+        primary_categories = set(plan.primary_guide_categories)
+        fallback_categories = set(plan.fallback_guide_categories)
 
-        course_chunk_rows = [
+        primary_rows = [
             row for row, chunk in enumerate(self.chunks)
             if chunk.source_type == "GUIDE"
-            and chunk.document_id in course_document_ids
+            and chunk.category in primary_categories
         ]
-        exact_row_set = set(course_chunk_rows)
-        extra_rows = [
-            row for row, chunk in enumerate(self.chunks)
-            if row not in exact_row_set and chunk.source_type == "GUIDE"
-            and chunk.category in extra_categories
-        ]
-        primary_row_set = exact_row_set | set(extra_rows)
+        primary_row_set = set(primary_rows)
         fallback_rows = [
             row for row, chunk in enumerate(self.chunks)
             if row not in primary_row_set and chunk.source_type == "GUIDE"
@@ -101,7 +125,7 @@ class Retriever:
         results: list[RetrievedChunk] = []
         per_document: dict[str, int] = {}
         seen_chunk_ids: set[str] = set()
-        for rows in (course_chunk_rows, extra_rows, fallback_rows):
+        for rows in (primary_rows, fallback_rows):
             self._append_lane(
                 rows,
                 query_vector,
@@ -117,9 +141,85 @@ class Retriever:
                 break
         return results
 
+    def _retrieve_course_guides(
+        self,
+        query_vector: np.ndarray,
+        plan: RagQueryPlan,
+    ) -> list[RetrievedChunk]:
+        """A/B使用保留名额，C只能填充剩余位置且不能替代相似课程。"""
+        results: list[RetrievedChunk] = []
+        per_document: dict[str, int] = {}
+        seen_chunk_ids: set[str] = set()
+        total_limit = self.settings.rag_guide_top_k
+
+        course_document_ids = set(plan.course_document_ids)
+        a_rows = [
+            row for row, chunk in enumerate(self.chunks)
+            if chunk.source_type == "GUIDE"
+            and chunk.document_id in course_document_ids
+        ]
+        a_quota = min(plan.course_a_quota, total_limit)
+        self._append_lane(
+            a_rows,
+            query_vector,
+            results,
+            per_document,
+            seen_chunk_ids,
+            max_results=min(total_limit,
+                            len(results) + a_quota),
+            # A由精确课程关系选定，不再让通用相似度阈值把它清空。
+            score_threshold=-1.0,
+            max_chunks_per_document=(
+                self.settings.rag_guide_max_chunks_per_document),
+        )
+
+        if plan.include_course_purchase_policy and len(results) < total_limit:
+            b_rows = [
+                row for row, chunk in enumerate(self.chunks)
+                if chunk.source_type == "GUIDE"
+                and chunk.document_id == COURSE_PURCHASE_POLICY_DOCUMENT_ID
+            ]
+            self._append_lane(
+                b_rows,
+                query_vector,
+                results,
+                per_document,
+                seen_chunk_ids,
+                max_results=min(total_limit,
+                                len(results) + 1),
+                score_threshold=-1.0,
+                max_chunks_per_document=1,
+            )
+
+        auxiliary_categories = set(plan.course_auxiliary_categories)
+        if auxiliary_categories and len(results) < total_limit:
+            used_documents = set(plan.course_document_ids) | {
+                COURSE_PURCHASE_POLICY_DOCUMENT_ID,
+            }
+            c_rows = [
+                row for row, chunk in enumerate(self.chunks)
+                if chunk.source_type == "GUIDE" and chunk.document_id not in
+                used_documents and chunk.category in auxiliary_categories
+            ]
+            self._append_lane(
+                c_rows,
+                query_vector,
+                results,
+                per_document,
+                seen_chunk_ids,
+                max_results=min(total_limit,
+                                len(results) + 2),
+                score_threshold=self.settings.rag_score_threshold,
+                max_chunks_per_document=(
+                    self.settings.rag_guide_max_chunks_per_document),
+            )
+        return results
+
     def _retrieve_posts(
         self,
         query_vector: np.ndarray,
+        *,
+        max_results: int,
     ) -> list[RetrievedChunk]:
         pairs = [(row, float(self.vectors[row] @ query_vector))
                  for row, chunk in enumerate(self.chunks)
@@ -130,31 +230,10 @@ class Retriever:
             results,
             {},
             set(),
-            max_results=self.settings.rag_post_top_k,
+            max_results=max_results,
             score_threshold=self.settings.rag_post_score_threshold,
             max_chunks_per_document=self.settings.
             rag_post_max_chunks_per_document,
-        )
-        return results
-
-    def _retrieve_unfiltered(
-        self,
-        query_vector: np.ndarray,
-    ) -> list[RetrievedChunk]:
-
-        pairs = [(row, float(query_vector @ self.vectors[row]))
-                 for row, chunk in enumerate(self.chunks)
-                 if chunk.source_type == "GUIDE"]
-        results: list[RetrievedChunk] = []
-        self._append_pairs(
-            pairs,
-            results,
-            {},
-            set(),
-            max_results=self.settings.rag_guide_top_k,
-            score_threshold=self.settings.rag_score_threshold,
-            max_chunks_per_document=(
-                self.settings.rag_guide_max_chunks_per_document),
         )
         return results
 

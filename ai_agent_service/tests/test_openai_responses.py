@@ -36,12 +36,22 @@ from app.services.agent_service import (
 from app.rag.models import (
     CourseRelationSummary,
     RagContext,
+    RagDiagnostics,
     RagQueryPlan,
+    RagResolution,
     RetrievedChunk,
 )
+from app.rag.course_relations import CourseMatch
 from app.tools.definitions import (
     GET_MY_PREFERENCE_SIGNALS_TOOL,
     SEARCH_COMMODITIES_TOOL,
+)
+from app.routing.query_router import (
+    ClarifyRouteDecision,
+    OutOfScopeRouteDecision,
+    RetrieveRouteDecision,
+    RouteDiagnostics,
+    RouteResolution,
 )
 
 
@@ -54,6 +64,8 @@ def make_settings(**overrides) -> Settings:
         "openai_timeout_seconds": 30,
         "openai_reasoning_effort": "medium",
         "openai_text_verbosity": "medium",
+        # 既有Agent编排用例只验证回答模型；混合Router由专门用例覆盖。
+        "intent_router_enabled": False,
         "java_backend_base_url": "http://127.0.0.1:8102",
         "java_backend_timeout_seconds": 10,
         "max_tool_rounds": 4,
@@ -88,12 +100,10 @@ async def create_response_with_handler(
     input_items=None,
     tools=None,
 ):
-    async_client = httpx.AsyncClient(
-        transport=httpx.MockTransport(handler),
-    )
+    async_client = httpx.AsyncClient(transport=httpx.MockTransport(handler), )
     with patch(
-        "app.clients.openai_responses.httpx.AsyncClient",
-        return_value=async_client,
+            "app.clients.openai_responses.httpx.AsyncClient",
+            return_value=async_client,
     ):
         return await client.create_response(
             input_items or [],
@@ -103,6 +113,7 @@ async def create_response_with_handler(
 
 
 class StubOpenAIClient:
+
     def __init__(self, responses):
         self.responses = list(responses)
         self.calls = []
@@ -117,14 +128,36 @@ class StubOpenAIClient:
 
 
 class StubRagService:
+
     def __init__(self, context):
         self.context = context
         self.calls = []
-        self.ready = not context.degraded
+        self.match_calls = []
+        self.route_decisions = []
 
-    async def get_context(self, query, request_id=None):
+    def match_course_query(self, query):
+        self.match_calls.append(query)
+        return CourseMatch(set(), [], [], "none")
+
+    async def get_context(self, query, request_id, route_decision,
+                          course_match):
         self.calls.append(query)
-        return self.context
+        self.route_decisions.append(route_decision)
+        return RagResolution(
+            context=self.context,
+            diagnostics=RagDiagnostics(retrieval_status="success"),
+        )
+
+
+class StubQueryRouter:
+
+    def __init__(self, resolution):
+        self.resolution = resolution
+        self.calls = []
+
+    async def resolve(self, request, relations=None):
+        self.calls.append((request, relations))
+        return self.resolution
 
 
 def rag_context():
@@ -170,12 +203,9 @@ def rag_context():
         ),
     ]
     return RagContext(
-        query="COMP2022 教材",
         plan=RagQueryPlan(
-            should_retrieve=True,
             course_document_ids=["GUIDE:course-repo-COMP2052"],
             course_relation_summaries=[relation],
-            course_match_mode="alias",
         ),
         retrieved=chunks,
     )
@@ -195,29 +225,26 @@ class JavaBackendClientTests(unittest.IsolatedAsyncioTestCase):
             )
 
         async_client = httpx.AsyncClient(
-            transport=httpx.MockTransport(handler),
-        )
+            transport=httpx.MockTransport(handler), )
         with patch(
-            "app.clients.java_backend.httpx.AsyncClient",
-            return_value=async_client,
+                "app.clients.java_backend.httpx.AsyncClient",
+                return_value=async_client,
         ):
-            result = await JavaBackendClient(
-                make_settings()
-            ).get_my_preference_signals(
-                request_id="request-1",
-                user_id=7,
-            )
+            result = await JavaBackendClient(make_settings()
+                                             ).get_my_preference_signals(
+                                                 request_id="request-1",
+                                                 user_id=7,
+                                             )
 
+        assert captured_request is not None
         self.assertEqual(
             captured_request.method,
             "GET",
         )
         self.assertEqual(
             str(captured_request.url),
-            (
-                "http://127.0.0.1:8102/api/internal/ai/tools/"
-                "users/7/preference-signals"
-            ),
+            ("http://127.0.0.1:8102/api/internal/ai/tools/"
+             "users/7/preference-signals"),
         )
         self.assertEqual(
             captured_request.headers["X-Internal-Token"],
@@ -230,22 +257,18 @@ class JavaBackendClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.coldStart)
 
     async def test_preference_request_maps_forbidden_to_non_retryable(self):
-        async_client = httpx.AsyncClient(
-            transport=httpx.MockTransport(
-                lambda request: httpx.Response(403)
-            ),
-        )
+        async_client = httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: httpx.Response(403)), )
         with patch(
-            "app.clients.java_backend.httpx.AsyncClient",
-            return_value=async_client,
+                "app.clients.java_backend.httpx.AsyncClient",
+                return_value=async_client,
         ):
             with self.assertRaises(JavaBackendClientError) as error:
-                await JavaBackendClient(
-                    make_settings()
-                ).get_my_preference_signals(
-                    request_id="request-1",
-                    user_id=7,
-                )
+                await JavaBackendClient(make_settings()
+                                        ).get_my_preference_signals(
+                                            request_id="request-1",
+                                            user_id=7,
+                                        )
 
         self.assertEqual(
             error.exception.agent_error_key,
@@ -255,24 +278,20 @@ class JavaBackendClientTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_preference_request_rejects_mismatched_request_id(self):
         async_client = httpx.AsyncClient(
-            transport=httpx.MockTransport(
-                lambda request: httpx.Response(
-                    200,
-                    json=cold_start_preference_payload("request-2"),
-                )
-            ),
-        )
+            transport=httpx.MockTransport(lambda request: httpx.Response(
+                200,
+                json=cold_start_preference_payload("request-2"),
+            )), )
         with patch(
-            "app.clients.java_backend.httpx.AsyncClient",
-            return_value=async_client,
+                "app.clients.java_backend.httpx.AsyncClient",
+                return_value=async_client,
         ):
             with self.assertRaises(JavaBackendClientError) as error:
-                await JavaBackendClient(
-                    make_settings()
-                ).get_my_preference_signals(
-                    request_id="request-1",
-                    user_id=7,
-                )
+                await JavaBackendClient(make_settings()
+                                        ).get_my_preference_signals(
+                                            request_id="request-1",
+                                            user_id=7,
+                                        )
 
         self.assertEqual(
             error.exception.agent_error_key,
@@ -282,6 +301,7 @@ class JavaBackendClientTests(unittest.IsolatedAsyncioTestCase):
 
 
 class StubCommodityItem:
+
     def __init__(self, commodity_id):
         self.id = commodity_id
 
@@ -294,14 +314,14 @@ class StubToolResult:
         return json.dumps({
             "requestId": "request-1",
             "matchedCount": self.matchedCount,
-            "items": [
-                {"id": item.id}
-                for item in self.items
-            ],
+            "items": [{
+                "id": item.id
+            } for item in self.items],
         })
 
 
 class StubJavaBackendClient:
+
     def __init__(self):
         self.calls = []
         self.preference_calls = []
@@ -313,7 +333,8 @@ class StubJavaBackendClient:
     async def get_my_preference_signals(self, request_id, user_id):
         self.preference_calls.append((request_id, user_id))
         return UserPreferenceToolResponse.model_validate({
-            "requestId": request_id,
+            "requestId":
+            request_id,
             "behaviorStats": {
                 "distinctPurchaseCount": 1,
                 "distinctFavoriteCount": 0,
@@ -344,7 +365,8 @@ class StubJavaBackendClient:
                 "medianUnitPrice": "22.00",
                 "maxUnitPrice": "22.00",
             },
-            "favoriteCurrentPriceProfile": None,
+            "favoriteCurrentPriceProfile":
+            None,
             "preferredDegrees": [{
                 "degree": "九五新",
                 "weight": 1.0,
@@ -354,8 +376,10 @@ class StubJavaBackendClient:
                 },
             }],
             "recentCommodityIds": ["9001"],
-            "confidence": "LOW",
-            "coldStart": False,
+            "confidence":
+            "LOW",
+            "coldStart":
+            False,
         })
 
 
@@ -364,8 +388,7 @@ class ColdStartStubJavaBackendClient(StubJavaBackendClient):
     async def get_my_preference_signals(self, request_id, user_id):
         self.preference_calls.append((request_id, user_id))
         return UserPreferenceToolResponse.model_validate(
-            cold_start_preference_payload(request_id)
-        )
+            cold_start_preference_payload(request_id))
 
 
 def structured_output_message(
@@ -380,32 +403,32 @@ def structured_output_message(
     payload = {
         "answer": answer,
         "output": {
-            "intent": (
-                "COMMODITY_RECOMMENDATION"
-                if commodity_ids
-                else "GENERAL_GUIDE"
-            ),
-            "summary": "本轮回答摘要",
-            "memorySummary": "用户正在咨询校园二手商品",
-            "recommendations": [
-                {
-                    "commodityId": commodity_id,
-                    "matchScore": 90,
-                    "reason": "符合用户当前需求",
-                    "riskTip": None,
-                }
-                for commodity_id in commodity_ids
-            ],
+            "intent":
+            ("COMMODITY_RECOMMENDATION" if commodity_ids else "GENERAL_GUIDE"),
+            "summary":
+            "本轮回答摘要",
+            "memorySummary":
+            "用户正在咨询校园二手商品",
+            "recommendations": [{
+                "commodityId": commodity_id,
+                "matchScore": 90,
+                "reason": "符合用户当前需求",
+                "riskTip": None,
+            } for commodity_id in commodity_ids],
             "purchaseAdvice": [],
             "warnings": [],
             "searchKeywords": [],
-            "knowledgeChunkIds": knowledge_chunk_ids,
-            "courseRelationIds": course_relation_ids,
+            "knowledgeChunkIds":
+            knowledge_chunk_ids,
+            "courseRelationIds":
+            course_relation_ids,
         },
     }
     return {
-        "type": "message",
-        "role": "assistant",
+        "type":
+        "message",
+        "role":
+        "assistant",
         "content": [{
             "type": "output_text",
             "text": json.dumps(payload, ensure_ascii=False),
@@ -414,6 +437,7 @@ def structured_output_message(
 
 
 class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
+
     def test_eight_retrieved_chunks_can_be_returned_as_eight_sources(self):
         chunks = [
             RetrievedChunk(
@@ -427,8 +451,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 content=f"指南正文 {index}",
                 score=1 - index / 100,
                 metadata={},
-            )
-            for index in range(5)
+            ) for index in range(5)
         ]
         chunks.extend(
             RetrievedChunk(
@@ -442,18 +465,18 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
                 content=f"帖子正文 {post_id}",
                 score=0.8,
                 metadata={"sourceVersion": str(1000 + post_id)},
-            )
-            for post_id in range(11, 14)
-        )
+            ) for post_id in range(11, 14))
         context = RagContext(
-            query="校园二手交易建议",
-            plan=RagQueryPlan(should_retrieve=True),
+            plan=RagQueryPlan(),
             retrieved=chunks,
         )
         output = AgentOutput.model_validate({
-            "intent": "GENERAL_GUIDE",
-            "summary": "综合参考资料回答",
-            "memorySummary": "用户正在咨询校园二手交易建议",
+            "intent":
+            "GENERAL_GUIDE",
+            "summary":
+            "综合参考资料回答",
+            "memorySummary":
+            "用户正在咨询校园二手交易建议",
             "recommendations": [],
             "purchaseAdvice": [],
             "warnings": [],
@@ -478,8 +501,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             [source.sourceType for source in response.sources],
             ["GUIDE"] * 5 + ["POST"] * 3,
         )
-        self.assertTrue(all(len(source.citations) == 1
-                            for source in response.sources))
+        self.assertTrue(
+            all(len(source.citations) == 1 for source in response.sources))
 
     async def test_request_uses_responses_payload(self):
         captured = {}
@@ -489,7 +512,10 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             captured["payload"] = json.loads(request.content)
             return httpx.Response(
                 200,
-                json={"output": [], "usage": {}},
+                json={
+                    "output": [],
+                    "usage": {}
+                },
                 request=request,
             )
 
@@ -497,8 +523,14 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         result = await create_response_with_handler(
             client,
             handler,
-            [{"role": "user", "content": "推荐一台电脑"}],
-            [{"type": "function", "name": "search_commodities"}],
+            [{
+                "role": "user",
+                "content": "推荐一台电脑"
+            }],
+            [{
+                "type": "function",
+                "name": "search_commodities"
+            }],
         )
 
         self.assertEqual(result["output"], [])
@@ -519,7 +551,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             "application/json",
         )
         self.assertEqual(captured["payload"]["model"], "gpt-5.6-terra")
-        self.assertEqual(captured["payload"]["reasoning"], {"effort": "medium"})
+        self.assertEqual(captured["payload"]["reasoning"],
+                         {"effort": "medium"})
         text_config = captured["payload"]["text"]
         self.assertEqual(text_config["verbosity"], "medium")
         self.assertEqual(text_config["format"]["type"], "json_schema")
@@ -540,9 +573,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('"$defs"', schema_text)
         self.assertNotIn('"$ref"', schema_text)
         output_schema = (
-            text_config["format"]["schema"]
-            ["properties"]["output"]
-        )
+            text_config["format"]["schema"]["properties"]["output"])
         self.assertEqual(
             set(output_schema["required"]),
             {
@@ -567,12 +598,60 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("temperature", captured["payload"])
         self.assertNotIn("messages", captured["payload"])
 
+    async def test_router_request_uses_independent_model_and_no_tools(self):
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["payload"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "output": [],
+                    "usage": {}
+                },
+                request=request,
+            )
+
+        settings = make_settings(
+            openai_router_model="router-small",
+            openai_router_timeout_seconds=12,
+            openai_router_reasoning_effort="low",
+            openai_router_text_verbosity="low",
+        )
+        client = OpenAIResponsesClient(settings)
+        async_client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), )
+        with patch(
+                "app.clients.openai_responses.httpx.AsyncClient",
+                return_value=async_client,
+        ):
+            await client.create_router_response(
+                input_items=[{
+                    "role": "user",
+                    "content": "找台电脑"
+                }],
+                text_format={
+                    "type": "json_schema",
+                    "name": "route"
+                },
+            )
+
+        self.assertEqual(captured["payload"]["model"], "router-small")
+        self.assertEqual(captured["payload"]["tools"], [])
+        self.assertEqual(captured["payload"]["tool_choice"], "none")
+        self.assertEqual(captured["payload"]["reasoning"], {"effort": "low"})
+        self.assertEqual(captured["payload"]["text"]["verbosity"], "low")
+
     async def test_sse_fallback_extracts_completed_response(self):
         completed_item = {
-            "id": "msg_test",
-            "type": "message",
-            "status": "completed",
-            "role": "assistant",
+            "id":
+            "msg_test",
+            "type":
+            "message",
+            "status":
+            "completed",
+            "role":
+            "assistant",
             "content": [{
                 "type": "output_text",
                 "text": "连接测试成功",
@@ -668,14 +747,13 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["output"], [function_call])
 
     async def test_incomplete_sse_is_rejected(self):
+
         def handler(request):
             return httpx.Response(
                 200,
-                text=(
-                    "event: response.created\n"
-                    'data: {"type":"response.created",'
-                    '"response":{"status":"in_progress"}}\n\n'
-                ),
+                text=("event: response.created\n"
+                      'data: {"type":"response.created",'
+                      '"response":{"status":"in_progress"}}\n\n'),
                 headers={"Content-Type": "text/event-stream"},
                 request=request,
             )
@@ -699,30 +777,35 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         ]
         for status, expected_key, retryable in cases:
             with self.subTest(status=status):
+
                 def handler(request, response_status=status):
                     return httpx.Response(response_status, request=request)
 
                 client = OpenAIResponsesClient(make_settings())
                 with self.assertRaises(OpenAIResponsesClientError) as raised:
                     await create_response_with_handler(client, handler)
-                self.assertEqual(raised.exception.agent_error_key, expected_key)
+                self.assertEqual(raised.exception.agent_error_key,
+                                 expected_key)
                 self.assertEqual(raised.exception.retryable, retryable)
 
     async def test_timeout_and_invalid_json_are_mapped(self):
+
         def timeout_handler(request):
             raise httpx.ReadTimeout("timeout", request=request)
 
         timeout_client = OpenAIResponsesClient(make_settings())
         with self.assertRaises(OpenAIResponsesClientError) as timeout_error:
             await create_response_with_handler(timeout_client, timeout_handler)
-        self.assertEqual(timeout_error.exception.agent_error_key, "AI_MODEL_TIMEOUT")
+        self.assertEqual(timeout_error.exception.agent_error_key,
+                         "AI_MODEL_TIMEOUT")
 
         def invalid_json_handler(request):
             return httpx.Response(200, content=b"not-json", request=request)
 
         invalid_client = OpenAIResponsesClient(make_settings())
         with self.assertRaises(OpenAIResponsesClientError) as invalid_error:
-            await create_response_with_handler(invalid_client, invalid_json_handler)
+            await create_response_with_handler(invalid_client,
+                                               invalid_json_handler)
         self.assertEqual(
             invalid_error.exception.agent_error_key,
             "AI_MODEL_RESPONSE_INVALID",
@@ -730,16 +813,18 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
 
 
 class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
-    def make_request(self):
+
+    def make_request(self, message="二手电脑怎么验货"):
         return AgentRunRequest(
             userId=1,
             conversationId=2,
-            message="推荐一台二手电脑",
+            message=message,
         )
 
     async def test_direct_answer_returns_usage_and_model(self):
         openai_client = StubOpenAIClient([{
-            "model": "gpt-5.6-terra",
+            "model":
+            "gpt-5.6-terra",
             "output": [structured_output_message()],
             "usage": {
                 "input_tokens": 20,
@@ -760,6 +845,246 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.usage.inputTokens, 20)
         self.assertEqual(result.usage.outputTokens, 8)
 
+    async def test_router_usage_is_aggregated_and_decision_reaches_rag_once(
+            self):
+        decision = RetrieveRouteDecision(
+            knowledge_domains=["transaction_experience"],
+            retrieval_strategy="targeted",
+        )
+        router = StubQueryRouter(
+            RouteResolution(
+                decision=decision,
+                diagnostics=RouteDiagnostics(
+                    decision_source="llm",
+                    decision_reason="需要验货知识",
+                    router_model="router-small",
+                    input_tokens=5,
+                    output_tokens=2,
+                ),
+            ))
+        rag_service = StubRagService(rag_context())
+        openai_client = StubOpenAIClient([{
+            "model":
+            "gpt-5.6-terra",
+            "output": [structured_output_message()],
+            "usage": {
+                "input_tokens": 20,
+                "output_tokens": 8
+            },
+        }])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+            rag_service=rag_service,
+            query_router=router,
+        )
+
+        result = await service.run("request-route", self.make_request())
+
+        self.assertEqual(result.usage.inputTokens, 25)
+        self.assertEqual(result.usage.outputTokens, 10)
+        self.assertEqual(len(router.calls), 1)
+        self.assertEqual(rag_service.match_calls, [self.make_request().message])
+        self.assertEqual(rag_service.route_decisions, [decision])
+
+    async def test_llm_clarification_reports_router_model_and_usage(self):
+        router = StubQueryRouter(
+            RouteResolution(
+                decision=ClarifyRouteDecision(
+                    missing_fields=["product_identity"],
+                    clarification_question="请补充具体商品名称。",
+                ),
+                diagnostics=RouteDiagnostics(
+                    decision_source="llm",
+                    decision_reason="缺少商品对象",
+                    router_confidence=0.94,
+                    router_model="router-small",
+                    input_tokens=11,
+                    output_tokens=4,
+                ),
+            ))
+        openai_client = StubOpenAIClient([])
+        rag_service = StubRagService(rag_context())
+        result = await AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+            rag_service=rag_service,
+            query_router=router,
+        ).run("request-clarify", self.make_request("这个能买吗"))
+
+        self.assertEqual(result.answer, "请补充具体商品名称。")
+        self.assertEqual(result.model.provider, "openai")
+        self.assertEqual(result.model.name, "router-small")
+        self.assertEqual(result.usage.inputTokens, 11)
+        self.assertEqual(result.usage.outputTokens, 4)
+        self.assertEqual(openai_client.calls, [])
+        self.assertEqual(rag_service.calls, [])
+
+    async def test_clarify_and_out_of_scope_bypass_model_rag_and_tools(self):
+        for message, expected_answer_fragment, semantic_decision in [
+            (
+                "这本书二手能买吗？",
+                "请补充书名",
+                ClarifyRouteDecision(
+                    missing_fields=["book_identity"],
+                    clarification_question="请补充书名。",
+                ),
+            ),
+            (
+                "明天宿舍会不会停电？",
+                "不属于校园二手交易咨询范围",
+                OutOfScopeRouteDecision(),
+            ),
+            ("我的订单状态是什么", "/user/orders", None),
+            ("帮我申请退款", "不能代你执行退款", None),
+        ]:
+            with self.subTest(message=message):
+                openai_client = StubOpenAIClient([])
+                rag_service = StubRagService(rag_context())
+                router = (
+                    StubQueryRouter(
+                        RouteResolution(
+                            decision=semantic_decision,
+                            diagnostics=RouteDiagnostics(
+                                decision_source="llm",
+                                decision_reason="语义终止请求",
+                                router_model="router-model",
+                            ),
+                        )
+                    )
+                    if semantic_decision is not None else None
+                )
+                service = AgentService(
+                    make_settings(openai_api_key="", internal_token=""),
+                    openai_client=openai_client,
+                    java_backend_client=StubJavaBackendClient(),
+                    rag_service=rag_service,
+                    query_router=router,
+                )
+
+                result = await service.run(
+                    "request-deterministic",
+                    self.make_request(message),
+                )
+
+                self.assertIn(expected_answer_fragment, result.answer)
+                self.assertEqual(
+                    result.model.provider,
+                    "openai" if semantic_decision is not None else "system",
+                )
+                self.assertEqual(
+                    result.model.name,
+                    "router-model" if semantic_decision is not None
+                    else "deterministic-router-v1",
+                )
+                self.assertEqual(result.traces, [])
+                self.assertEqual(openai_client.calls, [])
+                self.assertEqual(rag_service.calls, [])
+
+    async def test_required_personalized_tools_run_preference_then_search(
+            self):
+        preference_call = {
+            "type": "function_call",
+            "call_id": "preference-required",
+            "name": "get_my_preference_signals",
+            "arguments": "{}",
+        }
+        search_call = {
+            "type": "function_call",
+            "call_id": "search-required",
+            "name": "search_commodities",
+            "arguments": '{"keywords":["电脑"],"limit":20}',
+        }
+        openai_client = StubOpenAIClient([
+            {
+                "output": [preference_call],
+                "usage": {}
+            },
+            {
+                "output": [search_call],
+                "usage": {}
+            },
+            {
+                "output": [structured_output_message(commodity_ids=["1001"])],
+                "usage": {},
+            },
+        ])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        result = await service.run(
+            "request-personalized",
+            self.make_request("按我的偏好推荐一台二手电脑"),
+        )
+
+        self.assertEqual(
+            [[tool["name"] for tool in call["tools"]]
+             for call in openai_client.calls[:2]],
+            [["get_my_preference_signals"], ["search_commodities"]],
+        )
+        self.assertEqual(
+            [trace.toolName for trace in result.traces],
+            ["get_my_preference_signals", "search_commodities"],
+        )
+
+    async def test_mixed_search_and_knowledge_uses_rag_and_search_only(self):
+        search_call = {
+            "type": "function_call",
+            "call_id": "mixed-search",
+            "name": "search_commodities",
+            "arguments": '{"keywords":["电脑"],"limit":20}',
+        }
+        openai_client = StubOpenAIClient([
+            {
+                "output": [search_call],
+                "usage": {}
+            },
+            {
+                "output": [structured_output_message(commodity_ids=["1001"])],
+                "usage": {},
+            },
+        ])
+        rag_service = StubRagService(rag_context())
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+            rag_service=rag_service,
+        )
+        message = "帮我找二手电脑，并告诉我怎么验货"
+
+        result = await service.run("request-mixed", self.make_request(message))
+
+        self.assertEqual(rag_service.calls, [message])
+        self.assertEqual(
+            [tool["name"] for tool in openai_client.calls[0]["tools"]],
+            ["search_commodities"],
+        )
+        self.assertEqual(
+            [trace.toolName for trace in result.traces],
+            ["search_commodities"],
+        )
+
+    async def test_general_knowledge_forbids_both_tools(self):
+        openai_client = StubOpenAIClient([{
+            "output": [structured_output_message()],
+            "usage": {},
+        }])
+        service = AgentService(
+            make_settings(),
+            openai_client=openai_client,
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        await service.run("request-guide", self.make_request())
+
+        self.assertEqual(openai_client.calls[0]["tools"], [])
+
     async def test_rag_is_loaded_once_and_validated_sources_are_derived(self):
         context = rag_context()
         rag_service = StubRagService(context)
@@ -770,17 +1095,22 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "arguments": '{"keywords":["教材"],"limit":5}',
         }
         openai_client = StubOpenAIClient([
-            {"output": [function_call], "usage": {}},
             {
-                "output": [structured_output_message(
-                    commodity_ids=["1001"],
-                    knowledge_chunk_ids=[
-                        "GUIDE:course-repo-COMP2052#教材",
-                        "GUIDE:course-repo-COMP2052#教材",
-                        "GUIDE:course-repo-COMP2052#环境",
-                    ],
-                    course_relation_ids=["GUIDE:course-relation-one"],
-                )],
+                "output": [function_call],
+                "usage": {}
+            },
+            {
+                "output": [
+                    structured_output_message(
+                        commodity_ids=["1001"],
+                        knowledge_chunk_ids=[
+                            "GUIDE:course-repo-COMP2052#教材",
+                            "GUIDE:course-repo-COMP2052#教材",
+                            "GUIDE:course-repo-COMP2052#环境",
+                        ],
+                        course_relation_ids=["GUIDE:course-relation-one"],
+                    )
+                ],
                 "usage": {},
             },
         ])
@@ -817,8 +1147,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("\n", first_citation.excerpt)
         self.assertEqual(
             first_citation.content,
-            "教材正文\n包含 多余空白。"
-            + "长" * (1200 - len("教材正文\n包含 多余空白。")),
+            "教材正文\n包含 多余空白。" + "长" * (1200 - len("教材正文\n包含 多余空白。")),
         )
         self.assertIn("\n", first_citation.content)
         self.assertEqual(len(first_citation.content), 1200)
@@ -827,7 +1156,8 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second_citation.section, "环境")
         self.assertEqual(second_citation.content, "开发环境正文")
 
-    async def test_related_post_candidates_are_server_generated_in_rank_order(self):
+    async def test_related_post_candidates_are_server_generated_in_rank_order(
+            self):
         context = rag_context()
         context.retrieved.extend([
             RetrievedChunk(
@@ -870,6 +1200,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
 
         candidates = AgentService._build_related_post_candidates(context)
         reference = build_rag_reference_message(context)
+        assert reference is not None
 
         self.assertEqual(
             [(item.postId, item.sourceVersion) for item in candidates],
@@ -891,10 +1222,12 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 service = AgentService(
                     make_settings(),
                     openai_client=StubOpenAIClient([{
-                        "output": [structured_output_message(
-                            knowledge_chunk_ids=chunk_ids,
-                            course_relation_ids=relation_ids,
-                        )],
+                        "output": [
+                            structured_output_message(
+                                knowledge_chunk_ids=chunk_ids,
+                                course_relation_ids=relation_ids,
+                            )
+                        ],
                         "usage": {},
                     }]),
                     java_backend_client=StubJavaBackendClient(),
@@ -924,10 +1257,14 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_function_call_output_is_replayed(self):
         function_call = {
-            "type": "function_call",
-            "call_id": "call-1",
-            "name": "search_commodities",
-            "arguments": json.dumps({
+            "type":
+            "function_call",
+            "call_id":
+            "call-1",
+            "name":
+            "search_commodities",
+            "arguments":
+            json.dumps({
                 "keywords": ["电脑"],
                 "maxPrice": 3000,
                 "limit": 5,
@@ -936,7 +1273,10 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         openai_client = StubOpenAIClient([
             {
                 "output": [function_call],
-                "usage": {"input_tokens": 10, "output_tokens": 3},
+                "usage": {
+                    "input_tokens": 10,
+                    "output_tokens": 3
+                },
             },
             {
                 "output": [
@@ -945,7 +1285,10 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                         commodity_ids=["1001"],
                     )
                 ],
-                "usage": {"input_tokens": 15, "output_tokens": 6},
+                "usage": {
+                    "input_tokens": 15,
+                    "output_tokens": 6
+                },
             },
         ])
         java_client = StubJavaBackendClient()
@@ -993,7 +1336,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             java_backend_client=java_client,
         )
 
-        await service.run("request-1", self.make_request())
+        await service.run("request-1", self.make_request("总结我的偏好"))
 
         registered_tool_names = {
             tool["name"]
@@ -1001,7 +1344,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         }
         self.assertEqual(
             registered_tool_names,
-            {"search_commodities", "get_my_preference_signals"},
+            {"get_my_preference_signals"},
         )
         self.assertEqual(
             java_client.preference_calls,
@@ -1009,15 +1352,12 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         )
 
         replayed_outputs = [
-            item
-            for item in openai_client.calls[1]["input_items"]
+            item for item in openai_client.calls[1]["input_items"]
             if item.get("type") == "function_call_output"
         ]
         preference_profile = json.loads(replayed_outputs[0]["output"])
         self.assertEqual(
-            preference_profile["representativeInteractions"][0][
-                "commodityId"
-            ],
+            preference_profile["representativeInteractions"][0]["commodityId"],
             "9001",
         )
 
@@ -1048,8 +1388,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(java_client.preference_calls, [])
 
     async def test_preference_history_id_cannot_be_recommended_without_search(
-        self,
-    ):
+        self, ):
         openai_client = StubOpenAIClient([
             {
                 "output": [{
@@ -1061,11 +1400,8 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 "usage": {},
             },
             {
-                "output": [
-                    structured_output_message(
-                        commodity_ids=["9001"],
-                    )
-                ],
+                "output":
+                [structured_output_message(commodity_ids=["9001"], )],
                 "usage": {},
             },
         ])
@@ -1098,14 +1434,17 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "arguments": '{"keywords":["教材"],"limit":30}',
         }
         openai_client = StubOpenAIClient([
-            {"output": [preference_call], "usage": {}},
-            {"output": [search_call], "usage": {}},
             {
-                "output": [
-                    structured_output_message(
-                        commodity_ids=["1001"],
-                    )
-                ],
+                "output": [preference_call],
+                "usage": {}
+            },
+            {
+                "output": [search_call],
+                "usage": {}
+            },
+            {
+                "output":
+                [structured_output_message(commodity_ids=["1001"], )],
                 "usage": {},
             },
         ])
@@ -1143,13 +1482,17 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "type": "function_call",
             "call_id": "call-2",
             "name": "search_commodities",
-            "arguments": (
-                '{"keywords":["笔记本"],"maxPrice":3000,"limit":15}'
-            ),
+            "arguments": ('{"keywords":["笔记本"],"maxPrice":3000,"limit":15}'),
         }
         openai_client = StubOpenAIClient([
-            {"output": [first_call], "usage": {}},
-            {"output": [second_call], "usage": {}},
+            {
+                "output": [first_call],
+                "usage": {}
+            },
+            {
+                "output": [second_call],
+                "usage": {}
+            },
             {
                 "output": [
                     structured_output_message(
@@ -1290,7 +1633,10 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
         empty_answer_client = StubOpenAIClient([{
             "output": [{
                 "type": "message",
-                "content": [{"type": "output_text", "text": "  "}],
+                "content": [{
+                    "type": "output_text",
+                    "text": "  "
+                }],
             }],
             "usage": {},
         }])
@@ -1314,13 +1660,13 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "arguments": '{"limit":20}',
         }
         openai_client = StubOpenAIClient([
-            {"output": [function_call], "usage": {}},
             {
-                "output": [
-                    structured_output_message(
-                        commodity_ids=["9999"],
-                    )
-                ],
+                "output": [function_call],
+                "usage": {}
+            },
+            {
+                "output":
+                [structured_output_message(commodity_ids=["9999"], )],
                 "usage": {},
             },
         ])
@@ -1342,7 +1688,8 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
     async def test_model_refusal_is_mapped(self):
         openai_client = StubOpenAIClient([{
             "output": [{
-                "type": "message",
+                "type":
+                "message",
                 "content": [{
                     "type": "refusal",
                     "refusal": "无法处理当前请求",
@@ -1367,6 +1714,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ShoppingGuidePromptTests(unittest.TestCase):
+
     def test_search_limit_is_required_and_allows_up_to_forty(self):
         with self.assertRaises(ValidationError):
             CommoditySearchArguments.model_validate({})
@@ -1377,9 +1725,8 @@ class ShoppingGuidePromptTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             CommoditySearchArguments(limit=41)
 
-        limit_schema = SEARCH_COMMODITIES_TOOL["parameters"][
-            "properties"
-        ]["limit"]
+        limit_schema = SEARCH_COMMODITIES_TOOL["parameters"]["properties"][
+            "limit"]
         self.assertEqual(limit_schema["minimum"], 1)
         self.assertEqual(limit_schema["maximum"], 40)
         self.assertEqual(
@@ -1398,15 +1745,13 @@ class ShoppingGuidePromptTests(unittest.TestCase):
         )
         self.assertIn(
             "不要用模型自行联想到的品牌、书名或具体商品",
-            SEARCH_COMMODITIES_TOOL["parameters"]["properties"][
-                "keywords"
-            ]["description"],
+            SEARCH_COMMODITIES_TOOL["parameters"]["properties"]["keywords"]
+            ["description"],
         )
         self.assertIn(
             "不得猜测",
-            SEARCH_COMMODITIES_TOOL["parameters"]["properties"][
-                "excludeCommodityIds"
-            ]["description"],
+            SEARCH_COMMODITIES_TOOL["parameters"]["properties"]
+            ["excludeCommodityIds"]["description"],
         )
         self.assertIn(
             "用户明确要求个性化推荐，或需求宽泛且缺少筛选依据时调用",
@@ -1452,25 +1797,24 @@ class ShoppingGuidePromptTests(unittest.TestCase):
             with self.subTest(contract=contract):
                 self.assertIn(contract, system_prompt)
 
-        fixed_reply = (
-            "这个问题不属于校园二手交易咨询范围。"
-            "我可以帮你查找或比较平台商品，也可以提供二手选购、"
-            "验货、面交和支付安全建议。"
-        )
+        fixed_reply = ("这个问题不属于校园二手交易咨询范围。"
+                       "我可以帮你查找或比较平台商品，也可以提供二手选购、"
+                       "验货、面交和支付安全建议。")
         self.assertIn(fixed_reply, system_prompt)
         self.assertLessEqual(len(SYSTEM_PROMPT), 1200)
 
-    def test_build_messages_preserves_context_history_and_current_turn_order(self):
-        request = AgentRunRequest(
-            userId=1,
-            conversationId=2,
-            message="再多找找，可以放宽一点要求",
-            shoppingContext={
+    def test_build_messages_preserves_context_history_and_current_turn_order(
+            self):
+        request = AgentRunRequest.model_validate({
+            "userId": 1,
+            "conversationId": 2,
+            "message": "再多找找，可以放宽一点要求",
+            "shoppingContext": {
                 "budgetMax": 100,
                 "usageScene": "寝室",
             },
-            memorySummary="用户想找寝室可用的生活用品",
-            history=[
+            "memorySummary": "用户想找寝室可用的生活用品",
+            "history": [
                 {
                     "role": "USER",
                     "content": "我想看看100元内的生活用品",
@@ -1480,7 +1824,7 @@ class ShoppingGuidePromptTests(unittest.TestCase):
                     "content": "当前找到风扇和台灯。",
                 },
             ],
-        )
+        })
 
         rag_reference = "[知识 ID: GUIDE:test#one]\n这是测试知识正文。"
         messages = build_messages(request, rag_reference)
@@ -1544,69 +1888,77 @@ class ShoppingGuidePromptTests(unittest.TestCase):
 
     def test_history_rejects_invalid_role_and_more_than_ten_messages(self):
         with self.assertRaises(ValidationError):
-            AgentRunRequest(
-                userId=1,
-                conversationId=2,
-                message="继续推荐",
-                history=[{
+            AgentRunRequest.model_validate({
+                "userId": 1,
+                "conversationId": 2,
+                "message": "继续推荐",
+                "history": [{
                     "role": "SYSTEM",
                     "content": "非法历史消息",
                 }],
-            )
+            })
 
-        history = [
-            {
-                "role": "USER" if index % 2 == 0 else "ASSISTANT",
-                "content": f"历史消息 {index}",
-            }
-            for index in range(11)
-        ]
+        history = [{
+            "role": "USER" if index % 2 == 0 else "ASSISTANT",
+            "content": f"历史消息 {index}",
+        } for index in range(11)]
         with self.assertRaises(ValidationError):
-            AgentRunRequest(
-                userId=1,
-                conversationId=2,
-                message="继续推荐",
-                history=history,
-            )
+            AgentRunRequest.model_validate({
+                "userId": 1,
+                "conversationId": 2,
+                "message": "继续推荐",
+                "history": history,
+            })
 
 
 class HealthTests(unittest.IsolatedAsyncioTestCase):
+
     async def test_agent_and_health_routes_share_service_instance(self):
         self.assertIs(agent_module.agent_service, health_module.agent_service)
 
-    async def test_health_reflects_model_and_internal_token_configuration(self):
+    async def test_health_reflects_model_and_internal_token_configuration(
+            self):
         original_settings = health_module.settings
         try:
             health_module.settings = make_settings()
             self.assertEqual((await health_module.health())["status"], "UP")
 
             health_module.settings = make_settings(openai_api_key="")
-            self.assertEqual((await health_module.health())["status"], "DEGRADED")
+            self.assertEqual((await health_module.health())["status"],
+                             "DEGRADED")
 
             health_module.settings = make_settings(internal_token="")
-            self.assertEqual((await health_module.health())["status"], "DEGRADED")
+            self.assertEqual((await health_module.health())["status"],
+                             "DEGRADED")
         finally:
             health_module.settings = original_settings
 
-    async def test_health_reports_shared_rag_readiness_without_affecting_status(self):
+    async def test_health_reports_shared_rag_readiness_without_affecting_status(
+            self):
         original_settings = health_module.settings
         original_service = health_module.agent_service
         try:
             health_module.settings = make_settings(rag_enabled=True)
-            index_store = type("Index", (), {"metadata": {
-                "buildId": "build-2",
-                "guideDocumentCount": 5,
-                "postDocumentCount": 8,
-                "postSnapshotAt": "2026-08-17T08:00:00+00:00",
-            }})()
+            index_store = type(
+                "Index", (), {
+                    "metadata": {
+                        "buildId": "build-2",
+                        "guideDocumentCount": 5,
+                        "postDocumentCount": 8,
+                        "postSnapshotAt": "2026-08-17T08:00:00+00:00",
+                    }
+                })()
             retriever = type("Retriever", (), {"index_store": index_store})()
             health_module.agent_service = type(
-                "Service", (), {"rag_service": type("Rag", (), {
-                    "ready": True,
-                    "retriever": retriever,
-                    "reload_error": "broken-new-build",
-                })()}
-            )()
+                "Service", (), {
+                    "rag_service":
+                    type(
+                        "Rag", (), {
+                            "ready": True,
+                            "retriever": retriever,
+                            "reload_error": "broken-new-build",
+                        })()
+                })()
             result = await health_module.health()
             self.assertEqual(result["status"], "UP")
             self.assertTrue(result["ragEnabled"])

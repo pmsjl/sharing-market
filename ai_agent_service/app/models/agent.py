@@ -223,7 +223,7 @@ class AgentResponseOutput(AgentOutput):
     )
 
 
-def _inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
+def inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
     """展开 Pydantic 生成的本地 $defs/$ref，兼容不支持引用的中转服务。"""
     root_schema = deepcopy(schema)
     definitions = root_schema.get("$defs", {})
@@ -272,7 +272,7 @@ def _inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
     return resolved_schema
 
 
-_AGENT_FINAL_RESULT_SCHEMA = _inline_local_schema_refs(
+_AGENT_FINAL_RESULT_SCHEMA = inline_local_schema_refs(
     AgentFinalResult.model_json_schema(mode="validation"),
 )
 

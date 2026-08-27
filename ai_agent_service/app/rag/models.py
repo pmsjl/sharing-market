@@ -18,6 +18,19 @@ CourseMatchMode = Literal[
     "constraints_no_match",
     "none",
 ]
+CourseEvidenceState = Literal[
+    "answerable",
+    "clue_only",
+    "unknown_after_search",
+]
+PostRetrievalMode = Literal["none", "primary", "course_auxiliary"]
+RetrievalStatus = Literal["success", "unavailable", "failed"]
+PostValidationStatus = Literal[
+    "not_needed",
+    "success",
+    "no_valid_candidates",
+    "failed",
+]
 
 
 class GuideDocumentMeta(BaseModel):
@@ -159,16 +172,18 @@ class RagQueryPlan(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    should_retrieve: bool
-    include_posts: bool = False
+    post_retrieval_mode: PostRetrievalMode = "none"
     course_document_ids: list[str] = Field(default_factory=list)
-    extra_categories: list[KnowledgeCategory] = Field(default_factory=list)
-    fallback_categories: list[KnowledgeCategory] = Field(default_factory=list)
+    course_a_quota: int = Field(default=2, ge=0)
+    include_course_purchase_policy: bool = False
+    primary_guide_categories: list[KnowledgeCategory] = Field(
+        default_factory=list)
+    fallback_guide_categories: list[KnowledgeCategory] = Field(
+        default_factory=list)
+    course_auxiliary_categories: list[KnowledgeCategory] = Field(
+        default_factory=list)
     course_relation_summaries: list[CourseRelationSummary] = Field(
         default_factory=list)
-    course_match_mode: CourseMatchMode = "none"
-    matched_course_names: list[str] = Field(default_factory=list)
-    constraints_fallback: bool = False
 
 
 class RetrievedChunk(BaseModel):
@@ -189,13 +204,32 @@ class RetrievedChunk(BaseModel):
 
 
 class RagContext(BaseModel):
-    """一条消息对应的 RAG 上下文；degraded 表示可选检索已降级。"""
+    """回答阶段可使用的可信检索上下文。"""
 
     model_config = ConfigDict(extra="forbid")
 
-    query: str
     plan: RagQueryPlan
     retrieved: list[RetrievedChunk] = Field(
         max_length=8)  # 5 个 GUIDE + 3 个 POST
-    post_degraded: bool = False
-    degraded: bool = False
+    course_evidence_state: CourseEvidenceState | None = None
+
+
+class RagDiagnostics(BaseModel):
+    """只用于日志和评测的检索诊断，不注入回答模型。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    retrieval_status: RetrievalStatus
+    post_validation_status: PostValidationStatus = "not_needed"
+    failure_reason: str | None = None
+    course_match_mode: CourseMatchMode = "none"
+    constraints_fallback: bool = False
+
+
+class RagResolution(BaseModel):
+    """分离回答证据与检索诊断。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    context: RagContext
+    diagnostics: RagDiagnostics
