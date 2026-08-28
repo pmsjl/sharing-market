@@ -82,7 +82,7 @@ sharing-market-v1.0/
 ### 1. 基础依赖
 
 - Java 17、Maven
-- Node.js 与 pnpm
+- Node.js 22.16.0 与 npm 10.9.2
 - MySQL 8，schema `trade`
 - Redis
 - Python Conda 环境 `fastapi`
@@ -119,8 +119,8 @@ conda run -n fastapi python -m app.rag.rebuild_index
 
 ```powershell
 cd market_frontend
-pnpm install
-pnpm dev
+npm ci
+npm run dev
 ```
 
 默认地址：`http://localhost:8080`。
@@ -139,7 +139,7 @@ Copy-Item .env.development.local.example .env.development.local
 
 1. 在 Cloudflare Dashboard 打开 **Workers & Pages → Pages → 你的项目 → Settings → Builds & deployments**。
 2. 将 **Root directory** 设置为 `market_frontend`（如果仓库根目录就是前端目录，则不需要填写）。
-3. 构建命令填写 `npm run build`，构建输出目录填写 `dist`。Node.js 版本按项目要求设置为兼容 Node 版本，推荐使用当前项目本地验证通过的版本。
+3. 在环境变量中设置 `SKIP_DEPENDENCY_INSTALL=1`，构建命令填写 `npm ci && npm run build`，构建输出目录填写 `dist`。项目通过 `.node-version` 固定使用 Node.js 22.16.0，并通过唯一的 `package-lock.json` 固定 npm 依赖树。
 4. 在 **Settings → Environment variables** 中，分别切换 **Production** 和 **Preview**，新增：
 
    - **Name**：`VUE_APP_API_BASE_URL`
@@ -165,8 +165,8 @@ mvn test
 
 # Vue
 cd market_frontend
-pnpm lint
-pnpm build
+npm run lint
+npm run build
 ```
 
 2026-08-19 实测基线：

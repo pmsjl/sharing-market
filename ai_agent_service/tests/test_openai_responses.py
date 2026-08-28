@@ -1302,6 +1302,23 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             repair_schema["properties"]["output"]["properties"]["knowledgeReferences"]["items"]["enum"],
             ["K1", "K2"],
         )
+        audit = service.pop_reference_audit("request-repair")
+        self.assertEqual(
+            audit["referenceMap"]["K2"],
+            "GUIDE:course-repo-COMP2052#环境",
+        )
+        self.assertEqual(audit["targetedReferenceRepairCount"], 1)
+        self.assertEqual(
+            [item["action"] for item in audit["referenceAttempts"]],
+            ["targeted_reference_repair", "accepted"],
+        )
+        self.assertEqual(audit["finalKnowledgeReferences"], ["K2"])
+        self.assertEqual(
+            audit["finalKnowledgeChunkIds"],
+            ["GUIDE:course-repo-COMP2052#环境"],
+        )
+        self.assertTrue(audit["mappingSucceeded"])
+        self.assertEqual(service.pop_reference_audit("request-repair"), {})
 
     async def test_reference_alias_context_never_exposes_real_chunk_ids(self):
         reference = build_rag_reference_message(rag_context())

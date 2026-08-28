@@ -2,13 +2,12 @@
   "name": "vue3_trade_frontend",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.2",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "dev": "pnpm run serve",
-    "pnpm build": "pnpm run build",
-    "npm dev": "npm run serve",
+    "dev": "vue-cli-service serve",
     "openapi": "ts-node openapi.config.ts"
   },
   "eslintIgnore": [
@@ -28,7 +27,7 @@
     "pinia": "^2.1.4",
     "qrcode-vue3": "^1.7.1",
     "sass-loader": "^14.1.1",
-    "vue": "^3.2.13",
+    "vue": "3.3.4",
     "vue-clipboard3": "^2.0.0",
     "vue-router": "^4.0.3",
     "vue3-emoji-picker": "^1.1.8"
@@ -36,14 +35,14 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
-    "@umijs/openapi": "^1.13.0",
+    "@umijs/openapi": "1.13.0",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-plugin-router": "~5.0.0",
     "@vue/cli-plugin-typescript": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
     "@vue/eslint-config-typescript": "^9.1.0",
-    "element-plus": "^2.9.0",
+    "element-plus": "2.9.3",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
@@ -51,7 +50,11 @@
     "openapi-typescript-codegen": "^0.29.0",
     "prettier": "^2.4.1",
     "sass": "^1.63.6",
-    "typescript": "~4.5.5"
+    "typescript": "4.5.5"
+  },
+  "overrides": {
+    "@types/lodash": "4.14.195",
+    "@types/lodash-es": "4.17.7"
   },
   "eslintConfig": {
     "root": true,
