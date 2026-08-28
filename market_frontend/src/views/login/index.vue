@@ -1,3 +1,4 @@
+P备2023044565号-1
 <template>
   <div class="auth-page login_container" ref="authPage">
     <section class="auth-board">
@@ -71,18 +72,6 @@
       </el-form>
     </section>
 
-    <p class="login_footer">
-      <i class="iconfont icon-banquan"></i>
-      2025 小白条出品 |
-      <a href="https://beian.miit.gov.cn/#/Integrated/index">
-        浙ICP备2023044565号-1
-      </a>
-      |
-      <a href="https://beian.mps.gov.cn/#/query/webSearch">
-        <img src="../../assets/images/logoPolice.png" alt="" />
-        浙公网安备33028202001002号
-      </a>
-    </p>
   </div>
 </template>
 
