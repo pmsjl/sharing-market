@@ -213,6 +213,10 @@ class AgentService:
             settings,
             self.openai_client,
         )
+        # Evaluation-only audit data is kept out of the public Java/API model.
+        # Request IDs are unique, so concurrent Golden cases cannot overwrite
+        # each other. Consumers must pop entries after each completed request.
+        self._reference_audits: dict[str, dict[str, Any]] = {}
 
     async def run(self, request_id: str,
                   request: AgentRunRequest) -> AgentRunResponse:
@@ -286,6 +290,7 @@ class AgentService:
         else:
             rag_context = None
         knowledge_map, course_map = build_reference_maps(rag_context)
+        reference_attempts: list[dict[str, Any]] = []
         rag_reference = build_rag_reference_message(rag_context, knowledge_map, course_map)
         execution_context = self._build_execution_context(
             route_decision,
@@ -376,6 +381,18 @@ class AgentService:
                         raise
                     if not self._uses_alias_references(final_result.output):
                         raise
+                    reference_attempts.append({
+                        "attempt": 1,
+                        "allowedKnowledgeReferences": list(knowledge_map),
+                        "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
+                        "invalidKnowledgeReferences": sorted(
+                            set(final_result.output.knowledgeReferences) - set(knowledge_map)),
+                        "allowedCourseReferences": list(course_map),
+                        "modelCourseReferences": list(final_result.output.courseReferences),
+                        "invalidCourseReferences": sorted(
+                            set(final_result.output.courseReferences) - set(course_map)),
+                        "action": "targeted_reference_repair",
+                    })
                     try:
                         repaired = await self._repair_model_references(
                             input_items,
@@ -455,6 +472,28 @@ class AgentService:
                             final_error.retryable,
                             diagnostics=diagnostics,
                         ) from final_error
+                if reference_attempts:
+                    reference_attempts.append({
+                        "attempt": 2,
+                        "allowedKnowledgeReferences": list(knowledge_map),
+                        "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
+                        "invalidKnowledgeReferences": [],
+                        "allowedCourseReferences": list(course_map),
+                        "modelCourseReferences": list(final_result.output.courseReferences),
+                        "invalidCourseReferences": [],
+                        "action": "accepted",
+                    })
+                else:
+                    reference_attempts.append({
+                        "attempt": 1,
+                        "allowedKnowledgeReferences": list(knowledge_map),
+                        "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
+                        "invalidKnowledgeReferences": [],
+                        "allowedCourseReferences": list(course_map),
+                        "modelCourseReferences": list(final_result.output.courseReferences),
+                        "invalidCourseReferences": [],
+                        "action": "accepted",
+                    })
                 break
 
             if tool_rounds >= self.settings.max_tool_rounds:
@@ -493,6 +532,19 @@ class AgentService:
                 self._build_related_post_candidates(rag_context)
             ],
         })
+        self._reference_audits[request_id] = {
+            "referenceMap": {**knowledge_map, **course_map},
+            "referenceAttempts": reference_attempts,
+            "targetedReferenceRepairCount": sum(
+                item["action"] == "targeted_reference_repair"
+                for item in reference_attempts
+            ),
+            "finalKnowledgeReferences": list(final_result.output.knowledgeReferences),
+            "finalCourseReferences": list(final_result.output.courseReferences),
+            "finalKnowledgeChunkIds": list(response_output.knowledgeChunkIds),
+            "finalCourseRelationIds": list(response_output.courseRelationIds),
+            "mappingSucceeded": True,
+        }
 
         return AgentRunResponse(
             requestId=request_id,
@@ -509,6 +561,10 @@ class AgentService:
             latencyMs=latency_ms,
             traces=traces,
         )
+
+    def pop_reference_audit(self, request_id: str) -> dict[str, Any]:
+        """Return and discard model-internal reference diagnostics for evals."""
+        return self._reference_audits.pop(request_id, {})
 
     @staticmethod
     def _uses_alias_references(output: AgentModelOutput) -> bool:
