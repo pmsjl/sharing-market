@@ -1,5 +1,7 @@
 # Golden v1.1 Frozen Baseline Summary
 
+> Historical-result notice: the aggregate metrics below come from the 2026-08-21 pre-correction dataset. On 2026-08-28, four public Dev cases received reviewed scope corrections. These numbers have not been recomputed and must not be presented as results for the corrected dataset version.
+
 The frozen evaluation contains 200 cases: 140 public Dev cases and a withheld 60-case Test split. The following aggregate baseline was produced on the full frozen set on 2026-08-21.
 
 ## Retrieval

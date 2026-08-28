@@ -125,6 +125,33 @@ pnpm dev
 
 默认地址：`http://localhost:8080`。
 
+本地开发会优先读取未提交的 `.env.development.local`，因此不会因为仓库中的示例域名而失去本地调试能力。首次克隆后可执行：
+
+```powershell
+Copy-Item .env.development.local.example .env.development.local
+```
+
+然后按本机 Java 后端地址修改 `VUE_APP_API_BASE_URL`。`.env.development.local` 已被忽略，不要提交真实内网地址、密钥或其他机器配置。
+
+### 部署到 Cloudflare Pages
+
+本项目使用 Vue CLI，环境变量在**构建时**注入前端 bundle，而不是浏览器运行时动态读取。Cloudflare Pages 建议这样配置：
+
+1. 在 Cloudflare Dashboard 打开 **Workers & Pages → Pages → 你的项目 → Settings → Builds & deployments**。
+2. 将 **Root directory** 设置为 `market_frontend`（如果仓库根目录就是前端目录，则不需要填写）。
+3. 构建命令填写 `npm run build`，构建输出目录填写 `dist`。Node.js 版本按项目要求设置为兼容 Node 版本，推荐使用当前项目本地验证通过的版本。
+4. 在 **Settings → Environment variables** 中，分别切换 **Production** 和 **Preview**，新增：
+
+   - **Name**：`VUE_APP_API_BASE_URL`
+   - **Value**：实际部署的 Java API 地址，例如 `https://api.your-domain.example`
+   - **Type**：`Text`
+
+   该值不要填写 `http://localhost:8102`，也不要照抄仓库里的 `https://api.example.com`；后者只是可提交的占位示例域名。Production 应填写线上后端地址，Preview 可填写测试后端地址。
+5. 如果使用 Cloudflare 的 **Production** 与 **Preview** 两套环境，两个环境都要分别保存变量。保存后执行 **Redeploy**；修改 Pages 环境变量不会改变已经生成的旧 bundle。
+6. 部署后在浏览器开发者工具的 Network 中确认请求已经发往配置的 API 域名，而不是 `localhost`。同时确认后端已放行 Cloudflare Pages 的正式域名和预览域名 CORS。前端请求启用了 `withCredentials`，后端不能用 `Access-Control-Allow-Origin: *` 配合凭据请求，Cookie 的 `Secure`、`SameSite` 和域名策略也必须与跨域部署匹配。
+
+仓库中的 `.env.development`、`.env.production` 和 `openapi.config.ts` 只保留 `https://api.example.com` 这种无效但安全的示例地址；本地地址放在 `.env.development.local`，线上真实地址放在 Cloudflare Pages 环境变量中。OpenAPI 代码生成如需访问本地文档地址，可先设置 `OPENAPI_SCHEMA_URL=http://localhost:8102/api/v2/api-docs` 再执行 `npm run openapi`；该变量不是前端运行时必需变量。
+
 ## 验证
 
 ```powershell

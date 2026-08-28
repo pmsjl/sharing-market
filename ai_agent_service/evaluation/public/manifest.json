@@ -1,7 +1,7 @@
 {
   "datasetName": "sharing-market-rag-public-dev",
-  "datasetVersion": "public-dev-v1.1",
-  "sourceDatasetVersion": "golden-v1.1",
+  "datasetVersion": "public-dev-v1.1-scope-corrected-20260828",
+  "sourceDatasetVersion": "golden-v1.1-scope-corrected-20260828",
   "publishedAt": "2026-08-28",
   "split": "dev",
   "caseCount": 140,
@@ -14,17 +14,27 @@
   },
   "routeCounts": {
     "clarify": 4,
-    "out_of_scope": 3,
-    "retrieve": 132,
+    "out_of_scope": 4,
+    "retrieve": 131,
     "skip_rag": 1
   },
   "knowledgeStateCounts": {
-    "answerable": 99,
-    "not_applicable": 8,
+    "answerable": 98,
+    "not_applicable": 9,
     "unknown_after_search": 33
   },
-  "qrelCount": 184,
-  "sha256": "921ccefef0e16c38e3a6ba2ba94fa541fda339800e23d0dbfefd25e680e5fafa",
+  "qrelCount": 183,
+  "sha256": "5ff77f6540815018ae18ffc7210828d99f5e52f42b4d4ad6c5be08f1e5fb4583",
+  "scopeCorrection": {
+    "correctedAt": "2026-08-28",
+    "caseIds": [
+      "post-legacy-002",
+      "campus-campus-lifecycle-new-student-01",
+      "campus-campus-lifecycle-new-student-02",
+      "campus-campus-lifecycle-dorm-move-checkout-01"
+    ],
+    "historicalBaselineMetricsRecomputed": false
+  },
   "schema": "../schemas/golden_case.schema.json",
   "indexSnapshot": {
     "documentCount": 359,

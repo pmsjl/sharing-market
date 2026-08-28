@@ -56,7 +56,7 @@ def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
         case for case in cases
         if case["expectedRoute"] in {"clarify", "out_of_scope"}
     ]
-    assert len(semantic_terminal_cases) == 7
+    assert len(semantic_terminal_cases) == 8
     assert all(
         build_fallback_decision(
             _request(case["query"]),
@@ -197,6 +197,12 @@ def test_previous_golden_guardrail_cases_are_decided_by_llm() -> None:
         ("明天晚上宿舍楼会不会停电？", "out_of_scope", [], []),
         ("寒暑假离校前，宿舍物品和电器要注意什么？", "out_of_scope", [], []),
         ("暑假只离校几周，可以让宿舍电器一直通电吗？", "out_of_scope", [], []),
+        ("Docker、WSL2和数据库一起开，16GB内存够不够", "out_of_scope", [], []),
+        ("准备买二手笔记本跑Docker、WSL2和数据库，16GB内存够不够？",
+         "continue", ["transaction_experience"], []),
+        ("往届新生报到安排今年能直接照搬吗？", "out_of_scope", [], []),
+        ("往届攻略推荐的宿舍用品今年还能照着买吗？", "continue",
+         ["campus_dorm"], []),
     ]
 
     for query, disposition, domains, missing_fields in cases:
@@ -222,9 +228,73 @@ def test_previous_golden_guardrail_cases_are_decided_by_llm() -> None:
             HybridQueryRouter(_router_settings(),
                               client).resolve(_request(query)))
 
-        assert result.decision.route == disposition
+        expected_route = "retrieve" if disposition == "continue" else disposition
+        assert result.decision.route == expected_route
         assert result.diagnostics.decision_source == "llm"
         assert len(client.calls) == 1
+
+
+def test_router_prompt_requires_explicit_shopping_context_for_technical_and_campus_questions(
+) -> None:
+    payload = {
+        "disposition": "out_of_scope",
+        "commodity_intents": [],
+        "knowledge_domains": [],
+        "preference_mode": "not_needed",
+        "missing_fields": [],
+        "clarification_question": None,
+        "reason": "没有购买或交易上下文",
+        "confidence": 0.99,
+    }
+    client = _RouterClient(_route_response(payload))
+    result = asyncio.run(
+        HybridQueryRouter(_router_settings(), client).resolve(
+            _request("Docker、WSL2和数据库一起开，16GB内存够不够")))
+
+    assert result.decision.route == "out_of_scope"
+    input_items, text_format = client.calls[0]
+    system_prompt = input_items[0]["content"]
+    disposition_description = text_format["schema"]["properties"][
+        "disposition"]["description"]
+    required_contracts = [
+        "不能自行补出购物意图",
+        "单纯的新生报到手续、往届报到安排",
+        "明确出现购买、二手商品选择、验货或具体商品使用决策",
+    ]
+    for contract in required_contracts:
+        assert contract in system_prompt or contract in disposition_description
+
+
+def test_public_scope_corrections_are_frozen_in_dev_dataset() -> None:
+    dataset = (Path(__file__).resolve().parents[1] /
+               "evaluation/public/dev_v1_1.jsonl")
+    cases = {
+        row["caseId"]: row
+        for row in (
+            json.loads(line)
+            for line in dataset.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
+    }
+
+    technical = cases["post-legacy-002"]
+    assert technical["expectedRoute"] == "out_of_scope"
+    assert technical["expectedKnowledgeState"] == "not_applicable"
+    assert technical["qrels"] == []
+    assert technical["allowedSourceTypes"] == []
+    assert technical["preferredSourceType"] is None
+
+    new_student = cases["campus-campus-lifecycle-new-student-01"]
+    previous_guide = cases["campus-campus-lifecycle-new-student-02"]
+    move_checkout = cases["campus-campus-lifecycle-dorm-move-checkout-01"]
+    assert "宿舍用品" in new_student["query"]
+    assert "学校是否提供" in new_student["query"]
+    assert new_student["qrels"][0]["documentId"] == (
+        "GUIDE:campus-dorm-new-student-supplies")
+    assert "宿舍用品" in previous_guide["query"]
+    assert previous_guide["qrels"][0]["documentId"] == (
+        "GUIDE:campus-dorm-new-student-supplies")
+    assert "转卖、转赠或清理" in move_checkout["query"]
 
 
 def _router_settings(**overrides) -> Settings:
