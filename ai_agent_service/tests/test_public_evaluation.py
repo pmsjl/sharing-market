@@ -18,4 +18,4 @@ def test_public_evaluation_bundle_is_valid() -> None:
     result = module.validate()
 
     assert result["caseCount"] == 140
-    assert result["qrelCount"] == 184
+    assert result["qrelCount"] == 183

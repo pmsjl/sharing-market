@@ -196,6 +196,48 @@ class AgentOutput(BaseModel):
         return self
 
 
+class AgentModelOutput(BaseModel):
+    """模型专用结构；RAG引用只允许使用本轮短别名。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intent: AgentIntent = Field(description="本轮用户请求的主要业务意图。")
+    summary: str = Field(min_length=1, max_length=500)
+    memorySummary: str = Field(min_length=1, max_length=2000)
+    recommendations: list[AgentRecommendation] = Field(max_length=5)
+    purchaseAdvice: list[str] = Field(max_length=10)
+    warnings: list[str] = Field(max_length=10)
+    searchKeywords: list[str] = Field(max_length=5)
+    knowledgeReferences: list[str] = Field(
+        max_length=8,
+        description="只能填写本轮参考消息中出现的K1、K2等短引用别名；未使用时为空。",
+    )
+    courseReferences: list[str] = Field(
+        max_length=100,
+        description="只能填写本轮参考消息中出现的C1、C2等短引用别名；未使用时为空。",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_reference_keys(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            value = dict(value)
+            if "knowledgeReferences" not in value and "knowledgeChunkIds" in value:
+                value["knowledgeReferences"] = value.pop("knowledgeChunkIds")
+            if "courseReferences" not in value and "courseRelationIds" in value:
+                value["courseReferences"] = value.pop("courseRelationIds")
+        return value
+
+    @model_validator(mode="after")
+    def validate_recommendations(self):
+        commodity_ids = [item.commodityId for item in self.recommendations]
+        if len(commodity_ids) != len(set(commodity_ids)):
+            raise ValueError("recommendations 不能包含重复商品")
+        if self.recommendations and self.intent != AgentIntent.COMMODITY_RECOMMENDATION:
+            raise ValueError("存在商品推荐时 intent 必须为 COMMODITY_RECOMMENDATION")
+        return self
+
+
 class AgentFinalResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -205,7 +247,7 @@ class AgentFinalResult(BaseModel):
         description="直接展示给用户的完整中文回答，可以使用 Markdown。",
     )
 
-    output: AgentOutput = Field(
+    output: AgentModelOutput = Field(
         description=(
             "供 Java 落库、生成商品卡片和维护会话状态的"
             "结构化业务结果。"
@@ -275,6 +317,34 @@ def inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
 _AGENT_FINAL_RESULT_SCHEMA = inline_local_schema_refs(
     AgentFinalResult.model_json_schema(mode="validation"),
 )
+
+
+def build_agent_text_format(
+    knowledge_references: list[str],
+    course_references: list[str],
+) -> dict[str, Any]:
+    """为当前请求限制模型只能选择本轮短引用。"""
+    schema = deepcopy(_AGENT_FINAL_RESULT_SCHEMA)
+    output_schema = schema["properties"]["output"]
+    properties = output_schema["properties"]
+    for name, values in (
+        ("knowledgeReferences", knowledge_references),
+        ("courseReferences", course_references),
+    ):
+        prop = properties[name]
+        prop["items"] = {"type": "string", "enum": values} if values else {
+            "type": "string",
+            "enum": [],
+        }
+        limit = 8 if name == "knowledgeReferences" else 100
+        prop["maxItems"] = min(limit, len(values)) if values else 0
+    return {
+        "type": "json_schema",
+        "name": "agent_final_result",
+        "description": "校园二手导购的用户答案和结构化业务结果",
+        "strict": True,
+        "schema": schema,
+    }
 
 
 AGENT_FINAL_RESULT_TEXT_FORMAT = {

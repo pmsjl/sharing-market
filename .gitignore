@@ -168,6 +168,7 @@ dist-ssr/
 .env.*
 !.env.example
 !**/.env.example
+!**/.env.*.example
 !/market_frontend/.env.development
 !/market_frontend/.env.production
 

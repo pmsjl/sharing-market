@@ -19,3 +19,5 @@ python tools/validate_public_evaluation.py
 ```
 
 The public Dev split is suitable for implementation checks and reproducibility. It must not be presented as an untouched hidden benchmark after being used for development.
+
+On 2026-08-28, four public Dev cases received a reviewed scope correction. The filename remains `dev_v1_1.jsonl` for compatibility, while `public/manifest.json` identifies the corrected dataset version and exact Case IDs. Frozen metrics published from the 2026-08-21 pre-correction run remain historical until the corrected set is rerun.

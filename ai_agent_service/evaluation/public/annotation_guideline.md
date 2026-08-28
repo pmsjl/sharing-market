@@ -12,4 +12,10 @@ Each JSONL record describes one retrieval-routing case.
 
 GUIDE content takes priority for formal platform and course rules. Posts may support experience-oriented questions but cannot override formal rules. Real-time inventory, price, condition, and account-specific facts must not be inferred from static RAG documents.
 
+Scope is determined from the actual query and reliable conversation context, not from isolated technical nouns. Performance, configuration, compatibility, and suitability questions are in scope only when the user explicitly connects them to purchasing, selecting, inspecting, or using a specific commodity. Pure programming, hardware-performance, and system-configuration questions are `out_of_scope`.
+
+Campus lifecycle questions are in scope only when they explicitly concern acquiring, purchasing, reselling, transferring, disposing of, or checking the fit of personal items. General registration procedures, historical registration arrangements, vacation safety, and other campus administration questions are `out_of_scope`.
+
+The public Dev bundle received a scope-label correction on 2026-08-28. The corrected cases are listed in `manifest.json`; historical benchmark numbers from 2026-08-21 were not recomputed by that metadata-only publication step.
+
 The public records retain only a source label in `provenance` and a frozen status in `review`. Reviewer identities, review notes, construction details, and the hidden Test split are not published.

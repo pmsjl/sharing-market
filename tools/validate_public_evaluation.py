@@ -77,6 +77,11 @@ def validate() -> dict[str, Any]:
     assert sum(manifest["domainCounts"].values()) == 140
     assert Counter(row["domain"] for row in rows) == Counter(
         manifest["domainCounts"])
+    assert Counter(row["expectedRoute"] for row in rows) == Counter(
+        manifest["routeCounts"])
+    assert Counter(row["expectedKnowledgeState"] for row in rows) == Counter(
+        manifest["knowledgeStateCounts"])
+    assert manifest["qrelCount"] == sum(len(row["qrels"]) for row in rows)
 
     return {
         "caseCount": len(rows),

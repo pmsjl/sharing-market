@@ -2,10 +2,13 @@
 node_modules
 /dist
 
-
-# local env files
+# Local environment overrides. Do not commit machine-specific URLs or secrets.
 .env.local
 .env.*.local
+
+# Keep shared, non-secret environment examples trackable.
+!.env.example
+!.env.*.example
 
 # Log files
 npm-debug.log*
