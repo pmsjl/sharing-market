@@ -61,24 +61,16 @@ conda run -n fastapi python -m app.rag.rebuild_index
 
 `GET /health` 会分别返回 `ragEnabled`、`ragReady`、`ragBuildId`、GUIDE/Post 文档数、Post 快照时间和最近一次热加载错误。
 
-## Retrieval Golden Dataset v1
+## Public RAG Evaluation
 
-第一版检索真值集位于 `evaluation/golden/golden_dataset_v1.jsonl`，包含
-200 条单轮 Case、238 个分级 qrel，以及按文档/场景分组隔离的 140 条 Dev
-和 60 条 Test。它覆盖平台规则、课程资料、校园指南、260 篇 Post 和无证据、
-澄清、实时工具边界。
+仓库公开脱敏后的 Golden v1.1 Dev 分区，共 140 条单轮 Case。
+独立的 60 条 Test、原始模型输出、Trace、用量和人工复核记录不在
+Public 仓库中发布。
 
-从仓库根目录重建固定资产：
-
-```powershell
-conda run -n fastapi python tools/build_golden_dataset_v1.py
-```
-
-只验证现有 Dataset、Manifest Hash、当前索引文档兼容性和分层门禁：
+从仓库根目录验证公开 Dataset、Schema 和 Manifest Hash：
 
 ```powershell
-conda run -n fastapi python tools/build_golden_dataset_v1.py --check-only
+python tools/validate_public_evaluation.py
 ```
 
-数据结构、标注规则、已知限制和后续版本规则见 `evaluation/README.md`。
-独立人工复核完成前，不得把该数据集后续跑出的指标作为对外简历数字。
+数据结构、标注语义、聚合基线与公开范围见 `evaluation/README.md`。

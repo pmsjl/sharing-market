@@ -1,0 +1,43 @@
+{
+  "datasetName": "sharing-market-rag-public-dev",
+  "datasetVersion": "public-dev-v1.1",
+  "sourceDatasetVersion": "golden-v1.1",
+  "publishedAt": "2026-08-28",
+  "split": "dev",
+  "caseCount": 140,
+  "domainCounts": {
+    "boundary": 14,
+    "campus": 14,
+    "course": 49,
+    "platform": 28,
+    "post": 35
+  },
+  "routeCounts": {
+    "clarify": 4,
+    "out_of_scope": 3,
+    "retrieve": 132,
+    "skip_rag": 1
+  },
+  "knowledgeStateCounts": {
+    "answerable": 99,
+    "not_applicable": 8,
+    "unknown_after_search": 33
+  },
+  "qrelCount": 184,
+  "sha256": "921ccefef0e16c38e3a6ba2ba94fa541fda339800e23d0dbfefd25e680e5fafa",
+  "schema": "../schemas/golden_case.schema.json",
+  "indexSnapshot": {
+    "documentCount": 359,
+    "chunkCount": 1611,
+    "guideDocumentCount": 99,
+    "postDocumentCount": 260,
+    "embeddingModel": "text-embedding-v4",
+    "embeddingDimensions": 1024,
+    "chunkingVersion": "guide-post-v2"
+  },
+  "limitations": [
+    "The 60-case test split and its qrels are withheld.",
+    "Raw model outputs, traces, request identifiers, usage data, and human-review records are not published.",
+    "This public split supports development and reproducibility; it is not an independent hidden benchmark."
+  ]
+}

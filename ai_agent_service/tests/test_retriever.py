@@ -86,6 +86,7 @@ def _retriever() -> Retriever:
         rag_post_top_k=3,
         rag_course_auxiliary_post_top_k=3,
         rag_post_score_threshold=0.5,
+        rag_post_max_chunks_per_document=1,
     )
     return Retriever(settings, _QueryEmbedder(), store)
 
