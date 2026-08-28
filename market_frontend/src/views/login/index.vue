@@ -1,4 +1,3 @@
-P备2023044565号-1
 <template>
   <div class="auth-page login_container" ref="authPage">
     <section class="auth-board">
@@ -71,7 +70,6 @@ P备2023044565号-1
         <div class="form-stamp" aria-hidden="true">校园市集 · 已核验</div>
       </el-form>
     </section>
-
   </div>
 </template>
 
