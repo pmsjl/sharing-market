@@ -1237,6 +1237,28 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                     await service.run("request-1", self.make_request())
                 self.assertEqual(raised.exception.agent_error_key,
                                  "AI_MODEL_RESPONSE_INVALID")
+                diagnostics = raised.exception.diagnostics
+                validation = diagnostics["referenceValidation"]
+                self.assertEqual(
+                    validation["allowedChunkIds"],
+                    ["GUIDE:course-repo-COMP2052#教材",
+                     "GUIDE:course-repo-COMP2052#环境"],
+                )
+                self.assertEqual(
+                    validation["allowedRelationIds"],
+                    ["GUIDE:course-relation-one"],
+                )
+                self.assertEqual(validation["modelChunkIds"], chunk_ids)
+                self.assertEqual(validation["modelRelationIds"], relation_ids)
+                self.assertEqual(
+                    validation["invalidChunkIds"],
+                    chunk_ids if chunk_ids else [],
+                )
+                self.assertEqual(
+                    validation["invalidRelationIds"],
+                    relation_ids if relation_ids else [],
+                )
+                self.assertIn("modelOutput", diagnostics)
 
     async def test_invalid_text_verbosity_is_rejected_before_model_call(self):
         openai_client = StubOpenAIClient([])
