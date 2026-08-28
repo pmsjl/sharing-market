@@ -47,7 +47,7 @@ from app.routing.query_router import (
     OutOfScopeRouteDecision,
     RetrieveRouteDecision,
     RouteDiagnostics,
-    RouteResoluton,
+    RouteResolution,
     SkipRagRouteDecision,
     ToolPolicy,
 )

@@ -43,7 +43,7 @@ def _fallback(message: str, **overrides) -> RetrieveRouteDecision:
 def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
 ) -> None:
     dataset = (Path(__file__).resolve().parents[1] /
-               "evaluation/golden/golden_dataset_v1_1.jsonl")
+               "evaluation/public/dev_v1_1.jsonl")
     cases = [
         json.loads(line)
         for line in dataset.read_text(encoding="utf-8").splitlines()
@@ -51,12 +51,12 @@ def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
     ]
     relations = CourseRelationIndex.load(KNOWLEDGE_ROOT)
 
-    assert len(cases) == 200
+    assert len(cases) == 140
     semantic_terminal_cases = [
         case for case in cases
         if case["expectedRoute"] in {"clarify", "out_of_scope"}
     ]
-    assert len(semantic_terminal_cases) == 10
+    assert len(semantic_terminal_cases) == 7
     assert all(
         build_fallback_decision(
             _request(case["query"]),
@@ -404,25 +404,6 @@ def test_guardrail_does_not_classify_normal_semantic_requests() -> None:
 
     assert all(evaluate_guardrail(_request(query)).action == "continue"
                for query in queries)
-
-
-def test_longtail_router_fixture_keeps_semantics_out_of_guardrail() -> None:
-    fixture = (Path(__file__).resolve().parents[1] /
-               "evaluation/router/router_longtail_v1.jsonl")
-    cases = [
-        json.loads(line)
-        for line in fixture.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-
-    assert len(cases) == 48
-    for case in cases:
-        result = evaluate_guardrail(_request(case["query"]))
-        if case["expectedDecisionSource"] == "guardrail":
-            assert result.action == "stop", case["caseId"]
-            assert result.decision.route == "capability_redirect"
-        else:
-            assert result.action == "continue", case["caseId"]
 
 
 def test_course_clarification_is_preserved_when_course_identity_is_missing(

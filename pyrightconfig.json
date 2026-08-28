@@ -5,8 +5,7 @@
     "tools"
   ],
   "exclude": [
-    "ai_agent_service/.cache",
-    "ai_agent_service/evaluation/backups"
+    "ai_agent_service/.cache"
   ],
   "typeCheckingMode": "basic",
   "executionEnvironments": [

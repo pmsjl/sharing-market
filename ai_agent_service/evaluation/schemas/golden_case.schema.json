@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharing-market.local/schemas/public-dev-case-v1.1.json",
+  "title": "Sharing Market RAG Public Dev Case v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["caseId", "version", "split", "domain", "groupKey", "queryType", "query", "expectedRoute", "expectedKnowledgeState", "preferredSourceType", "allowedSourceTypes", "qrels", "mustNotUse", "forbiddenDocumentPrefixes", "expectedFacts", "provenance", "review"],
+  "properties": {
+    "caseId": {"type": "string", "minLength": 1},
+    "version": {"const": "golden-v1.1"},
+    "split": {"const": "dev"},
+    "domain": {"enum": ["platform", "course", "campus", "post", "boundary"]},
+    "groupKey": {"type": "string", "minLength": 1},
+    "queryType": {"enum": ["exact", "paraphrase", "scenario", "structured_constraint", "multi_source", "negative", "ambiguous", "tool_only"]},
+    "query": {"type": "string", "minLength": 2},
+    "expectedRoute": {"enum": ["retrieve", "clarify", "out_of_scope", "skip_rag"]},
+    "expectedKnowledgeState": {"enum": ["answerable", "unknown_after_search", "not_applicable"]},
+    "preferredSourceType": {"oneOf": [{"enum": ["GUIDE", "POST"]}, {"type": "null"}]},
+    "allowedSourceTypes": {"type": "array", "uniqueItems": true, "items": {"enum": ["GUIDE", "POST"]}},
+    "qrels": {"type": "array", "items": {"$ref": "#/$defs/qrel"}},
+    "mustNotUse": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "forbiddenDocumentPrefixes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "expectedFacts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "provenance": {"type": "object", "minProperties": 1},
+    "review": {"$ref": "#/$defs/review"}
+  },
+  "$defs": {
+    "qrel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "relevance", "required", "acceptableSections", "supportingChunkIds", "reason"],
+      "properties": {
+        "documentId": {"type": "string", "pattern": "^(GUIDE|POST):"},
+        "relevance": {"type": "integer", "minimum": 0, "maximum": 3},
+        "required": {"type": "boolean"},
+        "acceptableSections": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "supportingChunkIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^(GUIDE|POST):.+#"}},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {"const": "frozen"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"expectedRoute": {"const": "retrieve"}}},
+      "then": {"properties": {"expectedKnowledgeState": {"enum": ["answerable", "unknown_after_search"]}}},
+      "else": {
+        "properties": {
+          "expectedKnowledgeState": {"const": "not_applicable"},
+          "qrels": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "expectedRoute": {"const": "retrieve"},
+          "expectedKnowledgeState": {"const": "answerable"}
+        }
+      },
+      "then": {"properties": {"qrels": {"minItems": 1}}}
+    }
+  ]
+}
