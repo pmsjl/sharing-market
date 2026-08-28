@@ -61,12 +61,14 @@ class AgentServiceError(Exception):
     """可安全返回给 Java 的模型服务错误。"""
 
     def __init__(self, status_code: int, agent_error_key: str, message: str,
-                 retryable: bool) -> None:
+                 retryable: bool, diagnostics: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.agent_error_key = agent_error_key
         self.message = message
         self.retryable = retryable
+        # 仅供本地评测/日志诊断使用，不进入对外错误响应。
+        self.diagnostics = diagnostics or {}
 
 
 logger = logging.getLogger(__name__)
@@ -877,11 +879,28 @@ class AgentService:
         invalid_chunks = set(output.knowledgeChunkIds) - set(retrieved_by_id)
         invalid_relations = set(output.courseRelationIds) - set(relation_by_id)
         if invalid_chunks or invalid_relations:
+            logger.warning(
+                "agent_invalid_rag_references invalid_chunks=%s "
+                "invalid_relations=%s",
+                sorted(invalid_chunks),
+                sorted(invalid_relations),
+            )
             raise AgentServiceError(
                 502,
                 "AI_MODEL_RESPONSE_INVALID",
                 "模型引用了本轮不可用的 RAG ID",
                 False,
+                diagnostics={
+                    "referenceValidation": {
+                        "allowedChunkIds": sorted(retrieved_by_id),
+                        "modelChunkIds": list(output.knowledgeChunkIds),
+                        "invalidChunkIds": sorted(invalid_chunks),
+                        "allowedRelationIds": sorted(relation_by_id),
+                        "modelRelationIds": list(output.courseRelationIds),
+                        "invalidRelationIds": sorted(invalid_relations),
+                    },
+                    "modelOutput": output.model_dump(mode="json"),
+                },
             )
 
         sources_by_document: dict[str, AgentSource] = {}
