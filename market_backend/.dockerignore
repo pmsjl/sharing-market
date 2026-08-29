@@ -1,0 +1,14 @@
+target/
+.env
+application-local.yml
+.git/
+.idea/
+.vscode/
+*.iml
+
+# Local Spring configuration may contain credentials. The production profile is safe to copy.
+src/main/resources/application*.yml
+src/main/resources/application*.yaml
+src/main/resources/application*.properties
+!src/main/resources/application-prod.yml
+!src/main/resources/application.example.yml

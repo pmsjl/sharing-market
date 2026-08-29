@@ -1,8 +1,11 @@
 package com.pmsjl.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.Arrays;
 
 /**
  * 全局跨域配置
@@ -13,16 +16,32 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
+    private final String[] allowedOriginPatterns;
+
+    public CorsConfig(
+            @Value("${CORS_ALLOWED_ORIGIN_PATTERNS:${CORS_ALLOWED_ORIGINS:http://localhost:8080}}")
+            String configuredOriginPatterns
+    ) {
+        this.allowedOriginPatterns = Arrays.stream(configuredOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
+        if (allowedOriginPatterns.length == 0) {
+            throw new IllegalStateException("CORS_ALLOWED_ORIGIN_PATTERNS 至少需要配置一个来源");
+        }
+        if (Arrays.asList(allowedOriginPatterns).contains("*")) {
+            throw new IllegalStateException("生产 CORS 不允许在携带凭据时使用全局通配符 *");
+        }
+    }
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // 覆盖所有请求
         registry.addMapping("/**")
-                // 允许发送 Cookie
                 .allowCredentials(true)
-                // 放行哪些域名（必须用 patterns，否则 * 会和 allowCredentials 冲突）
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(allowedOriginPatterns)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .exposedHeaders("*");
+                .exposedHeaders("Authorization", "Content-Disposition", "X-Request-Id")
+                .maxAge(3600);
     }
 }

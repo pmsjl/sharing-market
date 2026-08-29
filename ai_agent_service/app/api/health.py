@@ -1,12 +1,38 @@
 """Python Agent 健康检查路由。"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 
 from app.container import agent_service
 from app.core.config import settings
 
 
 router = APIRouter(tags=["health"])
+
+
+@router.get("/live")
+async def live() -> dict[str, str]:
+    """Process liveness probe; it does not call external dependencies."""
+    return {"status": "UP"}
+
+
+@router.get("/ready")
+async def ready(response: Response) -> dict[str, object]:
+    """Readiness probe for required configuration and optional RAG state."""
+    model_configured = bool(settings.openai_api_key and settings.openai_base_url)
+    token_configured = bool(settings.internal_token)
+    rag_ready = bool(getattr(agent_service.rag_service, "ready", False))
+    is_ready = model_configured and token_configured and (
+        not settings.rag_enabled or rag_ready
+    )
+    if not is_ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return {
+        "status": "UP" if is_ready else "NOT_READY",
+        "modelConfigured": model_configured,
+        "internalTokenConfigured": token_configured,
+        "ragEnabled": settings.rag_enabled,
+        "ragReady": rag_ready,
+    }
 
 
 @router.get("/health")

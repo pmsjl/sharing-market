@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: sharing-market-backend
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+    async:
+      request-timeout: ${MVC_ASYNC_REQUEST_TIMEOUT_MS:6000000}
+
+  session:
+    timeout: ${SESSION_TIMEOUT_SECONDS:2592000s}
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+
+  data:
+    redis:
+      database: ${REDIS_DATABASE:0}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:5000ms}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:10MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:10MB}
+
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT:30s}
+
+server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
+  port: ${PORT:${SERVER_PORT:8102}}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  servlet:
+    context-path: /api
+    session:
+      cookie:
+        max-age: ${SESSION_COOKIE_MAX_AGE_SECONDS:2592000}
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: ${SESSION_COOKIE_SAME_SITE:none}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
+  global-config:
+    db-config:
+      logic-delete-field: isDelete
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+oss:
+  client:
+    accessKey: ${OSS_ACCESS_KEY}
+    secretKey: ${OSS_SECRET_KEY}
+    endpoint: ${OSS_ENDPOINT:https://oss-cn-shenzhen.aliyuncs.com}
+    bucket: ${OSS_BUCKET}
+    host: ${OSS_HOST}
+
+knife4j:
+  enable: ${API_DOCS_ENABLED:false}
+
+jwt:
+  tokenHeader: ${AUTH_TOKEN_HEADER:Authorization}
+  expiration: ${AUTH_TOKEN_EXPIRATION_MS:36000000}
+  tokenHead: ${AUTH_TOKEN_PREFIX:Bearer}
+
+ai:
+  agent:
+    base-url: ${AI_AGENT_BASE_URL}
+    internal-token: ${AI_AGENT_INTERNAL_TOKEN}
+    connect-timeout-ms: ${AI_AGENT_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${AI_AGENT_READ_TIMEOUT_MS:120000}
+    pending-timeout-ms: ${AI_AGENT_PENDING_TIMEOUT_MS:140000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,redis
+      show-details: never

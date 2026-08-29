@@ -15,6 +15,9 @@ load_dotenv(_ENV_PATH, override=False)
 class Settings:
     """Python 服务自身配置；不保存 Java 数据库或业务系统密钥。"""
 
+    host: str = os.getenv("AI_AGENT_HOST", "0.0.0.0")
+    port: int = int(os.getenv("PORT", os.getenv("AI_AGENT_PORT", "8103")))
+    forwarded_allow_ips: str = os.getenv("FORWARDED_ALLOW_IPS", "*")
     internal_token: str = os.getenv("AI_AGENT_INTERNAL_TOKEN", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     openai_base_url: str = os.getenv("OPENAI_BASE_URL", "")

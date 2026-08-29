@@ -269,10 +269,11 @@ application*.properties
 !application.example.yml
 !application.example.yaml
 !application.example.properties
+!/market_backend/src/main/resources/application-prod.yml
 !/market_backend/src/test/resources/application.yml
 
 # 本机运行配置可能包含数据库、Redis、OSS 等真实凭据。
-# 仓库仅保留 application.example.yml。
+# 仓库仅保留 application.example.yml 和不含凭据的 application-prod.yml。
 
 # 证书与密钥
 *.pem

@@ -93,11 +93,13 @@ sharing-market-v1.0/
 
 ```powershell
 cd market_backend
+Copy-Item src/main/resources/application.example.yml application-local.yml
+$env:SPRING_CONFIG_ADDITIONAL_LOCATION = "optional:file:./application-local.yml"
 mvn test
 mvn spring-boot:run
 ```
 
-默认地址：`http://localhost:8102/api`。
+首次运行时按本机环境填写未跟踪的 `application-local.yml`。该文件位于后端根目录，不会被打入 JAR。默认地址：`http://localhost:8102/api`。
 
 ### 3. Python Agent
 
@@ -151,6 +153,8 @@ Copy-Item .env.development.local.example .env.development.local
 6. 部署后在浏览器开发者工具的 Network 中确认请求已经发往配置的 API 域名，而不是 `localhost`。同时确认后端已放行 Cloudflare Pages 的正式域名和预览域名 CORS。前端请求启用了 `withCredentials`，后端不能用 `Access-Control-Allow-Origin: *` 配合凭据请求，Cookie 的 `Secure`、`SameSite` 和域名策略也必须与跨域部署匹配。
 
 仓库中的 `.env.development`、`.env.production` 和 `openapi.config.ts` 只保留 `https://api.example.com` 这种无效但安全的示例地址；本地地址放在 `.env.development.local`，线上真实地址放在 Cloudflare Pages 环境变量中。OpenAPI 代码生成如需访问本地文档地址，可先设置 `OPENAPI_SCHEMA_URL=http://localhost:8102/api/v2/api-docs` 再执行 `npm run openapi`；该变量不是前端运行时必需变量。
+
+Java 与 Python 后端的生产变量、容器启动方式、健康检查和 RAG 持久化要求见 [`../docs/BACKEND_DEPLOYMENT.md`](../docs/BACKEND_DEPLOYMENT.md)。
 
 ## 验证
 

@@ -1,6 +1,6 @@
 # 公共配置示例
 #
-# 复制为 application.yml 后再通过环境变量或本机配置注入真实凭据。
+# 本地可复制为 application.yml；生产部署直接启用已提交的 application-prod.yml。
 # 不要把真实的数据库、Redis、微信、OSS 或服务间 Token 提交到 Git。
 
 spring:
@@ -39,12 +39,16 @@ spring:
 
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
-  port: ${SERVER_PORT:8102}
+  port: ${PORT:${SERVER_PORT:8102}}
+  forward-headers-strategy: framework
   servlet:
     context-path: /api
     session:
       cookie:
         max-age: 2592000
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:false}
+        same-site: ${SESSION_COOKIE_SAME_SITE:lax}
 
 mybatis-plus:
   configuration:
@@ -82,7 +86,7 @@ oss:
     host: ${OSS_HOST:}
 
 knife4j:
-  enable: true
+  enable: ${API_DOCS_ENABLED:true}
   openapi:
     title: "接口文档"
     version: 1.0
@@ -104,3 +108,19 @@ ai:
     connect-timeout-ms: ${AI_AGENT_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${AI_AGENT_READ_TIMEOUT_MS:120000}
     pending-timeout-ms: ${AI_AGENT_PENDING_TIMEOUT_MS:140000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,redis
+      show-details: never
