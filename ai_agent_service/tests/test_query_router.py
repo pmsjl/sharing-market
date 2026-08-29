@@ -259,11 +259,12 @@ def test_router_prompt_balances_technical_and_campus_scope_boundaries(
     disposition_description = text_format["schema"]["properties"][
         "disposition"]["description"]
     required_contracts = [
-        "out_of_scope是高确定性的终止判断",
-        "不得仅凭内存、系统、兼容性、型号等孤立技术词推断购物意图",
-        "课程名称、课程实验、个人电脑或开发板本身不构成交易语境",
-        "不得因为知识库中存在课程资料就选择continue",
-        "边界不明确时根据情况选择continue或clarify",
+        "本二手平台的规则",
+        "外部组织的规定不算平台规则",
+        "已有物品的日常使用管理",
+        "某个具体对象",
+        "能给核心结论、通用规则或核验方法",
+        "未来才确定或只能查资料的事实不是缺失信息",
     ]
     for contract in required_contracts:
         assert contract in system_prompt or contract in disposition_description
@@ -595,24 +596,56 @@ def test_scope_prompts_keep_conservative_but_non_default_refusal_boundary(
     disposition_description = INTENT_ROUTE_TEXT_FORMAT["schema"]["properties"][
         "disposition"]["description"]
 
-    assert "只有请求明确" in disposition_description
-    assert "才选out_of_scope" in disposition_description
-    assert "指代不清但可能与交易相关时优先clarify" in disposition_description
-    assert "课程名称、课程实验或个人电脑本身不构成交易语境" in (
-        disposition_description)
-    assert "实验器材由谁提供等教学安排时选out_of_scope" in (
-        disposition_description)
+    for contract in (
+        "本二手平台的规则或信息来源",
+        "实际查询在售商品",
+        "购买、采购、借用、接收、转让",
+        "选择、适配、验货物品",
+        "是否需要购买或取得",
+        "不要求已经决定要买",
+        "多个条件或备选分支中",
+        "只问外部组织安排",
+        "对象无法从消息和上下文识别",
+        "reason必须与disposition一致",
+    ):
+        assert contract in disposition_description
 
-    assert "out_of_scope是高确定性的终止判断" in _ROUTER_SYSTEM_PROMPT
-    assert "边界不明确时根据情况选择continue或clarify" in _ROUTER_SYSTEM_PROMPT
-    assert "不要因为其中一个跨域部分而把整个请求判为out_of_scope" in (
-        _ROUTER_SYSTEM_PROMPT)
+    for contract in (
+        "先拆分需求",
+        "不能因为有资料可查就continue",
+        "外部组织的规定不算平台规则",
+        "是否需要购买或取得，本身就是购买决策",
+        "准备或自带不等于取得",
+        "多个条件或备选分支要分别判断",
+        "直接询问可交易物品的版本、型号或规格，必须continue",
+        "资料类别为空",
+    ):
+        assert contract in _ROUTER_SYSTEM_PROMPT
 
-    assert "无需明说“购买”或“二手”" in SYSTEM_PROMPT
-    assert "课程名或个人电脑不构成交易语境" in SYSTEM_PROMPT
-    assert "软件、机房/服务器、学校资源、电脑配置安装或器材供给" in SYSTEM_PROMPT
-    assert "仅在明确关联购买、二手取得、商品适配、验货、转卖或处置时" in (
-        SYSTEM_PROMPT)
+    assert "判断范围时先看用户想做什么" in SYSTEM_PROMPT
+    assert "核实可交易物品的版本、型号或规格" in SYSTEM_PROMPT
+    assert "已有物品的日常使用和管理" in SYSTEM_PROMPT
+    assert "检索结果只用于支撑当前问题，不是回答提纲" in SYSTEM_PROMPT
+
+
+def test_scope_prompts_avoid_case_shaped_examples_and_jargon() -> None:
+    prompt = (_ROUTER_SYSTEM_PROMPT + "\n" +
+              INTENT_ROUTE_TEXT_FORMAT["schema"]["properties"]
+              ["disposition"]["description"])
+    forbidden_phrases = {
+        "机房",
+        "服务器",
+        "学校算力",
+        "电脑配置安装",
+        "器材由谁提供",
+        "断电",
+        "用电安全",
+        "库存是否应查RAG",
+        "跨对象最低规则",
+        "规范性问题",
+        "依赖外部事实",
+    }
+    assert not {phrase for phrase in forbidden_phrases if phrase in prompt}
 
 
 def test_router_schema_is_generated_from_described_pydantic_model() -> None:
