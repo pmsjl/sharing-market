@@ -1,8 +1,10 @@
 package com.pmsjl.config;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Component;
  * <p>内部 Token 只从环境变量或未提交的本地配置读取，不能写入代码。</p>
  */
 @Data
+@Validated
 @Component
 @ConfigurationProperties(prefix = "ai.agent")
 public class AiAgentProperties {
@@ -18,9 +21,11 @@ public class AiAgentProperties {
     private static final long PENDING_WRITE_BACK_MARGIN_MS = 5_000L;
 
     /** Python FastAPI 服务根地址，例如 http://127.0.0.1:8103。 */
+    @NotBlank(message = "AI_AGENT_BASE_URL 未配置")
     private String baseUrl;
 
     /** Java 与 Python 间的服务身份校验 Token。 */
+    @NotBlank(message = "AI_AGENT_INTERNAL_TOKEN 未配置")
     private String internalToken;
 
     /** 建立到 Python 服务连接的最长等待时间（毫秒）。 */

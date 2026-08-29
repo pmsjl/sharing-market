@@ -30,8 +30,12 @@ spring:
       database: ${REDIS_DATABASE:0}
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
       timeout: ${REDIS_TIMEOUT:5000}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:5000}
       password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
 
   servlet:
     multipart:
@@ -47,6 +51,10 @@ server:
       cookie:
         max-age: 2592000
         http-only: true
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:8080}
 
 mybatis-plus:
   configuration:
