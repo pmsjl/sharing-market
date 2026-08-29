@@ -42,7 +42,10 @@ public class AuthInterceptorConfig implements WebMvcConfigurer {
                         "/doc.html",
                         "/webjars/**",
                         "/v3/api-docs/**",
-                        "/swagger-ui/**"
+                        "/swagger-ui/**",
+                        // 部署平台的存活与就绪探针。
+                        "/actuator/health",
+                        "/actuator/health/**"
                 )
                 .order(1);               // 优先级排第二
     }
