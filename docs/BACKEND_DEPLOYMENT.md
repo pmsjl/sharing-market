@@ -22,10 +22,10 @@ MySQL、Redis 和 Aliyun OSS 是外部托管依赖，不包含在应用容器内
 
 ```bash
 docker build -t sharing-market-backend .
-docker run --env-file .env -p 8102:8102 sharing-market-backend
+docker run --env-file .env.production -p 8081:8081 sharing-market-backend
 ```
 
-复制 `.env.example` 后填写真实值，或在部署平台逐项设置同名环境变量。生产运行必须启用：
+复制 `.env.example` 为未跟踪的 `.env.production` 后填写真实值，或在部署平台逐项设置同名环境变量。端口不需要写进这个文件：容器默认监听 `8081`，云平台提供 `PORT` 时会自动覆盖。生产运行必须启用：
 
 ```text
 SPRING_PROFILES_ACTIVE=prod
@@ -39,7 +39,7 @@ SPRING_PROFILES_ACTIVE=prod
 - `AI_AGENT_BASE_URL`、`AI_AGENT_INTERNAL_TOKEN`
 - `CORS_ALLOWED_ORIGIN_PATTERNS`
 
-平台注入的 `PORT` 优先于 `SERVER_PORT`。CORS 使用逗号分隔的精确来源或受限域名模式，例如：
+平台注入的 `PORT` 优先于生产配置中的默认端口 `8081`。CORS 使用逗号分隔的精确来源或受限域名模式，例如：
 
 ```text
 https://market.example.com,https://*.sharing-market.pages.dev
@@ -56,8 +56,10 @@ https://market.example.com,https://*.sharing-market.pages.dev
 
 ```bash
 docker build -t sharing-market-agent .
-docker run --env-file .env -p 8103:8103 sharing-market-agent
+docker run --env-file .env.production -p 8082:8082 sharing-market-agent
 ```
+
+复制 `.env.example` 为未跟踪的 `.env.production` 后填写真实值。不要直接把本地 `.env` 交给生产容器：本地直接运行默认使用 `8103`，Docker 容器默认使用 `8082`，云平台仍可通过 `PORT` 覆盖。
 
 核心必填变量：
 
@@ -65,7 +67,7 @@ docker run --env-file .env -p 8103:8103 sharing-market-agent
 - `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`
 - `JAVA_BACKEND_BASE_URL`
 
-`JAVA_BACKEND_BASE_URL` 只填写 Java 服务根地址，不要追加 `/api`。平台的 `PORT` 会覆盖 `AI_AGENT_PORT`。
+`JAVA_BACKEND_BASE_URL` 只填写 Java 服务根地址，不要追加 `/api`。平台的 `PORT` 会覆盖容器默认端口 `8082`。
 
 探针地址：
 

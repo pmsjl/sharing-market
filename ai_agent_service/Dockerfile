@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     AI_AGENT_HOST=0.0.0.0 \
-    AI_AGENT_PORT=8103 \
+    AI_AGENT_PORT=8082 \
     RAG_INDEX_DIR=/data/rag_index
 
 WORKDIR /app
@@ -21,6 +21,6 @@ RUN addgroup --system app && adduser --system --ingroup app app \
 
 USER app
 VOLUME ["/data/rag_index"]
-EXPOSE 8103
+EXPOSE 8082
 
 CMD ["python", "-m", "app"]

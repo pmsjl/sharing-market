@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.agent import AgentHistoryMessage, AgentRunRequest, ShoppingContext
+from app.prompts.shopping_guide import SYSTEM_PROMPT
 from app.rag.course_relations import CourseRelationIndex
 from app.rag.index_store import KNOWLEDGE_ROOT
 from app.core.config import Settings
@@ -20,6 +21,7 @@ from app.routing.query_router import (
     RetrieveRouteDecision,
     SkipRagRouteDecision,
     ToolPolicy,
+    _ROUTER_SYSTEM_PROMPT,
     build_fallback_decision,
     evaluate_guardrail,
     validate_llm_decision,
@@ -234,7 +236,7 @@ def test_previous_golden_guardrail_cases_are_decided_by_llm() -> None:
         assert len(client.calls) == 1
 
 
-def test_router_prompt_requires_explicit_shopping_context_for_technical_and_campus_questions(
+def test_router_prompt_balances_technical_and_campus_scope_boundaries(
 ) -> None:
     payload = {
         "disposition": "out_of_scope",
@@ -243,7 +245,7 @@ def test_router_prompt_requires_explicit_shopping_context_for_technical_and_camp
         "preference_mode": "not_needed",
         "missing_fields": [],
         "clarification_question": None,
-        "reason": "没有购买或交易上下文",
+        "reason": "没有具体商品对象或可靠交易上下文",
         "confidence": 0.99,
     }
     client = _RouterClient(_route_response(payload))
@@ -257,9 +259,11 @@ def test_router_prompt_requires_explicit_shopping_context_for_technical_and_camp
     disposition_description = text_format["schema"]["properties"][
         "disposition"]["description"]
     required_contracts = [
-        "不能自行补出购物意图",
-        "单纯的新生报到手续、往届报到安排",
-        "明确出现购买、二手商品选择、验货或具体商品使用决策",
+        "out_of_scope是高确定性的终止判断",
+        "不得仅凭内存、系统、兼容性、型号等孤立技术词推断购物意图",
+        "课程名称、课程实验、个人电脑或开发板本身不构成交易语境",
+        "不得因为知识库中存在课程资料就选择continue",
+        "边界不明确时根据情况选择continue或clarify",
     ]
     for contract in required_contracts:
         assert contract in system_prompt or contract in disposition_description
@@ -584,6 +588,31 @@ def test_router_context_contains_only_typed_course_match_summary() -> None:
     assert set(summary) == {"courseNames", "hasExactCourseDocuments"}
     assert summary["courseNames"]
     assert summary["hasExactCourseDocuments"] is True
+
+
+def test_scope_prompts_keep_conservative_but_non_default_refusal_boundary(
+) -> None:
+    disposition_description = INTENT_ROUTE_TEXT_FORMAT["schema"]["properties"][
+        "disposition"]["description"]
+
+    assert "只有请求明确" in disposition_description
+    assert "才选out_of_scope" in disposition_description
+    assert "指代不清但可能与交易相关时优先clarify" in disposition_description
+    assert "课程名称、课程实验或个人电脑本身不构成交易语境" in (
+        disposition_description)
+    assert "实验器材由谁提供等教学安排时选out_of_scope" in (
+        disposition_description)
+
+    assert "out_of_scope是高确定性的终止判断" in _ROUTER_SYSTEM_PROMPT
+    assert "边界不明确时根据情况选择continue或clarify" in _ROUTER_SYSTEM_PROMPT
+    assert "不要因为其中一个跨域部分而把整个请求判为out_of_scope" in (
+        _ROUTER_SYSTEM_PROMPT)
+
+    assert "无需明说“购买”或“二手”" in SYSTEM_PROMPT
+    assert "课程名或个人电脑不构成交易语境" in SYSTEM_PROMPT
+    assert "软件、机房/服务器、学校资源、电脑配置安装或器材供给" in SYSTEM_PROMPT
+    assert "仅在明确关联购买、二手取得、商品适配、验货、转卖或处置时" in (
+        SYSTEM_PROMPT)
 
 
 def test_router_schema_is_generated_from_described_pydantic_model() -> None:

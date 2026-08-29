@@ -16,6 +16,6 @@ COPY --from=build --chown=app:app /workspace/target/market_backend-*.jar /app/ap
 
 USER app
 ENV SPRING_PROFILES_ACTIVE=prod
-EXPOSE 8102
+EXPOSE 8081
 
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]
