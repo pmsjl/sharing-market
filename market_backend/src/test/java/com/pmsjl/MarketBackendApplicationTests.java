@@ -13,7 +13,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "oss.client.access-key=test-access-key",
+        "oss.client.secret-key=test-secret-key",
+        "oss.client.bucket=test-bucket",
+        "oss.client.host=https://assets.test.invalid",
+        "ai.agent.internal-token=test-internal-token"
+})
 @AutoConfigureMockMvc
 class MarketBackendApplicationTests {
 

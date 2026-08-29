@@ -34,7 +34,7 @@ SPRING_PROFILES_ACTIVE=prod
 核心必填变量：
 
 - `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`
-- `REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`
+- `REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`（或用 `SPRING_DATA_REDIS_URL` 提供连接地址与认证）
 - `OSS_ACCESS_KEY`、`OSS_SECRET_KEY`、`OSS_BUCKET`、`OSS_HOST`
 - `AI_AGENT_BASE_URL`、`AI_AGENT_INTERNAL_TOKEN`
 - `CORS_ALLOWED_ORIGIN_PATTERNS`
@@ -46,6 +46,8 @@ https://market.example.com,https://*.sharing-market.pages.dev
 ```
 
 禁止配置全局 `*`。服务健康检查：
+
+Redis 的 Spring Data、Session 和 Redisson 三种用法现在共用同一份连接配置。托管 Redis 如果要求 TLS，设置 `REDIS_SSL_ENABLED=true`；如果服务商提供用户名，同时填写 `REDIS_USERNAME`。也可以使用 Spring Boot 原生的 `SPRING_DATA_REDIS_URL=rediss://用户名:密码@主机:端口` 代替分项连接参数，库号仍由 `REDIS_DATABASE` 指定。不要把 Redis 地址写进 Java 代码。
 
 - 存活：`GET /api/actuator/health/liveness`
 - 就绪：`GET /api/actuator/health/readiness`

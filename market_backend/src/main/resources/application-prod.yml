@@ -24,9 +24,11 @@ spring:
   data:
     redis:
       database: ${REDIS_DATABASE:0}
-      host: ${REDIS_HOST}
+      host: ${REDIS_HOST:}
       port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
       timeout: ${REDIS_TIMEOUT:5000ms}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:5000ms}
       password: ${REDIS_PASSWORD:}
       ssl:
         enabled: ${REDIS_SSL_ENABLED:false}
@@ -38,6 +40,10 @@ spring:
 
   lifecycle:
     timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT:30s}
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
 
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
@@ -67,7 +73,7 @@ oss:
   client:
     accessKey: ${OSS_ACCESS_KEY}
     secretKey: ${OSS_SECRET_KEY}
-    endpoint: ${OSS_ENDPOINT:https://oss-cn-shenzhen.aliyuncs.com}
+    endpoint: ${OSS_ENDPOINT}
     bucket: ${OSS_BUCKET}
     host: ${OSS_HOST}
 
