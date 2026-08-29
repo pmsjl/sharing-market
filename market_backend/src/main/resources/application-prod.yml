@@ -41,7 +41,7 @@ spring:
 
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
-  port: ${PORT:${SERVER_PORT:8102}}
+  port: ${PORT:8081}
   shutdown: graceful
   forward-headers-strategy: framework
   servlet:
