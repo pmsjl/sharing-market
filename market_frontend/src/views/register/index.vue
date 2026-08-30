@@ -1,106 +1,114 @@
 <template>
-  <div class="auth-page register_container" ref="authPage">
-    <section class="auth-board">
-      <div class="auth-copy">
-        <span class="market-eyebrow">加入校园公告栏</span>
-        <h1>注册后，把你的闲置摊位开起来</h1>
-        <p>
-          一个账号即可发布商品、收藏好物、查看订单和参与校园交流。欢迎来到更有秩序的二手交易角。
-        </p>
-        <div class="notice-stack" aria-hidden="true">
-          <div class="notice-note note-yellow">发布前整理照片和描述</div>
-          <div class="notice-note note-green">交易前确认数量、价格和备注</div>
-          <div class="notice-note note-blue">个人中心可持续管理订单</div>
-        </div>
+  <AuthMarketLayout>
+    <el-form
+      class="auth-entry-form"
+      :model="registerForm"
+      :rules="rules"
+      ref="registerForms"
+      label-position="top"
+      aria-label="注册校园二手交易平台"
+      @submit.prevent="register"
+    >
+      <span class="auth-form-kicker">创建校园账户</span>
+      <div class="auth-form-heading">
+        <h2>加入校园市集</h2>
+        <p>创建账号，开始发布闲置、收藏好物和管理订单。</p>
       </div>
 
-      <el-form
-        class="auth-form market-board"
-        :model="registerForm"
-        :rules="rules"
-        ref="registerForms"
-        label-position="top"
+      <el-form-item label="账号" prop="userAccount">
+        <el-input
+          id="register-account"
+          v-model="registerForm.userAccount"
+          name="username"
+          autocomplete="username"
+          :prefix-icon="User"
+          placeholder="请输入 4-15 位账号"
+        />
+      </el-form-item>
+
+      <el-form-item label="密码" prop="userPassword">
+        <el-input
+          id="register-password"
+          v-model="registerForm.userPassword"
+          name="new-password"
+          autocomplete="new-password"
+          type="password"
+          :prefix-icon="Lock"
+          placeholder="请输入 8-10 位密码"
+          show-password
+        />
+      </el-form-item>
+
+      <el-form-item label="确认密码" prop="checkPassword">
+        <el-input
+          id="register-password-confirmation"
+          v-model="registerForm.checkPassword"
+          name="password-confirmation"
+          autocomplete="new-password"
+          type="password"
+          :prefix-icon="Lock"
+          placeholder="请再次输入密码"
+          show-password
+        />
+      </el-form-item>
+
+      <el-button
+        :loading="loading"
+        :disabled="loading"
+        native-type="submit"
+        type="primary"
+        class="auth-submit"
       >
-        <div class="form-awning" aria-hidden="true"></div>
-        <div class="form-brand">
-          <img src="@/assets/logo.png" alt="平台标识" />
-          <div>
-            <h2>创建账号</h2>
-            <span>注册校园二手交易平台</span>
-          </div>
-        </div>
+        注册账号
+      </el-button>
 
-        <el-form-item label="账号" prop="userAccount">
-          <el-input
-            placeholder="请输入 4-15 位账号"
-            :prefix-icon="User"
-            v-model="registerForm.userAccount"
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="userPassword">
-          <el-input
-            placeholder="请输入 8-10 位密码"
-            type="password"
-            :prefix-icon="Lock"
-            v-model="registerForm.userPassword"
-            show-password
-          />
-        </el-form-item>
-        <el-form-item label="确认密码" prop="checkPassword">
-          <el-input
-            placeholder="请再次输入密码"
-            type="password"
-            :prefix-icon="Lock"
-            v-model="registerForm.checkPassword"
-            show-password
-          />
-        </el-form-item>
-        <div class="auth-actions">
-          <el-button
-            :loading="loading"
-            type="primary"
-            class="register_btn"
-            @click="register"
-          >
-            注册账号
-          </el-button>
-          <el-button class="back_login_btn" @click="backToLogin">
-            返回登录
-          </el-button>
-        </div>
+      <p class="auth-switch">
+        已有账号？
+        <button
+          type="button"
+          class="auth-switch-link"
+          :disabled="loading"
+          @click="backToLogin"
+        >
+          返回登录
+        </button>
+      </p>
 
-        <div class="form-stamp" aria-hidden="true">开摊预备 · 新同学</div>
-      </el-form>
-    </section>
-  </div>
+      <div class="auth-security">账号安全 · 隐私保护</div>
+    </el-form>
+  </AuthMarketLayout>
 </template>
 
 <script setup lang="ts">
 import { Lock, User } from "@element-plus/icons-vue";
-import { onMounted, reactive, ref } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
+import type { FormInstance } from "element-plus";
+import AuthMarketLayout from "@/components/AuthMarketLayout/index.vue";
 import { userRegisterUsingPost } from "@/api/userController";
-import { animateIn, pinOn } from "@/utils/motion";
 
-const authPage = ref<HTMLElement | null>(null);
 const registerForm = reactive({
   userAccount: "",
   userPassword: "",
   checkPassword: ""
 });
 
-const registerForms = ref();
+const registerForms = ref<FormInstance>();
 const loading = ref(false);
 const $router = useRouter();
 
 const register = async () => {
+  if (loading.value || !registerForms.value) {
+    return;
+  }
+
   const valid = await registerForms.value.validate().catch(() => false);
   if (!valid) {
     ElMessage({
       type: "error",
-      message: "表单参数不合法",
-      duration: 1000
+      message: "请检查注册信息后重试",
+      duration: 1500
     });
     return;
   }
@@ -133,7 +141,7 @@ const validatorUserName = (_rule: any, value: any, callback: any) => {
   if (/^\w{4,15}$/.test(value)) {
     callback();
   } else {
-    callback(new Error("账号长度应该在4位-15位之间"));
+    callback(new Error("账号长度应该在 4-15 位之间"));
   }
 };
 
@@ -141,12 +149,12 @@ const validatorPassword = (_rule: any, value: any, callback: any) => {
   if (/^\w{8,10}$/.test(value)) {
     callback();
   } else {
-    callback(new Error("密码长度应该在8位-10位之间"));
+    callback(new Error("密码长度应该在 8-10 位之间"));
   }
 };
 
 const validatorCheckPassword = (_rule: any, value: any, callback: any) => {
-  if (registerForm.userPassword != value) {
+  if (registerForm.userPassword !== value) {
     callback(new Error("两次输入的密码不一致"));
   } else {
     callback();
@@ -154,201 +162,8 @@ const validatorCheckPassword = (_rule: any, value: any, callback: any) => {
 };
 
 const rules = {
-  userAccount: [{ trigger: "change", validator: validatorUserName }],
-  userPassword: [{ trigger: "change", validator: validatorPassword }],
-  checkPassword: [{ trigger: "change", validator: validatorCheckPassword }]
+  userAccount: [{ trigger: "blur", validator: validatorUserName }],
+  userPassword: [{ trigger: "blur", validator: validatorPassword }],
+  checkPassword: [{ trigger: "blur", validator: validatorCheckPassword }]
 };
-
-onMounted(() => {
-  animateIn(authPage.value?.querySelectorAll(".auth-copy, .auth-form") || []);
-  pinOn(authPage.value?.querySelectorAll(".notice-note") || [], 0.15);
-});
 </script>
-<style scoped lang="scss">
-.auth-page {
-  display: grid;
-  min-height: 100dvh;
-  padding: 38px;
-  place-items: center;
-  background: var(--market-body-bg);
-}
-
-.auth-board {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 430px);
-  gap: 42px;
-  width: min(1080px, 100%);
-  align-items: center;
-}
-
-.auth-copy {
-  h1 {
-    max-width: 640px;
-    margin: 18px 0;
-    color: var(--market-ink);
-    font-family: var(--market-font-display);
-    font-size: clamp(36px, 6vw, 60px);
-    font-weight: 900;
-    line-height: 1.08;
-  }
-
-  p {
-    max-width: 560px;
-    color: var(--market-muted);
-    font-size: 17px;
-    line-height: 1.8;
-  }
-}
-
-.notice-stack {
-  display: grid;
-  gap: 14px;
-  max-width: 460px;
-  margin-top: 34px;
-}
-
-.notice-note {
-  position: relative;
-  width: fit-content;
-  max-width: 100%;
-  padding: 12px 16px;
-  border: 1px solid rgba(35, 49, 63, 0.1);
-  border-radius: 8px;
-  box-shadow: var(--market-shadow-soft);
-  font-weight: 800;
-
-  &::before {
-    position: absolute;
-    top: -8px;
-    left: 18px;
-    width: 14px;
-    height: 14px;
-    border: 3px solid var(--market-pin-border);
-    border-radius: 50%;
-    background: var(--market-orange);
-    box-shadow: 0 3px 6px rgba(62, 45, 24, 0.25);
-    content: "";
-  }
-}
-
-.note-green {
-  margin-left: 42px;
-  background: var(--market-note-green-bg);
-  transform: rotate(1.5deg);
-}
-
-.note-yellow {
-  background: var(--market-note-yellow-bg);
-  transform: rotate(-1.5deg);
-}
-
-.note-blue {
-  margin-left: 16px;
-  color: #fff;
-  background: var(--market-blue);
-  transform: rotate(-0.8deg);
-}
-
-.auth-form {
-  position: relative;
-  padding: 34px;
-  overflow: hidden;
-}
-
-.form-awning {
-  height: 10px;
-  margin: -34px -34px 26px;
-  @include awning-strip(10px);
-}
-
-.form-stamp {
-  position: absolute;
-  right: 18px;
-  bottom: 14px;
-  font-size: 13px;
-  @include stamp-text(var(--market-stamp-red));
-  pointer-events: none;
-}
-
-.form-brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 28px;
-
-  img {
-    width: 58px;
-    height: 58px;
-    border-radius: 8px;
-    object-fit: contain;
-    background: var(--market-soft-bg);
-  }
-
-  h2 {
-    margin: 0;
-    color: var(--market-ink);
-    font-family: var(--market-font-display);
-    font-size: 28px;
-    font-weight: 900;
-  }
-
-  span {
-    color: var(--market-muted);
-    font-size: 14px;
-  }
-}
-
-.auth-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.register_btn,
-.back_login_btn {
-  width: 100%;
-}
-
-.back_login_btn {
-  border-color: var(--market-orange);
-  color: var(--market-orange);
-  background: transparent;
-
-  &:hover,
-  &:focus {
-    color: #fff;
-    background: var(--market-orange);
-    border-color: var(--market-orange);
-  }
-}
-
-@media (max-width: 860px) {
-  .auth-page {
-    padding: 24px 16px;
-  }
-
-  .auth-board {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
-  .auth-copy h1 {
-    font-size: 34px;
-  }
-
-  .notice-stack {
-    display: none;
-  }
-}
-
-@media (max-width: 520px) {
-  .auth-form {
-    padding: 28px 20px;
-  }
-
-  .auth-actions {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
