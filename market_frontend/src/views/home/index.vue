@@ -69,13 +69,6 @@
                 <span>照片暂未送达</span>
                 <small>仍可继续浏览其他校园场景</small>
               </div>
-              <div class="photo-caption">
-                <span>{{ String(index + 1).padStart(2, "0") }}</span>
-                <div>
-                  <strong>{{ item.title }}</strong>
-                  <small>{{ item.note }}</small>
-                </div>
-              </div>
             </div>
           </el-carousel-item>
         </el-carousel>
@@ -99,24 +92,20 @@ let cleanupParallax: (() => void) | undefined;
 
 const images = [
   {
-    src: "https://pic.yupi.icu/5563/202503111324950.jpeg",
-    title: "教材与学习用品",
-    note: "让上一学期的资料继续发挥作用"
+    src: "/generated/carousel-textbooks.png",
+    title: "教材与学习用品"
   },
   {
-    src: "https://pic.yupi.icu/5563/202502241324758.png",
-    title: "数码与桌面装备",
-    note: "先聊需求，再约时间当面验货"
+    src: "/generated/carousel-digital.png",
+    title: "数码与桌面装备"
   },
   {
-    src: "https://pic.yupi.icu/5563/202502241324627.jpg",
-    title: "宿舍生活好物",
-    note: "把闲置交给真正需要的同学"
+    src: "/generated/carousel-dorm.png",
+    title: "宿舍生活好物"
   },
   {
-    src: "https://pic.yupi.icu/5563/202502241320811.jpg",
-    title: "校内轻松流转",
-    note: "近距离交易，沟通更直接"
+    src: "/generated/carousel-handoff.png",
+    title: "校内轻松流转"
   }
 ];
 
@@ -508,38 +497,6 @@ onUnmounted(() => {
   background: var(--market-surface);
 }
 
-.photo-caption {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 14px 18px;
-  color: var(--market-chalk);
-  background: linear-gradient(
-    90deg,
-    rgba(31, 68, 56, 0.96),
-    rgba(31, 68, 56, 0.78)
-  );
-
-  > span {
-    font-family: var(--market-font-mono);
-    font-size: 22px;
-    font-weight: 900;
-  }
-
-  div {
-    display: grid;
-    gap: 2px;
-  }
-
-  small {
-    color: rgba(253, 246, 227, 0.68);
-  }
-}
-
 .photo-placeholder {
   display: grid;
   width: 100%;
@@ -616,14 +573,6 @@ onUnmounted(() => {
 
   .carousel-note {
     padding: 16px;
-  }
-
-  .photo-caption {
-    padding: 11px 13px;
-
-    small {
-      display: none;
-    }
   }
 }
 </style>
