@@ -11,6 +11,7 @@ import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
 import com.pmsjl.model.dto.ai.AiShoppingContext;
+import com.pmsjl.model.dto.ai.AiUsageDate;
 import com.pmsjl.model.dto.ai.internal.AgentRunRequest;
 import com.pmsjl.model.dto.ai.internal.AgentRunResponse;
 import com.pmsjl.model.entity.AiConversation;
@@ -25,6 +26,7 @@ import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiMessageVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.service.AiAgentTraceService;
+import com.pmsjl.service.AiAccessService;
 import com.pmsjl.service.AiChatService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
@@ -71,6 +73,9 @@ public class AiChatServiceImpl implements AiChatService {
     @Autowired
     private AiStructuredContentAssembler aiStructuredContentAssembler;
 
+    @Autowired
+    private AiAccessService aiAccessService;
+
     /**
      * 先在短事务中写入会话、USER 和 PENDING ASSISTANT 消息；事务提交后才调用 Python。
      * 网络请求完成后，再使用另一段短事务把同一条 ASSISTANT 消息更新成 SUCCESS 或 FAILED。
@@ -86,7 +91,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         AiShoppingContext shoppingContext = aiChatMessageRequest.getShoppingContext();
         validateShoppingContext(shoppingContext);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         String requestId = UUID.randomUUID().toString();
 
         PendingChat pendingChat = transactionTemplate.execute(status -> persistPendingChat(
@@ -106,10 +111,12 @@ public class AiChatServiceImpl implements AiChatService {
     private PendingChat persistPendingChat(User loginUser, String content, AiShoppingContext shoppingContext,
                                             String requestId) {
         Date now = new Date();
+        AiUsageDate usageReservation = aiAccessService.reserveRequest(loginUser.getId());
         AiConversation conversation = getAiConversation(loginUser, content, shoppingContext, now);
         AiMessage userMessage = getUserMessage(conversation, loginUser, content, requestId, now);
         AiMessage assistantMessage = getAssistantMessage(conversation, loginUser, requestId, now);
-        return new PendingChat(requestId, loginUser, shoppingContext, conversation, userMessage, assistantMessage);
+        return new PendingChat(requestId, loginUser, shoppingContext, conversation, userMessage,
+                assistantMessage, usageReservation);
     }
 
     /** 将 Java 已鉴权的安全上下文组装成 Python 的内部请求，不传浏览器身份或数据库连接信息。 */
@@ -150,6 +157,12 @@ public class AiChatServiceImpl implements AiChatService {
                     agentRunResponse.getTraces()
             );
 
+            aiAccessService.recordSuccess(
+                    pendingChat.loginUser().getId(),
+                    pendingChat.aiUsageDate(),
+                    agentRunResponse.getUsage()
+            );
+
             AiConversation conversation = pendingChat.conversation();
             conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
@@ -181,6 +194,10 @@ public class AiChatServiceImpl implements AiChatService {
             conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
+            aiAccessService.recordFailure(
+                    pendingChat.loginUser().getId(),
+                    pendingChat.aiUsageDate()
+            );
             return buildChatVO(pendingChat.requestId(), conversation, pendingChat.shoppingContext(),
                     pendingChat.userMessage(), assistantMessage);
         });
@@ -338,6 +355,7 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     private record PendingChat(String requestId, User loginUser, AiShoppingContext shoppingContext,
-                               AiConversation conversation, AiMessage userMessage, AiMessage assistantMessage) {
+                               AiConversation conversation, AiMessage userMessage, AiMessage assistantMessage,
+                               AiUsageDate aiUsageDate) {
     }
 }

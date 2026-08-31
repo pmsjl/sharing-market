@@ -53,7 +53,7 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
         if (oldPost == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "帖子不存在，无法点赞");
         }
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         RLock lock = redissonClient.getLock(POST_THUMB_KEY + userId + ":" + postId);
         try {

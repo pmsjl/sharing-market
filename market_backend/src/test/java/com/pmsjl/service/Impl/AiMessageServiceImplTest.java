@@ -86,7 +86,7 @@ class AiMessageServiceImplTest {
     void listConversationMessagesChecksOwnerAndReturnsPageInAscendingSequence() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -140,7 +140,7 @@ class AiMessageServiceImplTest {
     void listConversationMessagesRejectsOtherUsersConversationBeforeReadingMessages() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -162,7 +162,7 @@ class AiMessageServiceImplTest {
     void listConversationMessagesNormalizesPaginationAndRejectsUnsafeSortField() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
         conversation.setUserId(101L);

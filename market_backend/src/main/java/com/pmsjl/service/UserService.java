@@ -30,18 +30,13 @@ public interface UserService extends IService<User> {
 
     Long userRegister(UserRegisterRequest userRegisterRequest);
 
-    Long addUser(UserAddRequest userAddRequest);
-
     boolean updateUser(UserUpdateRequest userUpdateRequest);
 
     public <VO> VO getVOFromUser(User user, VO type);
 
-    User getLoginUser(HttpServletRequest request);
+    User getLoginUser();
 
-    boolean updateMyUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request);
+    boolean updateMyUser(UserUpdateMyRequest userUpdateRequest, HttpServletRequest request);
 
     boolean isAdmin(HttpServletRequest request);
-
-
-    User getByIdWithLock(Long id);
 }

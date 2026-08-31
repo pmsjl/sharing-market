@@ -1,14 +1,12 @@
 package com.pmsjl.service.Impl;
 
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageAddRequest;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageQueryRequest;
-import com.pmsjl.model.entity.Notice;
 import com.pmsjl.model.entity.PrivateMessage;
 import com.pmsjl.mapper.PrivateMessageMapper;
 import com.pmsjl.model.entity.User;
@@ -44,7 +42,7 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
     public Long addPrivateMessage(PrivateMessageAddRequest privateMessageAddRequest, HttpServletRequest request) {
         PrivateMessage privateMessage = new PrivateMessage();
         BeanUtils.copyProperties(privateMessageAddRequest, privateMessage);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         privateMessage.setSenderId(userId);
         validPrivateMessage(privateMessage);
@@ -69,7 +67,7 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
         User contactUser = userService.getById(contactUserId);
         ThrowUtils.throwIf(contactUser == null, ErrorCode.NOT_FOUND_ERROR, "联系人不存在");
 
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
 
         if (current <= 0) current = 1;

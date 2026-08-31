@@ -47,26 +47,6 @@ public class UserController {
     private final StringRedisTemplate stringRedisTemplate;
 
     /***
-     * 添加用户
-     *
-     * @param userAddRequest
-     * @return
-     */
-    // TODO 添加用户，实际前端尚未添加此功能组件
-    @PostMapping("/add")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public Result<Long> addUser(@RequestBody UserAddRequest userAddRequest) {
-        if (userAddRequest == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        if (userAddRequest.getUserAccount().length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名长度少于4位，无法创建");
-        }
-        Long id = userService.addUser(userAddRequest);
-        return ResultUtils.success(id);
-    }
-
-    /***
      * //删除用户
      *
      * @param deleteRequest
@@ -110,7 +90,7 @@ public class UserController {
     @GetMapping("/get/login")
     public Result<LoginUserVO> getLoginUser(HttpServletRequest request) {
         ThrowUtils.throwIf(request==null,ErrorCode.PARAMS_ERROR);
-        User user=userService.getLoginUser(request);
+        User user=userService.getLoginUser();
         LoginUserVO loginUserVO = userService.getVOFromUser(user, new LoginUserVO());
         return ResultUtils.success(loginUserVO);
     }
@@ -233,7 +213,7 @@ public class UserController {
      * 更新个人信息
      */
     @PostMapping("/update/my")
-    public Result<Boolean> updateMyUser(@RequestBody UserUpdateRequest userUpdateRequest,HttpServletRequest request) {
+    public Result<Boolean> updateMyUser(@RequestBody UserUpdateMyRequest userUpdateRequest,HttpServletRequest request) {
         if (userUpdateRequest == null||request==null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }

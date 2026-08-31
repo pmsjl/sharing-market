@@ -66,16 +66,24 @@
           </el-select>
         </template>
       </el-table-column>
+      <el-table-column label="校园币" prop="balance" width="110">
+        <template #default="{ row }">{{
+          Number(row.balance || 0).toFixed(2)
+        }}</template>
+      </el-table-column>
       <el-table-column
         label="创建时间"
         prop="createTime"
         sortable
         :formatter="formatDate"
       ></el-table-column>
-      <el-table-column label="操作" width="250px">
+      <el-table-column label="操作" width="350px">
         <template #default="{ row }">
           <el-button @click="edit(row)">编辑</el-button>
           <el-button type="primary" @click="view(row)"> 查看</el-button>
+          <el-button type="success" @click="openGrantDialog(row)"
+            >发放校园币</el-button
+          >
           <el-popconfirm
             title="你确定要删除该用户吗？"
             @confirm="deleteUser(row)"
@@ -156,6 +164,39 @@
       </span>
     </el-dialog>
 
+    <el-dialog title="发放校园币" v-model="grantDialogVisible" width="420px">
+      <el-form :model="grantForm" label-width="90px">
+        <el-form-item label="接收用户">
+          <el-input :model-value="grantUserName" disabled />
+        </el-form-item>
+        <el-form-item label="发放数量">
+          <el-input-number
+            v-model="grantForm.amount"
+            :min="0.01"
+            :max="100000"
+            :precision="2"
+            :step="100"
+            controls-position="right"
+          />
+        </el-form-item>
+        <el-form-item label="发放原因">
+          <el-input
+            v-model="grantForm.reason"
+            maxlength="200"
+            show-word-limit
+            type="textarea"
+            placeholder="例如：活动奖励"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="grantDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="granting" @click="submitGrant">
+          确认发放
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 查看对话框 -->
     <el-dialog title="查看用户" v-model="viewDialogVisible" width="50%">
       <el-form :model="viewForm" ref="viewFormRef" disabled>
@@ -211,6 +252,7 @@ import {
   listUserByPageUsingPost,
   updateUserUsingPost
 } from "@/api/userController";
+import { grantCampusCoin } from "@/api/campusCoinController";
 
 const loading = ref(false);
 const userList = ref([]);
@@ -232,6 +274,10 @@ const roleEnum = {
 // 表单数据
 const editDialogVisible = ref(false);
 const viewDialogVisible = ref(false);
+const grantDialogVisible = ref(false);
+const granting = ref(false);
+const grantUserName = ref("");
+const grantForm = ref({ userId: "", amount: 500, reason: "" });
 const editForm = ref({
   id: 0,
   userName: "",
@@ -273,8 +319,39 @@ const getUserList = async () => {
 };
 // 编辑用户
 const edit = (row) => {
-  editDialogVisible.value = row;
+  editDialogVisible.value = true;
   Object.assign(editForm.value, row);
+};
+
+const openGrantDialog = (row) => {
+  grantUserName.value = row.userName || row.userAccount || String(row.id);
+  grantForm.value = { userId: String(row.id), amount: 500, reason: "" };
+  grantDialogVisible.value = true;
+};
+
+const submitGrant = async () => {
+  if (!grantForm.value.reason.trim()) {
+    ElMessage.warning("请填写发放原因");
+    return;
+  }
+  granting.value = true;
+  try {
+    const res = await grantCampusCoin({
+      ...grantForm.value,
+      reason: grantForm.value.reason.trim()
+    });
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error(res.message || "发放失败");
+      return;
+    }
+    ElMessage.success("校园币发放成功");
+    grantDialogVisible.value = false;
+    await getUserList();
+  } catch (error: any) {
+    ElMessage.error("发放失败，" + error.message);
+  } finally {
+    granting.value = false;
+  }
 };
 
 // 保存编辑

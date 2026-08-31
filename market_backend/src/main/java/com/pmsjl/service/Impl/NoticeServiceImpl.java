@@ -62,7 +62,7 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
     public Long addNotice(NoticeAddRequest noticeAddRequest, HttpServletRequest request) {
         Notice notice = new Notice();
         BeanUtils.copyProperties(noticeAddRequest, notice);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         notice.setNoticeAdminId(loginUser.getId());
         validNotice(notice);
         boolean result = save(notice);

@@ -114,7 +114,7 @@ public class CommodityOrderController {
             @RequestParam Integer payStatus,
             HttpServletRequest request) {
         //这里在原有基础上删除了userid，前后端都进行了修改，防止直接访问传入别人的id
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         // 构建查询条件
         CommodityOrderQueryRequest queryRequest = new CommodityOrderQueryRequest();
         queryRequest.setUserId(loginUser.getId());

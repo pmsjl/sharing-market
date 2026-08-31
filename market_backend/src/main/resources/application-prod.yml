@@ -45,6 +45,11 @@ app:
   cors:
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
 
+market:
+  campus-coin:
+    initial-balance: ${CAMPUS_COIN_INITIAL_BALANCE:1000.00}
+    max-admin-grant: ${CAMPUS_COIN_MAX_ADMIN_GRANT:100000.00}
+
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
   port: ${PORT:8081}
@@ -86,6 +91,10 @@ jwt:
   tokenHead: ${AUTH_TOKEN_PREFIX:Bearer}
 
 ai:
+  access:
+    user-daily-limit: ${AI_USER_DAILY_LIMIT:10}
+    global-daily-limit: ${AI_GLOBAL_DAILY_LIMIT:100}
+    timezone: ${AI_QUOTA_TIMEZONE:Asia/Shanghai}
   agent:
     base-url: ${AI_AGENT_BASE_URL}
     internal-token: ${AI_AGENT_INTERNAL_TOKEN}

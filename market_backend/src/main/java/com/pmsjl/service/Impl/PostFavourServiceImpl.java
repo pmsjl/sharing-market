@@ -60,7 +60,7 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
         if (oldPost == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "帖子不存在，无法收藏");
         }
-        User user = userService.getLoginUser(request);
+        User user = userService.getLoginUser();
         Long userId = user.getId();
         RLock lock = redissonClient.getLock(POST_FAVOUR_KEY + userId + ":" + postId);
         boolean locked = false;
@@ -85,7 +85,7 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
 
     @Override
     public Page<PostVO> listMyFavourPostByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         postQueryRequest.setFavourUserId(loginUser.getId());
         int current = postQueryRequest.getCurrent();
         int pageSize = postQueryRequest.getPageSize();

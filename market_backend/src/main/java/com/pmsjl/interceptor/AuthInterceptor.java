@@ -44,7 +44,7 @@ public class AuthInterceptor {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
         //用于获取调用方法的请求内容，获取的用户的role
         // 当前登录用户
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         UserRoleEnum mustRoleEnum = UserRoleEnum.getEnumByValue(mustRole);
         // 不需要权限，放行
         if (mustRoleEnum == null) {

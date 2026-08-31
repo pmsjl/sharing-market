@@ -45,7 +45,7 @@ public class UserCommodityFavoritesServiceImpl
      * add 只会在没有收藏记录时触发；已有收藏记录时，前端会转到 edit 做状态切换。
      */
     public Long addUserCommodityFavorites(UserCommodityFavorites userCommodityFavorites, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         userCommodityFavorites.setUserId(loginUser.getId());
         userCommodityFavorites.setStatus(1);
         validUserCommodityFavorites(userCommodityFavorites, true);
@@ -90,7 +90,7 @@ public class UserCommodityFavoritesServiceImpl
     public Page<UserCommodityFavoritesVO> listMyUserCommodityFavoritesVOByPage(
             UserCommodityFavoritesQueryRequest queryRequest,
             HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         queryRequest.setUserId(loginUser.getId());
         int current = queryRequest.getCurrent();
         int pageSize = queryRequest.getPageSize();
@@ -127,7 +127,7 @@ public class UserCommodityFavoritesServiceImpl
     }
 
     private void checkOwnerOrAdmin(UserCommodityFavorites favorite, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         if (!Objects.equals(loginUser.getId(), favorite.getUserId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }

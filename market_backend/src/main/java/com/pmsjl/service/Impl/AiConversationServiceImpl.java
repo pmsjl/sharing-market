@@ -22,7 +22,6 @@ import com.pmsjl.model.enums.AiMessageStatusEnum;
 import com.pmsjl.model.vo.AiConversationVO;
 import com.pmsjl.model.vo.AiPageVO;
 import com.pmsjl.service.AiConversationService;
-import com.pmsjl.service.AiMessageService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,7 +78,7 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
     public Boolean deleteConversation(Long conversationId, HttpServletRequest request) {
         ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
                 "conversationId 必须为正整数");
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         AiConversation conversation = baseMapper.selectOwnedByIdForUpdate(conversationId, loginUser.getId());
         ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR, "会话不存在或已删除");
 
@@ -109,7 +108,7 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
             pageSize = 10;
         }
 
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Page<AiConversation> page = new Page<>(current, pageSize);
         boolean ascending = "asc".equalsIgnoreCase(sortOrder);
         if (StringUtils.isNotBlank(sortField) && ALLOWED_SORT_FIELDS.contains(sortField)) {
@@ -149,7 +148,7 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
                                              HttpServletRequest request) {
         ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
                 "conversationId 必须为正整数");
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         AiConversation conversation = baseMapper.selectOwnedByIdForUpdate(conversationId, loginUser.getId());
         ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
                 "会话不存在或已删除");

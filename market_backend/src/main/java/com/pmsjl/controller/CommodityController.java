@@ -67,7 +67,7 @@ public class CommodityController {
     @PostMapping("/buy")
     public Result<Map<String, Object>> buyCommodity(@RequestBody BuyCommodityRequest buyCommodityRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(buyCommodityRequest == null, ErrorCode.PARAMS_ERROR, "购买参数不能为空");
-        Map<String, Object> result = commodityService.buyCommodity(buyCommodityRequest, request);
+        Map<String, Object> result = commodityService.createOrderAndTryPay(buyCommodityRequest, request);
         return ResultUtils.success(result);
     }
 
@@ -75,7 +75,7 @@ public class CommodityController {
     @PostMapping("/pay")
     public Result<Boolean>payCommodity(@RequestBody PayCommodityOrderRequest payRequest, HttpServletRequest request){
         ThrowUtils.throwIf(payRequest == null, ErrorCode.PARAMS_ERROR, "购买参数不能为空");
-        Boolean result=commodityService.payCommodity(payRequest,request);
+        Boolean result=commodityService.payPendingOrder(payRequest,request);
         return ResultUtils.success(result);
     }
     /***

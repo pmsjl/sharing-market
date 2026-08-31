@@ -58,6 +58,11 @@ app:
   cors:
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:8080}
 
+market:
+  campus-coin:
+    initial-balance: ${CAMPUS_COIN_INITIAL_BALANCE:1000.00}
+    max-admin-grant: ${CAMPUS_COIN_MAX_ADMIN_GRANT:100000.00}
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
@@ -110,6 +115,10 @@ jwt:
   tokenHead: Bearer
 
 ai:
+  access:
+    user-daily-limit: ${AI_USER_DAILY_LIMIT:10}
+    global-daily-limit: ${AI_GLOBAL_DAILY_LIMIT:100}
+    timezone: ${AI_QUOTA_TIMEZONE:Asia/Shanghai}
   agent:
     base-url: ${AI_AGENT_BASE_URL:http://127.0.0.1:8103}
     internal-token: ${AI_AGENT_INTERNAL_TOKEN:}

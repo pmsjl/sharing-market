@@ -111,6 +111,16 @@ export interface AiChatVO {
   assistantMessage: AiMessageVO;
 }
 
+export interface AiQuotaVO {
+  dailyLimit: number;
+  used: number;
+  remaining: number;
+  globalDailyLimit: number;
+  globalUsed: number;
+  globalRemaining: number;
+  resetAt: string;
+}
+
 export interface AiPageVO<T> {
   current: number;
   pageSize: number;
@@ -191,4 +201,10 @@ export const restoreAiConversation = (conversationId: string) =>
   request<unknown, Result<boolean>>({
     url: `/api/ai/conversations/${conversationId}/restore`,
     method: "POST"
+  });
+
+export const getMyAiQuota = () =>
+  request<unknown, Result<AiQuotaVO>>({
+    url: "/api/ai/quota/me",
+    method: "GET"
   });

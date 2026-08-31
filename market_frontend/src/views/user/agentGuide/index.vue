@@ -422,6 +422,50 @@
       </section>
 
       <footer class="composer-dock">
+        <section
+          v-if="aiQuota"
+          class="quota-board"
+          aria-label="今日 AI 咨询额度"
+        >
+          <article
+            class="quota-ticket"
+            :class="quotaStateClass(aiQuota.remaining, aiQuota.dailyLimit)"
+          >
+            <div class="quota-ticket__heading">
+              <span>我的今日额度</span>
+              <strong>{{ aiQuota.remaining }}<small> 次可用</small></strong>
+            </div>
+            <div class="quota-meter" aria-hidden="true">
+              <span :style="{ width: `${userQuotaPercent}%` }"></span>
+            </div>
+            <p>已用 {{ aiQuota.used }} / {{ aiQuota.dailyLimit }} 次</p>
+          </article>
+
+          <article
+            class="quota-ticket"
+            :class="
+              quotaStateClass(aiQuota.globalRemaining, aiQuota.globalDailyLimit)
+            "
+          >
+            <div class="quota-ticket__heading">
+              <span>平台今日额度</span>
+              <strong
+                >{{ aiQuota.globalRemaining }}<small> 次可用</small></strong
+              >
+            </div>
+            <div class="quota-meter" aria-hidden="true">
+              <span :style="{ width: `${globalQuotaPercent}%` }"></span>
+            </div>
+            <p>
+              已用 {{ aiQuota.globalUsed }} / {{ aiQuota.globalDailyLimit }} 次
+            </p>
+          </article>
+
+          <div class="quota-reset">
+            <span>每日重置</span>
+            <strong>{{ quotaResetLabel }}</strong>
+          </div>
+        </section>
         <div v-if="contextFieldCount" class="active-context">
           <span>本轮会带上 {{ contextFieldCount }} 项购买条件</span>
           <button type="button" @click="contextDrawerOpen = true">
@@ -436,7 +480,7 @@
             :autosize="{ minRows: 1, maxRows: 5 }"
             maxlength="1000"
             resize="none"
-            :disabled="sending"
+            :disabled="sending || quotaExhausted"
             placeholder="例如：想买一台适合看论文的二手平板，预算还没想好"
             @focus="composerFocused = true"
             @blur="composerFocused = false"
@@ -446,12 +490,27 @@
             <span v-if="messageLoadFailed">
               历史消息加载失败，请重新加载后再继续咨询
             </span>
+            <span v-else-if="aiQuota && aiQuota.globalRemaining <= 0">
+              今日平台体验额度已用完，明天再来
+            </span>
+            <span v-else-if="aiQuota && aiQuota.remaining <= 0">
+              你今天的 {{ aiQuota.dailyLimit }} 次咨询已用完，明天再来
+            </span>
+            <span v-else-if="aiQuota">
+              今日剩余 {{ aiQuota.remaining }}/{{ aiQuota.dailyLimit }} 次 ·
+              Enter 发送
+            </span>
             <span v-else>Enter 发送 · Shift + Enter 换行</span>
             <el-button
               class="stamp-send"
               type="primary"
               :loading="sending"
-              :disabled="!composer.trim() || sending || messageLoadFailed"
+              :disabled="
+                !composer.trim() ||
+                sending ||
+                messageLoadFailed ||
+                quotaExhausted
+              "
               @click="sendMessage"
             >
               盖戳发送
@@ -621,11 +680,13 @@ import {
   AiMessageVO,
   AiRagSourceVO,
   AiShoppingContext,
+  AiQuotaVO,
   archiveAiConversation,
   createAiConversation,
   deleteAiConversation,
   listAiConversationMessages,
   listAiConversations,
+  getMyAiQuota,
   sendAiConversationMessage
 } from "@/api/aiController";
 
@@ -719,10 +780,62 @@ const typingBuffers = reactive<Record<string, string>>({});
 const shouldFollowOutput = ref(true);
 const sourceDialogOpen = ref(false);
 const selectedSource = ref<AiRagSourceVO | null>(null);
+const aiQuota = ref<AiQuotaVO | null>(null);
 
 let typingAnimationFrame: number | null = null;
 let messageResizeObserver: ResizeObserver | null = null;
 let resizeFollowFrame: number | null = null;
+
+const quotaExhausted = computed(
+  () =>
+    Boolean(aiQuota.value) &&
+    (Number(aiQuota.value?.remaining || 0) <= 0 ||
+      Number(aiQuota.value?.globalRemaining || 0) <= 0)
+);
+
+const quotaUsedPercent = (used: number, limit: number) => {
+  if (!Number.isFinite(limit) || limit <= 0) return 0;
+  return Math.min(100, Math.max(0, (Number(used || 0) / limit) * 100));
+};
+
+const userQuotaPercent = computed(() =>
+  quotaUsedPercent(aiQuota.value?.used || 0, aiQuota.value?.dailyLimit || 0)
+);
+
+const globalQuotaPercent = computed(() =>
+  quotaUsedPercent(
+    aiQuota.value?.globalUsed || 0,
+    aiQuota.value?.globalDailyLimit || 0
+  )
+);
+
+const quotaStateClass = (remaining: number, limit: number) => {
+  if (remaining <= 0) return "is-empty";
+  if (limit > 0 && remaining / limit <= 0.2) return "is-low";
+  return "";
+};
+
+const quotaResetLabel = computed(() => {
+  if (!aiQuota.value?.resetAt) return "次日 00:00";
+  const resetAt = new Date(aiQuota.value.resetAt);
+  if (Number.isNaN(resetAt.getTime())) return "次日 00:00";
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(resetAt);
+});
+
+const loadAiQuota = async () => {
+  try {
+    const res = await getMyAiQuota();
+    if (res.code === 200 && res.data) aiQuota.value = res.data;
+  } catch (error) {
+    // 额度展示失败不阻塞历史记录浏览，发送时仍由后端强制校验。
+  }
+};
 
 const shoppingContext = reactive<{
   budgetMin?: number;
@@ -1278,10 +1391,27 @@ const submitContent = async (
     const res = activeConversationId.value
       ? await sendAiConversationMessage(activeConversationId.value, body)
       : await createAiConversation(body);
-    if (res.code !== 200 || !res.data)
-      throw new Error(res.message || "Agent 服务暂时不可用");
+    if (res.code !== 200 || !res.data) {
+      const businessError = new Error(
+        res.message || "Agent 服务暂时不可用"
+      ) as Error & { businessCode?: number };
+      businessError.businessCode = res.code;
+      throw businessError;
+    }
     await applyServerResponse(res.data, localIds);
   } catch (error: any) {
+    const protectedRejection = [40901, 42901, 42902].includes(
+      Number(error?.businessCode)
+    );
+    if (protectedRejection) {
+      messages.value = messages.value.filter(
+        (item) => !localIds.includes(item.id)
+      );
+      composer.value = content;
+      ElMessage.warning(error?.message || "当前暂时无法继续咨询");
+      await loadAiQuota();
+      return;
+    }
     agentUnavailable.value = true;
     messages.value = messages.value.filter(
       (item) => item.id !== pendingMessage.id
@@ -1304,6 +1434,7 @@ const submitContent = async (
     await scrollToBottom();
   } finally {
     sending.value = false;
+    await loadAiQuota();
   }
 };
 
@@ -1404,6 +1535,7 @@ const openCommodity = (commodityId: string) => {
 onMounted(async () => {
   layoutSettingStore.focusMode = true;
   window.addEventListener("resize", handleResize);
+  await loadAiQuota();
   const loaded = await loadConversations();
   const requestedConversationId = Array.isArray(route.query.conversationId)
     ? route.query.conversationId[0]
@@ -3399,5 +3531,162 @@ html.dark .markdown-answer :deep(.github-theme) {
 html.dark .markdown-answer :deep(.github-theme table th) {
   color: var(--market-ink) !important;
   background: var(--market-primary-soft) !important;
+}
+</style>
+<style scoped lang="scss">
+.quota-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  max-width: 960px;
+  margin: 0 auto 9px;
+}
+
+.quota-ticket,
+.quota-reset {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--market-line);
+  color: var(--market-ink);
+  background: color-mix(
+    in srgb,
+    var(--market-surface) 92%,
+    var(--market-primary-soft)
+  );
+  box-shadow: 0 4px 12px rgba(30, 64, 109, 0.05);
+}
+
+.quota-ticket {
+  padding: 8px 11px 7px;
+  border-radius: 8px 13px 8px 13px;
+  overflow: hidden;
+
+  &::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: var(--market-primary);
+    content: "";
+  }
+}
+
+.quota-ticket__heading {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.quota-ticket__heading > span,
+.quota-reset span {
+  color: var(--market-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.quota-ticket__heading strong {
+  color: var(--market-primary);
+  font-family: var(--market-font-display);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.quota-ticket__heading small {
+  font-family: var(--market-font-body);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.quota-ticket p {
+  margin: 4px 0 0;
+  color: var(--market-muted);
+  font-size: 10px;
+}
+
+.quota-meter {
+  height: 4px;
+  margin-top: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--market-surface-soft);
+}
+
+.quota-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--market-primary);
+  transition: width 0.25s ease;
+}
+
+.quota-ticket.is-low {
+  &::after,
+  .quota-meter span {
+    background: var(--market-orange);
+  }
+
+  .quota-ticket__heading strong {
+    color: var(--market-orange);
+  }
+}
+
+.quota-ticket.is-empty {
+  &::after,
+  .quota-meter span {
+    background: var(--market-stamp-red);
+  }
+
+  .quota-ticket__heading strong {
+    color: var(--market-stamp-red);
+  }
+}
+
+.quota-reset {
+  display: flex;
+  min-width: 126px;
+  padding: 8px 11px;
+  border-style: dashed;
+  border-radius: 11px 7px 11px 7px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.quota-reset strong {
+  margin-top: 3px;
+  color: var(--market-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .quota-board {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .quota-reset {
+    grid-column: 1 / -1;
+    padding: 6px 10px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .quota-reset strong {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .quota-board {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .quota-reset {
+    grid-column: auto;
+  }
 }
 </style>

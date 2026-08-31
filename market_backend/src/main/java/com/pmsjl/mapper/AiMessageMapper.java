@@ -28,4 +28,5 @@ public interface AiMessageMapper extends BaseMapper<AiMessage> {
             @Param("conversationId") Long conversationId,
             @Param("turnLimit") int turnLimit
     );
+
 }

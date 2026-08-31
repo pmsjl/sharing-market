@@ -391,7 +391,7 @@ const submitBuy = async () => {
     });
     if (res.code === 200) {
       if (res.data.needPay) {
-        ElMessage.info("订单已创建，余额不足，请尽快完成订单支付");
+        ElMessage.info("订单已创建，校园币不足，请在获得发放后尽快完成支付");
       } else {
         ElMessage.success("购买成功");
       }

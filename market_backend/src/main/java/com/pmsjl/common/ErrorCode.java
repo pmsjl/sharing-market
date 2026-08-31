@@ -11,7 +11,9 @@ public enum ErrorCode {
     SYSTEM_ERROR(50000, "系统内部异常"),
     OPERATION_ERROR(50001, "操作失败"),
     WORD_FORBIDDEN_ERROR(422200, "包含违禁词，多次违禁将封禁账号"),
-    CONFLICT_ERROR(40900, "请求冲突");
+    CONFLICT_ERROR(40900, "请求冲突"),
+    AI_USER_DAILY_QUOTA_EXCEEDED(42901, "你今日的 AI 咨询额度已用完"),
+    AI_GLOBAL_DAILY_QUOTA_EXCEEDED(42902, "今日平台 AI 体验额度已用完");
     /**
      * 状态码
      */

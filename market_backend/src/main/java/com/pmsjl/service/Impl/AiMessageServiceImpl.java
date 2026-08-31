@@ -19,6 +19,7 @@ import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
 import com.pmsjl.model.dto.ai.AiMessageQueryRequest;
 import com.pmsjl.model.dto.ai.AiShoppingContext;
+import com.pmsjl.model.dto.ai.AiUsageDate;
 import com.pmsjl.model.dto.ai.internal.AgentHistoryMessage;
 import com.pmsjl.model.dto.ai.internal.AgentRunRequest;
 import com.pmsjl.model.dto.ai.internal.AgentRunResponse;
@@ -35,6 +36,7 @@ import com.pmsjl.model.vo.AiMessageVO;
 import com.pmsjl.model.vo.AiPageVO;
 import com.pmsjl.model.vo.AiStructuredContentVO;
 import com.pmsjl.service.AiAgentTraceService;
+import com.pmsjl.service.AiAccessService;
 import com.pmsjl.service.AiChatService;
 import com.pmsjl.service.AiConversationService;
 import com.pmsjl.service.AiMessageService;
@@ -81,6 +83,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     private AiStructuredContentAssembler aiStructuredContentAssembler;
     @Autowired
     private AiAgentProperties aiAgentProperties;
+    @Autowired
+    private AiAccessService aiAccessService;
 
     @Override
     public AiPageVO<AiMessageVO> listConversationMessages(Long conversationId,
@@ -98,7 +102,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             pageSize = 20;
         }
 
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         AiConversation conversation = aiConversationService.getById(conversationId);
         ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR, "会话不存在或已删除");
         ThrowUtils.throwIf(!ObjectUtil.equals(conversation.getUserId(), loginUser.getId()),
@@ -144,13 +148,14 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                 "咨询内容不能超过 " + MAX_MESSAGE_LENGTH + " 个字符");
         AiShoppingContext aiShoppingContext = aiChatMessageRequest.getShoppingContext();
         aiChatService.validateShoppingContext(aiShoppingContext);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         ThrowUtils.throwIf(!ObjectUtil.equals(loginUser.getId(), aiConversation.getUserId()),
                 ErrorCode.NO_AUTH_ERROR, "对话属于其他用户，无法正常发送");
 
 
         String requestId = UUID.randomUUID().toString();
         PendingMessage pendingMessage = transactionTemplate.execute(status -> {
+            AiUsageDate usageReservation = aiAccessService.reserveRequest(loginUser.getId());
             //这里自定义了一个方法利用FOR UPDATE上了行锁，避免了不必要的并发导致no相同的问题，结束条件是事务提交
             // 获取的conversation不是重点，主要是上锁
             AiConversation conversation =
@@ -201,7 +206,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     })
                     .toList();
 
-            return this.addPendingMessage(loginUser, content, aiShoppingContext, requestId, conversationId, conversation, agentHistoryMessages);
+            return this.addPendingMessage(loginUser, content, aiShoppingContext, requestId,
+                    conversationId, conversation, agentHistoryMessages, usageReservation);
         });
         ThrowUtils.throwIf(pendingMessage == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
 
@@ -327,6 +333,10 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
+            aiAccessService.recordFailure(
+                    pendingMessage.loginUser().getId(),
+                    pendingMessage.usageReservation()
+            );
             return buildChatVO(pendingMessage.requestId(), conversation, pendingMessage.shoppingContext(),
                     pendingMessage.userMessage(), assistantMessage);
         });
@@ -361,6 +371,12 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     conversation.getId(),
                     assistantMessage.getId(),
                     agentRunResponse.getTraces()
+            );
+
+            aiAccessService.recordSuccess(
+                    pendingMessage.loginUser().getId(),
+                    pendingMessage.usageReservation(),
+                    agentRunResponse.getUsage()
             );
 
             conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
@@ -438,7 +454,9 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
     private PendingMessage addPendingMessage(User loginUser, String content,
                                              AiShoppingContext shoppingContext, String requestId,
-                                             Long conversationId, AiConversation conversation, List<AgentHistoryMessage> agentHistoryMessages) {
+                                             Long conversationId, AiConversation conversation,
+                                             List<AgentHistoryMessage> agentHistoryMessages,
+                                             AiUsageDate usageReservation) {
         Long userId = loginUser.getId();
         DateTime now = DateTime.now();
 
@@ -446,7 +464,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         AiMessage userMessage = getUserMessage(conversationId, userId, content, shoppingContext, requestId, now);
         AiMessage assistantMessage = getAssistantMessage(conversationId, userId, content, shoppingContext, requestId, now, userMessage.getSequenceNo());
         updateAiConversation(conversation, now);
-        return new PendingMessage(requestId, loginUser, content, shoppingContext, conversation, userMessage, assistantMessage, agentHistoryMessages);
+        return new PendingMessage(requestId, loginUser, content, shoppingContext, conversation,
+                userMessage, assistantMessage, agentHistoryMessages, usageReservation);
     }
 
     private void updateAiConversation(AiConversation conversation, DateTime now) {
@@ -538,6 +557,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
     private record PendingMessage(String requestId, User loginUser, String content, AiShoppingContext shoppingContext,
                                   AiConversation conversation, AiMessage userMessage, AiMessage assistantMessage,
-                                  List<AgentHistoryMessage> agentHistoryMessages) {
+                                  List<AgentHistoryMessage> agentHistoryMessages,
+                                  AiUsageDate usageReservation) {
     }
+
 }

@@ -19,6 +19,7 @@ import com.pmsjl.model.entity.CommodityType;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityVO;
 import com.pmsjl.service.CommodityOrderService;
+import com.pmsjl.service.CampusCoinService;
 import com.pmsjl.service.CommodityService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.service.CommodityTypeService;
@@ -62,6 +63,8 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     @Autowired
     private UserService userService;
     @Autowired
+    private CampusCoinService campusCoinService;
+    @Autowired
     private CommodityOrderService commodityOrderService;
     @Autowired
     private CommodityTypeService commodityTypeService;
@@ -77,7 +80,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
     @Override
     public Long addCommodity(Commodity commodity, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long id = loginUser.getId();
         commodity.setAdminId(id);
         if (commodity.getIsListed() == null) {
@@ -103,13 +106,13 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> buyCommodity(BuyCommodityRequest buyCommodityRequest, HttpServletRequest request) {
+    public Map<String, Object> createOrderAndTryPay(BuyCommodityRequest buyCommodityRequest, HttpServletRequest request) {
         Long commodityId = buyCommodityRequest.getCommodityId();
         Integer buyNumber = buyCommodityRequest.getBuyNumber();
         ThrowUtils.throwIf(commodityId == null || commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品id非法");
         ThrowUtils.throwIf(buyNumber == null || buyNumber <= 0, ErrorCode.PARAMS_ERROR, "购买数量非法");
 
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         User user = userService.getById(loginUser.getId());
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
         Commodity commodity = getById(commodityId);
@@ -119,8 +122,6 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 ErrorCode.OPERATION_ERROR, "商品价格异常");
 
         BigDecimal totalAmount = commodity.getPrice().multiply(BigDecimal.valueOf(buyNumber));
-        BigDecimal balance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
-        boolean balanceEnough = balance.compareTo(totalAmount) >= 0;
 
         boolean inventoryReserved = lambdaUpdate()
                 .setSql("commodityInventory = commodityInventory - " + buyNumber)
@@ -138,21 +139,21 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         order.setBuyNumber(buyNumber);
         order.setPaymentAmount(totalAmount);
         order.setRemark(buyCommodityRequest.getRemark());
-        order.setPayStatus(balanceEnough ? 1 : 0);
+        order.setPayStatus(0);
         boolean orderSaved = commodityOrderService.save(order);
         ThrowUtils.throwIf(!orderSaved, ErrorCode.OPERATION_ERROR, "订单创建失败");
 
-        if (balanceEnough) {
-            boolean balanceDeducted = userService.lambdaUpdate()
-                    .setSql("balance = balance - " + totalAmount.toPlainString())
-                    .eq(User::getId, user.getId())
-                    .eq(User::getIsDelete, 0)
-                    .ge(User::getBalance, totalAmount)
+        boolean paid = campusCoinService.tryDebitForPurchase(user.getId(), order.getId(), totalAmount);
+        if (paid) {
+            order.setPayStatus(1);
+            boolean orderUpdated = commodityOrderService.lambdaUpdate()
+                    .set(CommodityOrder::getPayStatus, 1)
+                    .eq(CommodityOrder::getId, order.getId())
+                    .eq(CommodityOrder::getPayStatus, 0)
+                    .eq(CommodityOrder::getIsDelete, 0)
                     .update();
-            ThrowUtils.throwIf(!balanceDeducted, ErrorCode.OPERATION_ERROR, "余额扣减失败");
+            ThrowUtils.throwIf(!orderUpdated, ErrorCode.OPERATION_ERROR, "订单支付状态更新失败");
         }
-        //这里对余额进行扣除，为什么需要再次判断，因为多线程会导致可能上面的余额是够的，然后paystatus为已支付
-        //但是到这里余额又不够了，所以要判断，扣除失败就全部回滚
 
         stringRedisTemplate.delete(CACHE_COMMODITY_KEY + commodityId);
         //库存已经变化，所以删除redis缓存
@@ -160,7 +161,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         Map<String, Object> result = new HashMap<>();
         result.put("orderId", order.getId());
         result.put("payStatus", order.getPayStatus());
-        result.put("needPay", !balanceEnough);
+        result.put("needPay", !paid);
         //这里乍一看paystatus和needpay作用是一样的
         //但是如果我后续继续添加其他的paystatus状态，（释放库存需要有过期状态之类的）
         //那两者就不等价了
@@ -173,11 +174,11 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean payCommodity(PayCommodityOrderRequest payRequest, HttpServletRequest request) {
+    public Boolean payPendingOrder(PayCommodityOrderRequest payRequest, HttpServletRequest request) {
         Long orderId = payRequest.getCommodityOrderId();
         ThrowUtils.throwIf(orderId == null || orderId <= 0, ErrorCode.PARAMS_ERROR, "订单id非法");
 
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
 
         CommodityOrder order = commodityOrderService.getByIdWithLock(orderId);
         //设置锁一般来说要么根据写锁判断多线程问题，要么正常读加乐观锁进行判断，要么全局悲观锁
@@ -221,18 +222,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         Commodity commodity = getById(order.getCommodityId());
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR, "订单商品不存在");
 
-        User user = userService.getByIdWithLock(loginUser.getId());
-        //这里也是一样设置悲观锁，防止余额出问题
-        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
-
-        BigDecimal balance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
-        if (balance.compareTo(order.getPaymentAmount()) < 0) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "余额不足");
-        }
-
-        user.setBalance(balance.subtract(order.getPaymentAmount()));
-        boolean userUpdated = userService.updateById(user);
-        ThrowUtils.throwIf(!userUpdated, ErrorCode.OPERATION_ERROR, "余额扣减失败");
+        campusCoinService.debitForPurchase(loginUser.getId(), order.getId(), order.getPaymentAmount());
 
         boolean orderUpdated = commodityOrderService.lambdaUpdate()
                 .set(CommodityOrder::getPayStatus, 1)
@@ -241,7 +231,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 .eq(CommodityOrder::getIsDelete, 0)
                 .update();
         ThrowUtils.throwIf(!orderUpdated, ErrorCode.OPERATION_ERROR, "订单状态更新失败");
-//两个悲观锁，一个防止订单重复支付，一个防止用户同时支付多个订单出现负数余额
+//订单锁防止重复支付，CampusCoinService 内的用户锁防止多个订单并发扣成负数。
         return true;
     }
 
@@ -262,7 +252,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     @Transactional(rollbackFor = Exception.class)
     @Override
     public Boolean deleteCommodity(Long id, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Commodity commodity = getById(id);
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
         if (!userService.isAdmin(request) && !Objects.equals(commodity.getAdminId(), loginUser.getId())) {
@@ -436,7 +426,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
     @Override
     public Page<CommodityVO> listMyCommodityVOByPage(CommodityQueryRequest commodityQueryRequest, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         commodityQueryRequest.setAdminId(loginUser.getId());
         Page<CommodityVO> commodityVOPage = listCommodityVOByPage(commodityQueryRequest);
         return commodityVOPage;
