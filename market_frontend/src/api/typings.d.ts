@@ -684,7 +684,6 @@ declare namespace API {
   };
 
   type LoginUserVO = {
-    balance?: number;
     createTime?: string;
     id?: string;
     updateTime?: string;
@@ -1169,14 +1168,6 @@ declare namespace API {
     userRole?: string;
   };
 
-  type UserAddRequest = {
-    userAccount?: string;
-    userAvatar?: string;
-    userName?: string;
-    userPassword?: string;
-    userRole?: string;
-  };
-
   type UserCommodityFavoritesAddRequest = {
     commodityId?: string;
   };
@@ -1256,7 +1247,6 @@ declare namespace API {
   };
 
   type UserUpdateRequest = {
-    balance?: number;
     id?: string;
     userAvatar?: string;
     userName?: string;
@@ -1265,7 +1255,6 @@ declare namespace API {
   };
 
   type UserVO = {
-    balance?: number;
     createTime?: string;
     id?: string;
     userAvatar?: string;

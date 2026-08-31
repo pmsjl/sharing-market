@@ -1,6 +1,5 @@
 package com.pmsjl.service.Impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -77,7 +76,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         }
         CommodityOrder commodityOrder = getById(id);
         ThrowUtils.throwIf(commodityOrder == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在无法删除");
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         if (!ObjectUtil.equals(userId, commodityOrder.getUserId()) && !userService.isAdmin(request)) {
             //注意这里的删除权限除了管理员还可以是订单的创建者进行删除
@@ -108,7 +107,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
 
         CommodityOrder commodityOrder = getById(id);
         ThrowUtils.throwIf(commodityOrder == null, ErrorCode.NOT_FOUND_ERROR);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         if (!ObjectUtil.equals(loginUser.getId(), commodityOrder.getUserId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
@@ -218,7 +217,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
 
     @Override
     public Page<CommodityOrderVO> listMyCommodityOrderVOByPage(CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         commodityOrderQueryRequest.setUserId(loginUser.getId());
         Page<CommodityOrderVO> commodityOrderVOPage = this.listCommodityOrderVOByPage(commodityOrderQueryRequest, request);
         return commodityOrderVOPage;

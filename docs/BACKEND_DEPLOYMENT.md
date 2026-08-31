@@ -10,7 +10,7 @@ MySQL、Redis 和 Aliyun OSS 是外部托管依赖，不包含在应用容器内
 ## 部署前置条件
 
 - 已创建 MySQL `trade` 业务库，并完成原项目基础 schema 初始化。
-- 按时间顺序执行 `market_backend/sql/` 中适用于当前环境的 AI 增量脚本。
+- 按时间顺序执行 `market_backend/sql/` 中适用于当前环境的 schema 增量脚本。升级到 2026-08-30 版本时，必须在启动新版 Java 服务前执行 `market_backend/sql/20260830_add_campus_coin_and_ai_quota.sql`；该脚本会保留现有余额、补期初流水，并创建校园币流水及 AI 日配额表。
 - 已准备 Redis 和 Aliyun OSS。
 - 已准备兼容 OpenAI Responses 的模型服务；启用 RAG 时还需独立的 Embedding 服务。
 
@@ -47,7 +47,7 @@ https://market.example.com,https://*.sharing-market.pages.dev
 
 禁止配置全局 `*`。服务健康检查：
 
-Redis 的 Spring Data、Session 和 Redisson 三种用法现在共用同一份连接配置。托管 Redis 如果要求 TLS，设置 `REDIS_SSL_ENABLED=true`；如果服务商提供用户名，同时填写 `REDIS_USERNAME`。也可以使用 Spring Boot 原生的 `SPRING_DATA_REDIS_URL=rediss://用户名:密码@主机:端口` 代替分项连接参数，库号仍由 `REDIS_DATABASE` 指定。不要把 Redis 地址写进 Java 代码。
+Redis 的 Spring Data、Session 和 Redisson 三种用法现在共用同一份连接配置。托管 Redis 如果要求 TLS，设置 `REDIS_SSL_ENABLED=true`；如果服务商提供用户名，同时填写 `REDIS_USERNAME`。也可以使用 Spring Boot 原生的 `SPRING_DATA_REDIS_URL=rediss://主机:端口` 代替分项连接参数；需要认证时优先使用上面的用户名和密码环境变量，库号仍由 `REDIS_DATABASE` 指定。不要把 Redis 地址写进 Java 代码。
 
 - 存活：`GET /api/actuator/health/liveness`
 - 就绪：`GET /api/actuator/health/readiness`
@@ -89,6 +89,17 @@ python -m app.rag.rebuild_index
 
 索引完成后再设置 `RAG_ENABLED=true`。Embedding 模型、维度或语料发生变化后必须重新构建。未挂载持久化磁盘时，重新部署会丢失索引，`/ready` 将返回 503。
 
+## 校园币与 AI 日配额配置
+
+`20260830_add_campus_coin_and_ai_quota.sql` 执行完成后，可通过以下环境变量调整额度；未配置时使用右侧默认值：
+
+- `CAMPUS_COIN_INITIAL_BALANCE=1000.00`：新用户注册赠送校园币。
+- `CAMPUS_COIN_MAX_ADMIN_GRANT=100000.00`：管理员单次发放上限。
+- `AI_USER_DAILY_LIMIT=10`：单个用户每日可派发的 Agent 请求数。
+- `AI_GLOBAL_DAILY_LIMIT=100`：全平台每日可派发的 Agent 请求数。
+- `AI_QUOTA_TIMEZONE=Asia/Shanghai`：日额度归零所使用的自然日时区。
+
+这些限制由 MySQL 原子更新和用户行锁强制执行，不依赖单个 Java 进程的内存状态。若迁移未执行，注册、钱包或 AI 咨询会因缺少新表而失败。
 ## 推荐部署顺序
 
 1. 创建 MySQL、Redis、OSS 并初始化数据库。

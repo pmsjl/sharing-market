@@ -74,7 +74,7 @@ class AiConversationServiceImplTest {
     void listMyConversationsUsesLoginUserAndBuildsContractPage() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         Date now = new Date();
         AiConversation conversation = new AiConversation();
@@ -133,7 +133,7 @@ class AiConversationServiceImplTest {
     void listMyConversationsNormalizesInvalidPaginationAndUsesDefaultSort() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
         when(conversationMapper.selectPage(any(Page.class), any(Wrapper.class))).thenAnswer(invocation ->
                 invocation.getArgument(0));
 
@@ -160,7 +160,7 @@ class AiConversationServiceImplTest {
     void listMyConversationsSupportsArchivedStatus() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
         when(conversationMapper.selectPage(any(Page.class), any(Wrapper.class))).thenAnswer(invocation ->
                 invocation.getArgument(0));
 
@@ -183,7 +183,7 @@ class AiConversationServiceImplTest {
     void archiveConversationChangesOwnedActiveConversationOnly() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -202,7 +202,7 @@ class AiConversationServiceImplTest {
     void archiveConversationIsIdempotent() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -217,7 +217,7 @@ class AiConversationServiceImplTest {
     void archiveConversationRejectsPendingAssistantMessage() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -236,7 +236,7 @@ class AiConversationServiceImplTest {
     void restoreConversationChangesArchivedConversationAndIsIdempotentAfterward() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -256,7 +256,7 @@ class AiConversationServiceImplTest {
     void archiveAndRestoreHideMissingDeletedAndOtherUsersConversations() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
         when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(null);
 
         BusinessException archiveException = assertThrows(BusinessException.class,
@@ -274,7 +274,7 @@ class AiConversationServiceImplTest {
     void deleteConversationLogicallyDeletesOwnedMessagesAndConversation() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
 
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
@@ -300,7 +300,7 @@ class AiConversationServiceImplTest {
     void deleteConversationHidesMissingDeletedAndOtherUsersConversations() {
         User loginUser = new User();
         loginUser.setId(101L);
-        when(userService.getLoginUser(request)).thenReturn(loginUser);
+        when(userService.getLoginUser()).thenReturn(loginUser);
         when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(null);
 
         BusinessException exception = assertThrows(BusinessException.class,

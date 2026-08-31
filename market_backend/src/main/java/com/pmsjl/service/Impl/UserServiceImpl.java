@@ -14,6 +14,7 @@ import com.pmsjl.model.entity.User;
 import com.pmsjl.model.enums.UserRoleEnum;
 import com.pmsjl.model.vo.LoginUserVO;
 import com.pmsjl.model.vo.UserVO;
+import com.pmsjl.service.CampusCoinService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
 import com.pmsjl.utils.TokenUtils;
@@ -22,9 +23,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import java.math.BigDecimal;
@@ -50,6 +51,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             "id", "userName", "userRole", "balance", "editTime", "createTime", "updateTime"
     );
     public final StringRedisTemplate stringRedisTemplate;
+    private final CampusCoinService campusCoinService;
 
 
     /**
@@ -63,30 +65,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public boolean isAdmin(HttpServletRequest request) {
         // 仅管理员可查询
-        User user = getLoginUser(request);
+        User user = getLoginUser();
         return UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
     }
 
 
-
-    @Override
-    public Long addUser(UserAddRequest userAddRequest) {
-        String initialPassword = userAddRequest.getUserPassword();
-        ThrowUtils.throwIf(
-                StringUtils.isBlank(initialPassword) || initialPassword.length() < 8,
-                ErrorCode.PARAMS_ERROR,
-                "初始密码不能少于 8 位"
-        );
-        User user = new User();
-        BeanUtils.copyProperties(userAddRequest, user);
-        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + initialPassword).getBytes());
-        user.setUserPassword(encryptPassword);
-        user.setCreateTime(DateTime.now());
-        user.setUpdateTime(DateTime.now());
-        boolean result = save(user);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return user.getId();
-    }
 
     @Override
     public boolean updateUser(UserUpdateRequest userUpdateRequest) {
@@ -100,7 +83,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public User getLoginUser(HttpServletRequest request) {
+    public User getLoginUser() {
         User user=new User();
         BeanUtil.copyProperties(UserHolder.getUser(),user);
         if(user==null||user.getId()==null){
@@ -110,8 +93,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return user;
     }
     @Override
-    public boolean updateMyUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
-        User loginUser = getLoginUser(request);
+    public boolean updateMyUser(UserUpdateMyRequest userUpdateRequest, HttpServletRequest request) {
+        User loginUser = getLoginUser();
         User user=new User();
         BeanUtil.copyProperties(userUpdateRequest,user);
         user.setId(loginUser.getId());
@@ -244,6 +227,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long userRegister(UserRegisterRequest userRegisterRequest) {
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
@@ -274,20 +258,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setCreateTime(DateTime.now());
         boolean result = save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "数据库操作失败，请重试");
+        campusCoinService.grantForRegistration(user.getId());
         return user.getId();
 
 
 
     }
-
-    @Override
-    public User getByIdWithLock(Long id) {
-        return lambdaQuery()
-                .eq(User::getId, id)
-                .last("FOR UPDATE")
-                .one();
-    }
-
-
 
 }

@@ -7,11 +7,11 @@ import com.pmsjl.model.vo.UserVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.math.BigDecimal;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class UserServiceImplTest {
 
@@ -28,10 +28,13 @@ class UserServiceImplTest {
     }
 
     @Test
-    void publicUserModelsKeepCommodityPaymentBalance() throws NoSuchFieldException {
-        for (Class<?> modelClass : Set.of(User.class, UserQueryRequest.class, UserUpdateRequest.class, UserVO.class)) {
+    void balanceRemainsInternalAndCannotBeSelfUpdatedOrPubliclyExposed() throws NoSuchFieldException {
+        for (Class<?> modelClass : Set.of(User.class, UserQueryRequest.class)) {
             assertNotNull(modelClass.getDeclaredField("balance"));
-            assertEquals(BigDecimal.class, modelClass.getDeclaredField("balance").getType());
         }
+        assertThrows(NoSuchFieldException.class,
+                () -> UserUpdateRequest.class.getDeclaredField("balance"));
+        assertThrows(NoSuchFieldException.class,
+                () -> UserVO.class.getDeclaredField("balance"));
     }
 }

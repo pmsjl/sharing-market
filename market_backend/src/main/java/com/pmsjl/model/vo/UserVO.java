@@ -4,7 +4,6 @@ package com.pmsjl.model.vo;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.Date;
 
 @Data
@@ -38,10 +37,6 @@ public class UserVO implements Serializable {
      * 联系方式
      */
     private String userPhone;
-    /**
-     * 用户余额
-     */
-    private BigDecimal balance;
     /**
      * 创建时间
      */

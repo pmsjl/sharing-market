@@ -24,6 +24,17 @@
       <el-button type="primary" @click="updateUserInfo">保存资料</el-button>
     </section>
 
+    <section class="coin-summary market-panel">
+      <div>
+        <span class="market-eyebrow">CAMPUS COIN</span>
+        <h2>校园币</h2>
+        <p>
+          注册赠送的站内模拟币，仅用于校园市场交易，不可充值、提现或兑换人民币。
+        </p>
+      </div>
+      <strong>{{ formatCoin(campusCoinWallet.balance) }}</strong>
+    </section>
+
     <el-tabs v-model="activeName" class="account-tabs">
       <el-tab-pane label="个人信息" name="first">
         <section class="profile-form market-panel">
@@ -118,6 +129,46 @@
         </section>
       </el-tab-pane>
 
+      <el-tab-pane label="校园币流水" name="campusCoin">
+        <section class="tab-panel market-panel">
+          <el-table
+            v-loading="coinTransactionsLoading"
+            :data="coinTransactions"
+          >
+            <el-table-column label="时间" prop="createTime" min-width="170" />
+            <el-table-column label="类型" min-width="120">
+              <template #default="{ row }">
+                {{ transactionTypeLabel(row.transactionType) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="变动" min-width="110">
+              <template #default="{ row }">
+                <span :class="Number(row.amount) >= 0 ? 'coin-in' : 'coin-out'">
+                  {{ Number(row.amount) >= 0 ? "+" : ""
+                  }}{{ formatCoin(row.amount) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="变动后余额" min-width="130">
+              <template #default="{ row }">{{
+                formatCoin(row.balanceAfter)
+              }}</template>
+            </el-table-column>
+            <el-table-column label="说明" prop="remark" min-width="220" />
+          </el-table>
+          <div class="market-pagination">
+            <el-pagination
+              v-model:current-page="coinQueryParams.current"
+              v-model:page-size="coinQueryParams.pageSize"
+              :total="coinTransactionsTotal"
+              layout="total, prev, pager, next"
+              @current-change="loadCoinTransactions"
+              @size-change="loadCoinTransactions"
+            />
+          </div>
+        </section>
+      </el-tab-pane>
+
       <el-tab-pane label="购物日历" name="fifth">
         <section class="tab-panel market-panel">
           <HeatmapChart :data="chartData" :year="selectedYear" />
@@ -188,6 +239,12 @@ import { payCommodityOrderUsingPost } from "@/api/commodityController";
 import { uploadFileUsingPost } from "@/api/fileController";
 import { listMyUserCommodityFavoritesVoByPageUsingPost } from "@/api/userCommodityFavoritesController";
 import { animateIn } from "@/utils/motion";
+import {
+  getMyCampusCoinWallet,
+  listMyCampusCoinTransactions,
+  type CampusCoinTransactionVO,
+  type CampusCoinWalletVO
+} from "@/api/campusCoinController";
 
 const pageRef = ref<HTMLElement | null>(null);
 const activeName = ref("first");
@@ -204,6 +261,13 @@ const commodityList = ref<any[]>([]);
 const favoritesTotal = ref(0);
 const routeChatContact = ref<API.UserVO | undefined>();
 const currentUserId = String(GET_ID() || "");
+const campusCoinWallet = ref<CampusCoinWalletVO>({
+  balance: 0
+});
+const coinTransactions = ref<CampusCoinTransactionVO[]>([]);
+const coinTransactionsTotal = ref(0);
+const coinTransactionsLoading = ref(false);
+const coinQueryParams = ref({ current: 1, pageSize: 10 });
 
 const user = ref({
   id: "",
@@ -229,6 +293,43 @@ const favoritesQueryParams = ref({
   pageSize: 10,
   status: 1
 });
+
+const formatCoin = (value: number | string | undefined) =>
+  Number(value || 0).toFixed(2);
+
+const transactionTypeLabel = (type: string) => {
+  const labels: Record<string, string> = {
+    REGISTER_GRANT: "注册赠送",
+    OPENING_BALANCE: "期初余额",
+    ADMIN_GRANT: "管理员发放",
+    PURCHASE: "购买商品"
+  };
+  return labels[type] || type;
+};
+
+const loadCampusCoinWallet = async () => {
+  try {
+    const res = await getMyCampusCoinWallet();
+    if (res.code === 200 && res.data) campusCoinWallet.value = res.data;
+  } catch (error) {
+    ElMessage.error("获取校园币余额失败");
+  }
+};
+
+const loadCoinTransactions = async () => {
+  coinTransactionsLoading.value = true;
+  try {
+    const res = await listMyCampusCoinTransactions(coinQueryParams.value);
+    if (res.code === 200 && res.data) {
+      coinTransactions.value = res.data.records || [];
+      coinTransactionsTotal.value = Number(res.data.total || 0);
+    }
+  } catch (error) {
+    ElMessage.error("获取校园币流水失败");
+  } finally {
+    coinTransactionsLoading.value = false;
+  }
+};
 
 const fetchTravelData = async (payStatus = 1) => {
   try {
@@ -277,7 +378,11 @@ const handlePay = async (orderId: string) => {
 
     if (response.code === 200 && response.data === true) {
       ElMessage.success("支付成功");
-      await refreshOrderViews();
+      await Promise.all([
+        refreshOrderViews(),
+        loadCampusCoinWallet(),
+        loadCoinTransactions()
+      ]);
       return;
     }
 
@@ -427,6 +532,8 @@ onMounted(async () => {
   fetchCommodityOrders();
   fetchTravelData(1);
   loadCommodityFavoritesList();
+  loadCampusCoinWallet();
+  loadCoinTransactions();
   animateIn(
     pageRef.value?.querySelectorAll(".profile-hero, .account-tabs") || []
   );
@@ -437,6 +544,33 @@ onMounted(async () => {
 .personal-home-page {
   display: grid;
   gap: 20px;
+}
+
+.coin-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 28px;
+}
+
+.coin-summary h2,
+.coin-summary p {
+  margin: 4px 0 0;
+}
+
+.coin-summary strong {
+  color: var(--el-color-primary);
+  font-size: clamp(28px, 4vw, 42px);
+  white-space: nowrap;
+}
+
+.coin-in {
+  color: var(--el-color-success);
+}
+
+.coin-out {
+  color: var(--el-color-danger);
 }
 
 .profile-hero {

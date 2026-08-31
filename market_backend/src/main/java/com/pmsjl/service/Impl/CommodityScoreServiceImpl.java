@@ -8,7 +8,6 @@ import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityScore;
 import com.pmsjl.mapper.CommodityScoreMapper;
 import com.pmsjl.common.ErrorCode;
-import com.pmsjl.exception.BusinessException;
 import com.pmsjl.model.dto.commodityScore.CommodityScoreQueryRequest;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.model.vo.CommodityScoreVO;
@@ -52,7 +51,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
 
     @Override
     public Long addCommodityScore(CommodityScore commodityScore, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         commodityScore.setUserId(loginUser.getId());
         validCommodityScore(commodityScore, true);
         // 3. 校验商品是否存在
@@ -145,7 +144,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
 
     @Override
     public Page<CommodityScoreVO> listMyCommodityScoreVOByPage(CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         commodityScoreQueryRequest.setUserId(loginUser.getId());
         return listCommodityScoreVOByPage(commodityScoreQueryRequest, request);
     }

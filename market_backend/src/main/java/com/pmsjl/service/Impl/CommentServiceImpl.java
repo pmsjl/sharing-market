@@ -1,7 +1,6 @@
 package com.pmsjl.service.Impl;
 
 import cn.hutool.core.date.DateTime;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
@@ -51,7 +50,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Comment comment = new Comment();
         BeanUtils.copyProperties(commentAddRequest, comment);
         this.validComment(comment, true);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         comment.setUserId(userId);
         comment.setCreateTime(DateTime.now());
@@ -78,7 +77,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         Comment comment = getById(id);
         ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         if ((!comment.getUserId().equals(userId)) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "权限不足");
@@ -107,7 +106,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     public List<MyCommentVO> listMyComments(HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         List<Comment> commentList = lambdaQuery().eq(Comment::getUserId, userId).list();
         if (commentList.isEmpty()) {

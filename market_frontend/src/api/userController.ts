@@ -2,21 +2,6 @@
 /* eslint-disable */
 import request from "@/utils/request";
 
-/** addUser POST /api/user/add */
-export async function addUserUsingPost(
-  body: API.UserAddRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponseLong_>("/api/user/add", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    data: body,
-    ...(options || {})
-  });
-}
-
 /** deleteUser POST /api/user/delete */
 export async function deleteUserUsingPost(
   body: API.DeleteRequest,

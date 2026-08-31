@@ -69,7 +69,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         Post post = new Post();
         BeanUtils.copyProperties(postAddRequest, post);
         post.setTags(JSONUtil.toJsonStr(postAddRequest.getTags() == null ? List.of() : postAddRequest.getTags()));
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         post.setUserId(loginUser.getId());
         post.setThumbNum(0);
         post.setFavourNum(0);
@@ -255,7 +255,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
                 }
             });
         }
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         Set<Long> postIdSet = records.stream()
                 .map(Post::getId)
                 .filter(ObjectUtils::isNotEmpty)
@@ -283,7 +283,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Override
     public Page<PostVO> listMyPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         postQueryRequest.setUserId(loginUser.getId());
         return listPostVOByPage(postQueryRequest, request);
     }
@@ -323,7 +323,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             BeanUtils.copyProperties(user, userVO);
             postVO.setUser(userVO);
         }
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         LambdaQueryWrapper<PostThumb> thumbWrapper = new LambdaQueryWrapper<>();
         thumbWrapper.eq(PostThumb::getUserId, loginUser.getId());
         thumbWrapper.eq(PostThumb::getPostId, post.getId());
@@ -345,7 +345,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     }
 
     private void checkOwnerOrAdmin(Post post, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         if (!Objects.equals(loginUser.getId(), post.getUserId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
