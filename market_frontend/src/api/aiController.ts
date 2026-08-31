@@ -113,7 +113,7 @@ export interface AiChatVO {
 
 export interface AiQuotaVO {
   dailyLimit: number;
-  used: number;
+  usedCount: number;
   remaining: number;
   globalDailyLimit: number;
   globalUsed: number;

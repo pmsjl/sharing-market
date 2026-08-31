@@ -438,7 +438,7 @@
             <div class="quota-meter" aria-hidden="true">
               <span :style="{ width: `${userQuotaPercent}%` }"></span>
             </div>
-            <p>已用 {{ aiQuota.used }} / {{ aiQuota.dailyLimit }} 次</p>
+            <p>已用 {{ aiQuota.usedCount }} / {{ aiQuota.dailyLimit }} 次</p>
           </article>
 
           <article
@@ -799,7 +799,10 @@ const quotaUsedPercent = (used: number, limit: number) => {
 };
 
 const userQuotaPercent = computed(() =>
-  quotaUsedPercent(aiQuota.value?.used || 0, aiQuota.value?.dailyLimit || 0)
+  quotaUsedPercent(
+    aiQuota.value?.usedCount || 0,
+    aiQuota.value?.dailyLimit || 0
+  )
 );
 
 const globalQuotaPercent = computed(() =>
