@@ -106,77 +106,40 @@ class AgentRelatedPostCandidate(BaseModel):
 class AgentOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    intent: AgentIntent = Field(
-        description="本轮用户请求的主要业务意图。",
-    )
+    intent: AgentIntent
 
     summary: str = Field(
         min_length=1,
         max_length=500,
-        description=(
-            "本轮回答的简短结论，只概括当前回答，"
-            "不要复制完整 answer。"
-        ),
     )
 
     memorySummary: str = Field(
         min_length=1,
         max_length=2000,
-        description=(
-            "截至本轮仍对后续对话有用的滚动会话摘要。"
-            "保留用户预算、用途、偏好、避雷项、已介绍商品，"
-            "以及用户作出的条件调整；"
-            "不要保存寒暄、工具调用过程或完整回答原文。"
-        ),
     )
 
     recommendations: list[AgentRecommendation] = Field(
         max_length=5,
-        description=(
-            "本轮实际推荐的商品列表。只能引用本轮商品搜索工具"
-            "真实返回的商品 ID；没有推荐时返回空数组。"
-        ),
     )
 
     purchaseAdvice: list[str] = Field(
         max_length=10,
-        description=(
-            "与当前需求直接相关的选购、比较、验货或使用建议；"
-            "没有时返回空数组。"
-        ),
     )
 
     warnings: list[str] = Field(
         max_length=10,
-        description=(
-            "当前商品或交易需要重点注意的风险；"
-            "不要填入与本轮无关的通用提醒，没有时返回空数组。"
-        ),
     )
 
     searchKeywords: list[str] = Field(
         max_length=5,
-        description=(
-            "适合用户继续搜索平台商品的简短关键词；"
-            "没有时返回空数组。"
-        ),
     )
 
     knowledgeChunkIds: list[str] = Field(
         max_length=8,
-        description=(
-            "本轮回答实际使用的知识 chunk ID；只能从本轮参考消息中选择，"
-            "最多覆盖本轮 5 个 GUIDE 与 3 个 POST 候选；"
-            "未使用时返回空数组。"
-        ),
     )
 
     courseRelationIds: list[str] = Field(
         max_length=100,
-        description=(
-            "本轮回答实际使用的课程关系 ID；只能从本轮参考消息中选择，"
-            "未使用时返回空数组。"
-        ),
     )
 
     @model_validator(mode="after")
@@ -201,13 +164,55 @@ class AgentModelOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    intent: AgentIntent = Field(description="本轮用户请求的主要业务意图。")
-    summary: str = Field(min_length=1, max_length=500)
-    memorySummary: str = Field(min_length=1, max_length=2000)
-    recommendations: list[AgentRecommendation] = Field(max_length=5)
-    purchaseAdvice: list[str] = Field(max_length=10)
-    warnings: list[str] = Field(max_length=10)
-    searchKeywords: list[str] = Field(max_length=5)
+    intent: AgentIntent = Field(
+        description="本轮用户请求的主要业务意图。",
+    )
+    summary: str = Field(
+        min_length=1,
+        max_length=500,
+        description=(
+            "本轮回答的简短结论，只概括当前回答，"
+            "不要复制完整 answer。"
+        ),
+    )
+    memorySummary: str = Field(
+        min_length=1,
+        max_length=2000,
+        description=(
+            "截至本轮仍对后续对话有用的滚动会话摘要。"
+            "保留用户预算、用途、偏好、避雷项、已介绍商品，"
+            "以及用户作出的条件调整；"
+            "不要保存寒暄、工具调用过程或完整回答原文。"
+        ),
+    )
+    recommendations: list[AgentRecommendation] = Field(
+        max_length=5,
+        description=(
+            "本轮实际推荐的商品列表。只能引用本轮商品搜索工具"
+            "真实返回的商品 ID；没有推荐时返回空数组。"
+        ),
+    )
+    purchaseAdvice: list[str] = Field(
+        max_length=10,
+        description=(
+            "与当前需求直接相关的选购、比较、验货或使用建议；"
+            "没有时返回空数组。"
+        ),
+    )
+    warnings: list[str] = Field(
+        max_length=10,
+        description=(
+            "当前商品或交易需要重点注意的风险；"
+            "不要填入与本轮无关的通用提醒，没有时返回空数组。"
+        ),
+    )
+    searchKeywords: list[str] = Field(
+        max_length=5,
+        description=(
+            "适合用户继续搜索平台商品的简短关键词；"
+            "没有时返回空数组。"
+        ),
+    )
     knowledgeReferences: list[str] = Field(
         max_length=8,
         description="只能填写本轮参考消息中出现的K1、K2等短引用别名；未使用时为空。",
@@ -216,17 +221,6 @@ class AgentModelOutput(BaseModel):
         max_length=100,
         description="只能填写本轮参考消息中出现的C1、C2等短引用别名；未使用时为空。",
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_legacy_reference_keys(cls, value: Any) -> Any:
-        if isinstance(value, dict):
-            value = dict(value)
-            if "knowledgeReferences" not in value and "knowledgeChunkIds" in value:
-                value["knowledgeReferences"] = value.pop("knowledgeChunkIds")
-            if "courseReferences" not in value and "courseRelationIds" in value:
-                value["courseReferences"] = value.pop("courseRelationIds")
-        return value
 
     @model_validator(mode="after")
     def validate_recommendations(self):

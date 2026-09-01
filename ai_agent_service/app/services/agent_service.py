@@ -22,11 +22,9 @@ from app.models.agent import (
     AgentRunResponse,
     AgentToolTrace,
     AgentUsage,
-    AGENT_FINAL_RESULT_TEXT_FORMAT,
     AgentFinalResult,
     AgentModelOutput,
     AgentCitation,
-    AgentOutput,
     AgentRelatedPostCandidate,
     AgentResponseOutput,
     AgentSource,
@@ -63,14 +61,12 @@ class AgentServiceError(Exception):
     """可安全返回给 Java 的模型服务错误。"""
 
     def __init__(self, status_code: int, agent_error_key: str, message: str,
-                 retryable: bool, diagnostics: dict[str, Any] | None = None) -> None:
+                 retryable: bool) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.agent_error_key = agent_error_key
         self.message = message
         self.retryable = retryable
-        # 仅供本地评测/日志诊断使用，不进入对外错误响应。
-        self.diagnostics = diagnostics or {}
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +80,7 @@ class OpenAIClientProtocol(Protocol):
         input_items: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         text_format: dict[str, Any],
-    ) -> dict[str, Any]: ...
+    ) -> dict[str, Any]:        ...
 
 
 class CommodityItemProtocol(Protocol):
@@ -109,13 +105,13 @@ class JavaToolClientProtocol(Protocol):
         self,
         request_id: str,
         arguments: CommoditySearchArguments,
-    ) -> CommoditySearchResponseProtocol: ...
+    ) -> CommoditySearchResponseProtocol:        ...
 
     async def get_my_preference_signals(
         self,
         request_id: str,
         user_id: int,
-    ) -> Any: ...
+    ) -> Any:        ...
 
 
 class RagServiceProtocol(Protocol):
@@ -129,7 +125,7 @@ class RagServiceProtocol(Protocol):
         request_id: str,
         route_decision: RetrieveRouteDecision,
         course_match: CourseMatch,
-    ) -> RagResolution: ...
+    ) -> RagResolution:        ...
 
 
 class QueryRouterProtocol(Protocol):
@@ -140,7 +136,7 @@ class QueryRouterProtocol(Protocol):
         request: AgentRunRequest,
         course_match: CourseMatch | None = None,
         /,
-    ) -> RouteResolution: ...
+    ) -> RouteResolution:        ...
 
 
 def build_reference_maps(context: RagContext | None) -> tuple[dict[str, str], dict[str, str]]:
@@ -159,13 +155,12 @@ def build_reference_maps(context: RagContext | None) -> tuple[dict[str, str], di
 
 def build_rag_reference_message(
     context: RagContext | None,
-    knowledge_map: dict[str, str] | None = None,
-    course_map: dict[str, str] | None = None,
+    knowledge_map: dict[str, str],
+    course_map: dict[str, str],
 ) -> str | None:
     """把原始 chunk 与课程关系事实用不同 ID 注入模型上下文。"""
     if context is None:
         return None
-    knowledge_map, course_map = (knowledge_map, course_map) if knowledge_map is not None and course_map is not None else build_reference_maps(context)
     reverse_knowledge = {value: key for key, value in knowledge_map.items()}
     reverse_course = {value: key for key, value in course_map.items()}
     blocks: list[str] = []
@@ -213,10 +208,6 @@ class AgentService:
             settings,
             self.openai_client,
         )
-        # Evaluation-only audit data is kept out of the public Java/API model.
-        # Request IDs are unique, so concurrent Golden cases cannot overwrite
-        # each other. Consumers must pop entries after each completed request.
-        self._reference_audits: dict[str, dict[str, Any]] = {}
 
     async def run(self, request_id: str,
                   request: AgentRunRequest) -> AgentRunResponse:
@@ -290,7 +281,6 @@ class AgentService:
         else:
             rag_context = None
         knowledge_map, course_map = build_reference_maps(rag_context)
-        reference_attempts: list[dict[str, Any]] = []
         rag_reference = build_rag_reference_message(rag_context, knowledge_map, course_map)
         execution_context = self._build_execution_context(
             route_decision,
@@ -376,124 +366,26 @@ class AgentService:
                         knowledge_map,
                         course_map,
                     )
-                except AgentServiceError as exception:
-                    if exception.agent_error_key != "AI_MODEL_RESPONSE_INVALID" or "RAG ID" not in exception.message:
+                except AgentServiceError as validation_error:
+                    if (validation_error.agent_error_key !=
+                            "AI_MODEL_RESPONSE_INVALID"
+                            or "RAG ID" not in validation_error.message):
                         raise
                     if not self._uses_alias_references(final_result.output):
                         raise
-                    reference_attempts.append({
-                        "attempt": 1,
-                        "allowedKnowledgeReferences": list(knowledge_map),
-                        "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
-                        "invalidKnowledgeReferences": sorted(
-                            set(final_result.output.knowledgeReferences) - set(knowledge_map)),
-                        "allowedCourseReferences": list(course_map),
-                        "modelCourseReferences": list(final_result.output.courseReferences),
-                        "invalidCourseReferences": sorted(
-                            set(final_result.output.courseReferences) - set(course_map)),
-                        "action": "targeted_reference_repair",
-                    })
-                    try:
-                        repaired = await self._repair_model_references(
-                            input_items,
-                            final_result,
-                            list(knowledge_map),
-                            list(course_map),
-                        )
-                    except AgentServiceError as repair_error:
-                        diagnostics = dict(exception.diagnostics)
-                        diagnostics["referenceMap"] = {
-                            **knowledge_map,
-                            **course_map,
-                        }
-                        validation = dict(diagnostics.get("referenceValidation", {}))
-                        diagnostics["referenceAttempts"] = [{
-                            "attempt": 1,
-                            "allowedKnowledgeReferences": list(knowledge_map),
-                            "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
-                            "invalidKnowledgeReferences": sorted(
-                                set(final_result.output.knowledgeReferences) - set(knowledge_map)),
-                            "allowedCourseReferences": list(course_map),
-                            "modelCourseReferences": list(final_result.output.courseReferences),
-                            "invalidCourseReferences": sorted(
-                                set(final_result.output.courseReferences) - set(course_map)),
-                            "action": "targeted_reference_repair",
-                        }, {
-                            "attempt": 2,
-                            "action": "rejected",
-                            "error": repair_error.message,
-                        }]
-                        diagnostics["referenceValidation"] = validation
-                        raise AgentServiceError(
-                            repair_error.status_code,
-                            repair_error.agent_error_key,
-                            repair_error.message,
-                            repair_error.retryable,
-                            diagnostics=diagnostics,
-                        ) from repair_error
-                    final_result = repaired
-                    try:
-                        sources = self._validate_model_references(
-                            final_result.output,
-                            allowed_commodity_ids,
-                            rag_context,
-                            knowledge_map,
-                            course_map,
-                        )
-                    except AgentServiceError as final_error:
-                        diagnostics = dict(final_error.diagnostics)
-                        diagnostics["referenceMap"] = {**knowledge_map, **course_map}
-                        diagnostics["referenceAttempts"] = [
-                            {
-                                "attempt": 1,
-                                "allowedKnowledgeReferences": list(knowledge_map),
-                                "modelKnowledgeReferences": list(exception.diagnostics.get("referenceValidation", {}).get("modelKnowledgeReferences", [])),
-                                "invalidKnowledgeReferences": list(exception.diagnostics.get("referenceValidation", {}).get("invalidChunkIds", [])),
-                                "allowedCourseReferences": list(course_map),
-                                "modelCourseReferences": list(exception.diagnostics.get("referenceValidation", {}).get("modelCourseReferences", [])),
-                                "invalidCourseReferences": list(exception.diagnostics.get("referenceValidation", {}).get("invalidRelationIds", [])),
-                                "action": "targeted_reference_repair",
-                            },
-                            {
-                                "attempt": 2,
-                                "allowedKnowledgeReferences": list(knowledge_map),
-                                "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
-                                "invalidKnowledgeReferences": sorted(set(final_result.output.knowledgeReferences) - set(knowledge_map)),
-                                "allowedCourseReferences": list(course_map),
-                                "modelCourseReferences": list(final_result.output.courseReferences),
-                                "invalidCourseReferences": sorted(set(final_result.output.courseReferences) - set(course_map)),
-                                "action": "rejected",
-                            },
-                        ]
-                        raise AgentServiceError(
-                            final_error.status_code,
-                            final_error.agent_error_key,
-                            final_error.message,
-                            final_error.retryable,
-                            diagnostics=diagnostics,
-                        ) from final_error
-                if reference_attempts:
-                    reference_attempts.append({
-                        "attempt": 2,
-                        "allowedKnowledgeReferences": list(knowledge_map),
-                        "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
-                        "invalidKnowledgeReferences": [],
-                        "allowedCourseReferences": list(course_map),
-                        "modelCourseReferences": list(final_result.output.courseReferences),
-                        "invalidCourseReferences": [],
-                        "action": "accepted",
-                    })
-                else:
-                    reference_attempts.append({
-                        "attempt": 1,
-                        "allowedKnowledgeReferences": list(knowledge_map),
-                        "modelKnowledgeReferences": list(final_result.output.knowledgeReferences),
-                        "invalidKnowledgeReferences": [],
-                        "allowedCourseReferences": list(course_map),
-                        "modelCourseReferences": list(final_result.output.courseReferences),
-                        "invalidCourseReferences": [],
-                        "action": "accepted",
-                    })
+                    final_result = await self._repair_model_references(
+                        input_items,
+                        final_result,
+                        list(knowledge_map),
+                        list(course_map),
+                    )
+                    sources = self._validate_model_references(
+                        final_result.output,
+                        allowed_commodity_ids,
+                        rag_context,
+                        knowledge_map,
+                        course_map,
+                    )
                 break
 
             if tool_rounds >= self.settings.max_tool_rounds:
@@ -529,23 +421,12 @@ class AgentService:
             "sources": [source.model_dump() for source in sources],
             "relatedPostCandidates": [
                 candidate.model_dump() for candidate in
-                self._build_related_post_candidates(rag_context)
+                self._build_related_post_candidates(
+                    rag_context,
+                    self.settings.rag_post_top_k,
+                )
             ],
         })
-        self._reference_audits[request_id] = {
-            "referenceMap": {**knowledge_map, **course_map},
-            "referenceAttempts": reference_attempts,
-            "targetedReferenceRepairCount": sum(
-                item["action"] == "targeted_reference_repair"
-                for item in reference_attempts
-            ),
-            "finalKnowledgeReferences": list(final_result.output.knowledgeReferences),
-            "finalCourseReferences": list(final_result.output.courseReferences),
-            "finalKnowledgeChunkIds": list(response_output.knowledgeChunkIds),
-            "finalCourseRelationIds": list(response_output.courseRelationIds),
-            "mappingSucceeded": True,
-        }
-
         return AgentRunResponse(
             requestId=request_id,
             answer=final_result.answer,
@@ -562,10 +443,6 @@ class AgentService:
             traces=traces,
         )
 
-    def pop_reference_audit(self, request_id: str) -> dict[str, Any]:
-        """Return and discard model-internal reference diagnostics for evals."""
-        return self._reference_audits.pop(request_id, {})
-
     @staticmethod
     def _uses_alias_references(output: AgentModelOutput) -> bool:
         return all(re.fullmatch(r"K[1-9]\d*", ref) for ref in output.knowledgeReferences) and all(
@@ -574,18 +451,20 @@ class AgentService:
 
     @staticmethod
     def _public_output(
-        output: AgentModelOutput | AgentOutput,
+        output: AgentModelOutput,
         knowledge_map: dict[str, str],
         course_map: dict[str, str],
     ) -> dict[str, Any]:
-        if isinstance(output, AgentModelOutput):
-            data = output.model_dump()
-            data["knowledgeChunkIds"] = [knowledge_map.get(ref, ref) for ref in output.knowledgeReferences]
-            data["courseRelationIds"] = [course_map.get(ref, ref) for ref in output.courseReferences]
-            data.pop("knowledgeReferences", None)
-            data.pop("courseReferences", None)
-            return data
-        return output.model_dump()
+        data = output.model_dump()
+        data["knowledgeChunkIds"] = [
+            knowledge_map[ref] for ref in output.knowledgeReferences
+        ]
+        data["courseRelationIds"] = [
+            course_map[ref] for ref in output.courseReferences
+        ]
+        data.pop("knowledgeReferences")
+        data.pop("courseReferences")
+        return data
 
     @staticmethod
     def _build_deterministic_response(
@@ -1036,11 +915,11 @@ class AgentService:
 
     def _validate_model_references(
         self,
-        output: AgentModelOutput | AgentOutput,
+        output: AgentModelOutput,
         allowed_commodity_ids: set[str],
         rag_context: RagContext | None,
-        knowledge_map: dict[str, str] | None = None,
-        course_map: dict[str, str] | None = None,
+        knowledge_map: dict[str, str],
+        course_map: dict[str, str],
     ) -> list[AgentSource]:
         referenced_ids = {
             recommendation.commodityId
@@ -1060,26 +939,8 @@ class AgentService:
             item.chunk_id: item
             for item in (rag_context.retrieved if rag_context else [])
         }
-        relation_by_id = {
-            relation_id: item
-            for item in (rag_context.plan.course_relation_summaries
-                          if rag_context else [])
-            for relation_id in item.relation_ids
-        }
-        alias_mode = isinstance(output, AgentModelOutput) and self._uses_alias_references(output)
-        if alias_mode:
-            knowledge_map, course_map = knowledge_map or {}, course_map or {}
-            invalid_chunks = set(output.knowledgeReferences) - set(knowledge_map)
-            invalid_relations = set(output.courseReferences) - set(course_map)
-            model_chunk_ids = [knowledge_map[key] for key in output.knowledgeReferences if key in knowledge_map]
-            model_relation_ids = [course_map[key] for key in output.courseReferences if key in course_map]
-        else:
-            raw_chunk_ids = output.knowledgeChunkIds if isinstance(output, AgentOutput) else output.knowledgeReferences
-            raw_relation_ids = output.courseRelationIds if isinstance(output, AgentOutput) else output.courseReferences
-            invalid_chunks = set(raw_chunk_ids) - set(retrieved_by_id)
-            invalid_relations = set(raw_relation_ids) - set(relation_by_id)
-            model_chunk_ids = list(raw_chunk_ids)
-            model_relation_ids = list(raw_relation_ids)
+        invalid_chunks = set(output.knowledgeReferences) - set(knowledge_map)
+        invalid_relations = set(output.courseReferences) - set(course_map)
         if invalid_chunks or invalid_relations:
             logger.warning(
                 "agent_invalid_rag_references invalid_chunks=%s "
@@ -1092,25 +953,11 @@ class AgentService:
                 "AI_MODEL_RESPONSE_INVALID",
                 "模型引用了本轮不可用的 RAG ID",
                 False,
-                diagnostics={
-                    "referenceValidation": {
-                        "allowedChunkIds": sorted(retrieved_by_id),
-                        "modelChunkIds": model_chunk_ids,
-                        "modelKnowledgeReferences": list(output.knowledgeReferences) if isinstance(output, AgentModelOutput) else [],
-                        "invalidChunkIds": sorted(invalid_chunks),
-                        "allowedRelationIds": sorted(relation_by_id),
-                        "modelRelationIds": model_relation_ids,
-                        "modelCourseReferences": list(output.courseReferences) if isinstance(output, AgentModelOutput) else [],
-                        "invalidRelationIds": sorted(invalid_relations),
-                        "referenceMap": {**(knowledge_map or {}), **(course_map or {})},
-                    },
-                    "modelOutput": output.model_dump(mode="json"),
-                },
             )
 
         sources_by_document: dict[str, AgentSource] = {}
         seen_chunk_ids: set[str] = set()
-        chunk_ids = ([knowledge_map[key] for key in output.knowledgeReferences] if alias_mode else (output.knowledgeChunkIds if isinstance(output, AgentOutput) else output.knowledgeReferences))
+        chunk_ids = [knowledge_map[key] for key in output.knowledgeReferences]
         for chunk_id in chunk_ids:
             if chunk_id in seen_chunk_ids:
                 continue
@@ -1214,20 +1061,17 @@ class AgentService:
                 "AI_MODEL_RESPONSE_INVALID",
                 "引用修复模型修改了非引用字段",
                 False,
-                diagnostics={
-                    "referenceRepair": {
-                        "answerChanged": repaired.answer != original.answer,
-                    }
-                },
             )
         return repaired
 
     @staticmethod
     def _build_related_post_candidates(
-        rag_context: RagContext | None, ) -> list[AgentRelatedPostCandidate]:
+        rag_context: RagContext | None,
+        rag_post_top_k: int = 3,
+    ) -> list[AgentRelatedPostCandidate]:
+        """按检索顺序生成不超过配置数量且版本已实时确认的 Post 候选。"""
         if rag_context is None:
             return []
-        """按检索顺序生成最多三篇、版本已实时确认的 Post 候选。"""
         candidates: list[AgentRelatedPostCandidate] = []
         seen_post_ids: set[int] = set()
         for item in rag_context.retrieved:
@@ -1249,7 +1093,7 @@ class AgentService:
                     postId=post_id,
                     sourceVersion=source_version,
                 ))
-            if len(candidates) >= 3:
+            if len(candidates) >= rag_post_top_k:
                 break
         return candidates
 
