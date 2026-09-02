@@ -1,8 +1,8 @@
 {
   "datasetName": "sharing-market-rag-public-dev",
-  "datasetVersion": "public-dev-v1.1-scope-corrected-20260828",
-  "sourceDatasetVersion": "golden-v1.1-scope-corrected-20260828",
-  "publishedAt": "2026-08-28",
+  "datasetVersion": "public-dev-v1.2.1-20260902",
+  "sourceDatasetVersion": "golden-v1.2.1-reviewed-20260829",
+  "publishedAt": "2026-09-02",
   "split": "dev",
   "caseCount": 140,
   "domainCounts": {
@@ -13,29 +13,20 @@
     "post": 35
   },
   "routeCounts": {
-    "clarify": 4,
-    "out_of_scope": 4,
-    "retrieve": 131,
+    "clarify": 3,
+    "out_of_scope": 12,
+    "retrieve": 124,
     "skip_rag": 1
   },
   "knowledgeStateCounts": {
-    "answerable": 98,
-    "not_applicable": 9,
-    "unknown_after_search": 33
+    "answerable": 80,
+    "not_applicable": 16,
+    "unknown_after_search": 44
   },
-  "qrelCount": 183,
-  "sha256": "4a610c2bec94c2b9d69328133ff67935e9acdaa4772f4422c4a32df62c9fa974",
-  "scopeCorrection": {
-    "correctedAt": "2026-08-28",
-    "caseIds": [
-      "post-legacy-002",
-      "campus-campus-lifecycle-new-student-01",
-      "campus-campus-lifecycle-new-student-02",
-      "campus-campus-lifecycle-dorm-move-checkout-01"
-    ],
-    "historicalBaselineMetricsRecomputed": false
-  },
+  "qrelCount": 172,
+  "sha256": "a1f5aba504528868b5345a9406d3192d5bebda2e1f1e44cd7ca531f448762b33",
   "schema": "../schemas/golden_case.schema.json",
+  "indexBuildId": "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71",
   "indexSnapshot": {
     "documentCount": 359,
     "chunkCount": 1611,
@@ -45,27 +36,41 @@
     "embeddingDimensions": 1024,
     "chunkingVersion": "guide-post-v2"
   },
+  "supersedesDatasetVersion": "public-dev-v1.1-scope-corrected-20260828",
+  "supersededCorrections": {
+    "scopeCorrection": {
+      "correctedAt": "2026-08-28",
+      "caseIds": [
+        "post-legacy-002",
+        "campus-campus-lifecycle-new-student-01",
+        "campus-campus-lifecycle-new-student-02",
+        "campus-campus-lifecycle-dorm-move-checkout-01"
+      ],
+      "historicalBaselineMetricsRecomputed": false
+    },
+    "truthAlignmentCorrection": {
+      "correctedAt": "2026-08-29",
+      "caseIds": [
+        "post-purchase-183",
+        "post-purchase-188",
+        "post-purchase-191",
+        "post-purchase-194",
+        "post-purchase-211",
+        "post-purchase-212",
+        "post-purchase-219",
+        "post-purchase-220",
+        "post-purchase-224",
+        "post-purchase-230",
+        "post-purchase-240",
+        "post-purchase-246"
+      ],
+      "reason": "Align rewritten Query, expectedFacts and supportingChunkIds; restore scope-flipped or answer-leaking wording where required."
+    },
+    "note": "The v1.1 corrections are incorporated into the v1.2.1-reviewed source dataset."
+  },
   "limitations": [
     "The 60-case test split and its qrels are withheld.",
     "Raw model outputs, traces, request identifiers, usage data, and human-review records are not published.",
     "This public split supports development and reproducibility; it is not an independent hidden benchmark."
-  ],
-  "truthAlignmentCorrection": {
-    "correctedAt": "2026-08-29",
-    "caseIds": [
-      "post-purchase-183",
-      "post-purchase-188",
-      "post-purchase-191",
-      "post-purchase-194",
-      "post-purchase-211",
-      "post-purchase-212",
-      "post-purchase-219",
-      "post-purchase-220",
-      "post-purchase-224",
-      "post-purchase-230",
-      "post-purchase-240",
-      "post-purchase-246"
-    ],
-    "reason": "Align rewritten Query, expectedFacts and supportingChunkIds; restore scope-flipped or answer-leaking wording where required."
-  }
+  ]
 }

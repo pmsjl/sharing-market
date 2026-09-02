@@ -1,201 +1,163 @@
-# 智能 AI 校园二手交易平台 v1.0
+# Market Frontend
 
-> 优化复现版，状态复核：2026-08-19。原项目作者：[程序员小白条](https://luoye6.github.io/)；本仓库 v1.0 由 @pmsjl 按新架构持续复现与优化。
+`market_frontend` 是[智能 AI 校园二手交易平台](../README.md)的 **Vue 3 前端**，包含普通用户页面和管理端页面。浏览器只访问 Java API，不直接调用 Python Agent 或数据库。
 
-这是一个 Vue 3 + Spring Boot + Python Agent 的校园二手交易平台。v1.0 保留市场、订单、公告和攻略社区主线，并将原来的单轮 AI/独立推荐页改造成受 Java 主后端控制的多轮 AI 导购与 GUIDE + Post RAG。
+## 前端如何与后端通信
 
-## 当前能力
+```
+Vue (8080) ──axios──→ Java API (8102/api) ──→ MySQL/Redis
+                        ↑
+                Authorization: Bearer <UUID Token>
+```
+
+- `VUE_APP_API_BASE_URL` 指向 Java 服务根地址（默认 `http://localhost:8102`）。**接口路径已含 `/api`，不要重复追加**。
+- 登录成功后 Java 返回 **UUID Token**，前端存 localStorage 并在请求头 `Authorization: Bearer <token>` 携带；登录态由 Java + Redis 校验，不是前端生成的 JWT。
+- 路由按 `localStorage.role` 区分用户端 `/user/*` 与管理端 `/admin/*`，越权访问被守卫拦截。
+
+## 页面能力
 
 ### 用户端
 
-- 注册、登录、退出与个人资料。
-- 商品列表/详情、收藏、评分、购买、后续支付与个人订单。
-- 公告浏览。
-- 攻略 Post 列表、详情、搜索、发布、编辑、点赞、收藏与嵌套评论。
-- 个人中心：我的帖子、评论、收藏、订单、购物日历与当前私信表面。
-- AI 导购：多轮会话、会话归档/恢复、可选购买条件、推荐商品卡片、失败状态、RAG 来源详情与相关帖子。
+- 登录、注册、个人中心（个人信息/我的攻略/收藏/评论/订单/校园币流水/购物日历/收藏商品/已归档对话/私信）。
+- 商品：列表浏览、详情、收藏、评分、购买、支付、我的订单。
+- 内容：公告墙、交易攻略（搜索/发布/详情/嵌套评论）。
+- 智能导购：多轮 AI 会话（详见下节）。
 
 ### 管理端
 
-- 用户、公告、商品、商品类别、订单与攻略管理。
-- `/commodityOrder/add` 是管理员手工建单；普通用户购买不走该端点。
+- 用户管理、商品管理、商品类别管理、商品订单管理。
+- 公告管理、攻略管理、校园币发放。
 
-### 当前明确边界
+## 智能导购（AI Agent Guide）
 
-- 私信仅实现 `add` 与 `my/list/page/vo`，没有未读数、撤回、删除或独立会话资源。
-- AI 使用同步 JSON，不支持 SSE。
-- GUIDE + Post RAG 已实现；管理员 knowledge job、文档 upsert/delete 与独立 retrieve HTTP API 仍是保留契约。
-- 独立商品推荐页和 legacy 单轮 AI CRUD 不属于 v1.0 当前表面。
-- Barrage/买家留言已从复现范围移除。
+实现位于 `src/views/user/agentGuide/index.vue`（约 3700 行，本前端最复杂的页面）。
 
-## 架构
+### 交互模式：同步请求 + 打字机动画
 
-```mermaid
-flowchart LR
-    B[Browser] -->|Authorization Bearer Token| V[Vue 3 :8080]
-    V -->|/api| J[Spring Boot :8102]
-    J --> M[(MySQL trade)]
-    J --> R[(Redis sessions/cache)]
-    J -->|/agent/v1/runs| P[FastAPI :8103]
-    P -->|Responses API| O[OpenAI-compatible provider]
-    P --> F[(FAISS GUIDE + Post)]
-    P -->|internal read-only tools| J
+**不是 SSE/流式**：前端一次性 `POST /api/ai/conversations/{id}/messages`，Java 返回完整 `AiChatVO` 后，前端用 `requestAnimationFrame` 按设定速度逐字显示回答（打字机效果），支持打字速度档位（含"立即"）。
+
+- 因 Java 最长等 Python Agent 整轮 120 秒，AI 接口的 axios 超时单独覆盖为 `160000` ms。
+- 失败消息标记 `FAILED` 且可重试，成功后重新提交原用户消息。
+
+### 引用来源与结构化内容
+
+回答由 `structuredContent.sources` 驱动展示：
+
+- **回答参考来源**：`sourceType ∈ GUIDE/COMMODITY/POST/NOTICE/COMMENT`，最多展示 8 条、每条最多 2 条引用；GUIDE 来源点击打开引用片段弹窗，其他跳转详情。
+- **推荐商品**：渲染匹配商品卡（匹配度/理由/风险提示/价格）。
+- **相关帖子**：被回答引用的帖子打"引用"徽标并排到最前。
+- Markdown 正文用 `md-editor-v3` 渲染。
+
+### 购物上下文与额度
+
+- 每次发送消息携带 `shoppingContext`（预算区间/使用场景/偏好标签/避雷项），并在响应后回填表单。
+- 展示今日/全局剩余 AI 额度（`GET /api/ai/quota/me`）；额度用尽（错误码 40901/42901/42902）做保护性拦截。
+- 会话支持归档/恢复/删除；归档会话在个人中心"已归档对话"查看。
+
+## 路由与角色
+
+`src/router/routes.ts` 定义常量路由（登录/注册/欢迎/404）+ 异步路由（用户端与管理端）。`src/permission.ts` 全局守卫：
+
+- 未登录 → 跳登录页。
+- 按角色（`GET_ROLE()`）动态 `addRoute` 注入对应菜单路由。
+- `utils/roleHome.ts` 做越权拦截：admin 只能访问 `/admin/*`（+个人主页），user 只能访问 `/user/*`。
+
+```
+常量路由      /login /register /index(欢迎) /404
+用户端异步    /user/home /user/commodity(+详情) /user/agentGuide
+             /user/post(+详情) /user/notice /user/orders /user/account
+管理端异步    /admin/userManagement /admin/commodityManagement
+             /admin/commodityTypeManagement /admin/commodityOrderManagement
+             /admin/noticeManagement /admin/postManagement
 ```
 
-- Vue 只访问 Java，不直连 Python。
-- Java 负责鉴权、会话归属、业务数据库、真实商品/Post 字段与最终响应组装。
-- Python 负责 Prompt、模型工具编排、Structured Outputs 与可降级 RAG，不直连业务 MySQL。
-- 商品价格、库存、上架状态和 Post 展示字段在返回前由 Java 实时复核。
+## 状态管理（Pinia）
+
+| Store | 管理内容 |
+| --- | --- |
+| `useUserStore` | token、用户名、头像、角色、动态菜单路由、按钮权限 |
+| `useLayOutSettingStore` | 菜单折叠、页面刷新、AI 导购专注模式 |
+
+token/角色等同时持久化到 localStorage（`utils/token.ts`）。
+
+## 源码结构
+
+```
+src/
+├── main.ts            应用入口：ElementPlus(zh-cn)/Pinia/router/主题
+├── permission.ts      全局路由守卫（角色动态路由）
+├── api/               每后端 Controller 一个 API 模块 + index 汇总
+├── components/        公共组件（CommodityCard、Post、PrivateMessage、
+│                      CalendarChart、AuthMarketLayout 等，全局注册）
+├── layout/            用户端/管理端外壳（logo/menu/tabbar/main）
+├── router/            路由定义
+├── store/             Pinia（user、setting）
+├── styles/            全局 scss（含变量注入）
+├── utils/             request/token/roleHome/theme/motion/eventBus
+└── views/             页面（用户端/管理端/登录注册欢迎）
+```
+
+关键公共组件：
+- `CommodityCard`：商品卡（购买/收藏/评分/分享二维码/联系卖家）。
+- `Post`/`Comment` 系列：攻略与嵌套评论。
+- `PrivateMessage`：私信气泡（含 emoji 选择器）。
+- `CalendarChart`：购物日历（ECharts）。
+- `ArchivedAiConversations`：已归档 AI 会话。
+- `AuthMarketLayout`：登录/注册外壳（插画 + 首页精选商品）。
 
 ## 技术栈
 
-### 前端
-
-- Vue 3.2、TypeScript 4.5、Vue Router 4、Pinia
-- Element Plus、Axios、ECharts、MD Editor V3
+- Vue 3.3、TypeScript 4.5（`strict: true`）、Vue Router 4（hash 模式）、Pinia
+- Element Plus、Axios、ECharts、MD Editor V3、GSAP、mitt
 - Vue CLI 5、Sass、ESLint、Prettier
+- Node.js 22.16.0、npm 10.9.2（见 `.node-version` / `package.json`）
 
-### Java 后端
+## 主题
 
-- Spring Boot 3.4.3、Java 17、Maven
-- MyBatis-Plus 3.5.9、MySQL 8、Redis、Redisson
-- UUID Token 会话、`UserHolder`、`@AuthCheck`
+`utils/theme.ts` 支持明暗主题（light/night）+ 三档强调色（campus-blue/indigo/lake-blue），通过 CSS 变量 `--market-*` 注入并同步 Element Plus 主色。
 
-### Python Agent
-
-- FastAPI、Pydantic、OpenAI Responses 兼容客户端
-- Structured Outputs、商品搜索、当前用户脱敏偏好工具
-- Query Planner、Embedding、FAISS、不可变索引与 `CURRENT` 热加载
-
-## 目录
-
-```text
-sharing-market-v1.0/
-  market_frontend/    Vue 前端
-  market_backend/     Java 主后端与 SQL
-  ai_agent_service/   Python Agent 与 RAG
-  docs/               UI 和语料进度文档
-```
-
-## 本地运行
-
-### 1. 基础依赖
-
-- Java 17、Maven
-- Node.js 22.16.0 与 npm 10.9.2
-- MySQL 8，schema `trade`
-- Redis
-- Python Conda 环境 `fastapi`
-
-数据库、Redis、OSS、内部 Token、模型和 Embedding 地址均按本地环境配置。不要把真实密钥提交到仓库。
-
-### 2. Java 主后端
+## 本地开发
 
 ```powershell
-cd market_backend
-Copy-Item src/main/resources/application.example.yml application-local.yml
-$env:SPRING_CONFIG_ADDITIONAL_LOCATION = "optional:file:./application-local.yml"
-mvn test
-mvn spring-boot:run
-```
-
-首次运行时按本机环境填写未跟踪的 `application-local.yml`。该文件位于后端根目录，不会被打入 JAR。默认地址：`http://localhost:8102/api`。
-
-### 3. Python Agent
-
-参考 `ai_agent_service/.env.example` 准备本地 `.env`，然后运行：
-
-```powershell
-cd ai_agent_service
-conda run -n fastapi python -m pytest -q
-conda run -n fastapi uvicorn app.main:app --host 0.0.0.0 --port 8103
-```
-
-RAG 索引需要重建时：
-
-```powershell
-conda run -n fastapi python -m app.rag.rebuild_index
-```
-
-### 4. Vue 前端
-
-```powershell
-cd market_frontend
+Copy-Item .env.development.local.example .env.development.local
+# 按本机 Java 地址修改 VUE_APP_API_BASE_URL。
 npm ci
 npm run dev
 ```
 
-默认地址：`http://localhost:8080`。
+页面默认运行在 `http://localhost:8080`。
 
-本地开发会优先读取未提交的 `.env.development.local`，因此不会因为仓库中的示例域名而失去本地调试能力。首次克隆后可执行：
+## 环境变量
 
-```powershell
-Copy-Item .env.development.local.example .env.development.local
-```
+可提交模板为 `.env.development.local.example`。本地 `.env.development.local` 已被 Git 忽略。
 
-然后按本机 Java 后端地址修改 `VUE_APP_API_BASE_URL`。`.env.development.local` 已被忽略，不要提交真实内网地址、密钥或其他机器配置。
+| 变量 | 用途 |
+| --- | --- |
+| `VUE_APP_API_BASE_URL` | Java 服务根地址（不含 `/api`） |
+| `VUE_APP_TITLE` | 页面标题 |
+| `OPENAPI_SCHEMA_URL` | 仅供 OpenAPI 代码生成读取 Schema |
 
-### 部署到 Cloudflare Pages
+Vue CLI 在构建阶段注入 `VUE_APP_*` 变量。不要在可提交配置或源码中写入真实生产地址、密钥和内网信息。
 
-本项目使用 Vue CLI，环境变量在**构建时**注入前端 bundle，而不是浏览器运行时动态读取。Cloudflare Pages 建议这样配置：
+## 常用命令
 
-1. 在 Cloudflare Dashboard 打开 **Workers & Pages → Pages → 你的项目 → Settings → Builds & deployments**。
-2. 将 **Root directory** 设置为 `market_frontend`（如果仓库根目录就是前端目录，则不需要填写）。
-3. 在环境变量中设置 `SKIP_DEPENDENCY_INSTALL=1`，构建命令填写 `npm ci && npm run build`，构建输出目录填写 `dist`。项目通过 `.node-version` 固定使用 Node.js 22.16.0，并通过唯一的 `package-lock.json` 固定 npm 依赖树。
-4. 在 **Settings → Environment variables** 中，分别切换 **Production** 和 **Preview**，新增：
+| 命令 | 说明 |
+| --- | --- |
+| `npm run dev` | 启动本地开发服务器 |
+| `npm run build` | 生成生产静态资源到 `dist/` |
+| `npm run lint` | 执行 ESLint |
+| `npm run openapi` | 按 `OPENAPI_SCHEMA_URL` 生成 API 代码到 `src/api/generated` |
 
-   - **Name**：`VUE_APP_API_BASE_URL`
-   - **Value**：实际部署的 Java API 地址，例如 `https://api.your-domain.example`
-   - **Type**：`Text`
-
-   该值不要填写 `http://localhost:8102`，也不要照抄仓库里的 `https://api.example.com`；后者只是可提交的占位示例域名。Production 应填写线上后端地址，Preview 可填写测试后端地址。
-5. 如果使用 Cloudflare 的 **Production** 与 **Preview** 两套环境，两个环境都要分别保存变量。保存后执行 **Redeploy**；修改 Pages 环境变量不会改变已经生成的旧 bundle。
-6. 部署后在浏览器开发者工具的 Network 中确认请求已经发往配置的 API 域名，而不是 `localhost`。同时确认后端已放行 Cloudflare Pages 的正式域名和预览域名 CORS。前端请求启用了 `withCredentials`，后端不能用 `Access-Control-Allow-Origin: *` 配合凭据请求，Cookie 的 `Secure`、`SameSite` 和域名策略也必须与跨域部署匹配。
-
-仓库中的 `.env.development`、`.env.production` 和 `openapi.config.ts` 只保留 `https://api.example.com` 这种无效但安全的示例地址；本地地址放在 `.env.development.local`，线上真实地址放在 Cloudflare Pages 环境变量中。OpenAPI 代码生成如需访问本地文档地址，可先设置 `OPENAPI_SCHEMA_URL=http://localhost:8102/api/v2/api-docs` 再执行 `npm run openapi`；该变量不是前端运行时必需变量。
-
-Java 与 Python 后端的生产变量、容器启动方式、健康检查和 RAG 持久化要求见 [`../docs/BACKEND_DEPLOYMENT.md`](../docs/BACKEND_DEPLOYMENT.md)。
-
-## 验证
+前端无单元测试脚本（无 jest/vitest 配置）。验证前端：
 
 ```powershell
-# Python
-cd ai_agent_service
-conda run -n fastapi python -m pytest -q
-
-# Java
-cd market_backend
-mvn test
-
-# Vue
-cd market_frontend
+npm ci
 npm run lint
 npm run build
 ```
 
-2026-08-19 实测基线：
+当前生产构建可能显示 Sass 弃用和 Bundle 体积警告；这些警告不等同于构建失败。
 
-- Python：`103 passed`、`23 subtests passed`；受限工作区可能仅警告 `.pytest_cache` 不可写。
-- Java：`38 tests`，全部通过。
-- Vue：lint 无错误，生产构建成功。
-- 生产构建仍有 42 条 Sass legacy API / `@import` 弃用与 bundle 体积警告，属于后续性能/依赖治理项。
+## License
 
-## 关键文档
-
-- [项目协作与当前 memory](../AGENTS.md)
-- [AI Agent API 契约](../AI_AGENT_API.md)
-- [AI Agent 当前复现与维护路线](../AI_AGENT_REPRODUCTION_GUIDE.md)
-- [RAG 基础实现指南](../RAG_基础实现指南.md)
-- [Python Agent README](../ai_agent_service/README.md)
-- [UI 设计方案](../docs/UI_REDESIGN_PLAN.md)
-- [UI 实施状态](../docs/UI_REDESIGN_PROGRESS.md)
-- [Post 语料说明](../docs/post-corpus/README.md)
-
-## 开发约定
-
-- 真实前端调用优先于生成 API wrapper；未被调用的模板 CRUD 不自动进入复现范围。
-- 普通用户购买走 `/commodity/buy`，需要后续支付时走 `/commodity/pay`。
-- Long ID 在前端按字符串处理，避免 JavaScript 精度损失。
-- 不信任模型生成的商品/Post 展示字段；必须使用 Java 查询结果。
-- 不提交 `.env`、数据库密码、OSS 密钥、模型 Key 或内部服务 Token。
-- 修改 v1.0 时不要同步改动只读参考项目 `../sharing-market/`。
+本目录中由 pmsjl 持有版权的内容采用 [MIT License](LICENSE)（与根目录一致）。第三方 npm 依赖仍受其各自许可证约束（见 `package-lock.json`）。

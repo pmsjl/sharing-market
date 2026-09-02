@@ -16,6 +16,6 @@ Scope is determined from the actual query and reliable conversation context, not
 
 Campus lifecycle questions are in scope only when they explicitly concern acquiring, purchasing, reselling, transferring, disposing of, or checking the fit of personal items. General registration procedures, historical registration arrangements, vacation safety, and other campus administration questions are `out_of_scope`.
 
-The public Dev bundle received a scope-label correction on 2026-08-28. The corrected cases are listed in `manifest.json`; historical benchmark numbers from 2026-08-21 were not recomputed by that metadata-only publication step.
+The public Dev bundle is published from the `golden-v1.2.1-reviewed-20260829` dataset, which incorporates the 2026-08-28 scope corrections and the 2026-08-29 truth alignment of twelve post-purchase cases. Historical benchmark numbers from the v1.1 bundle were not recomputed.
 
 The public records retain only a source label in `provenance` and a frozen status in `review`. Reviewer identities, review notes, construction details, and the hidden Test split are not published.

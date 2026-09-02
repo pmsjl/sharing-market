@@ -1,32 +1,32 @@
-# Golden v1.1 Frozen Baseline Summary
+# Golden v1.2.1 Frozen Baseline Summary
 
-> Historical-result notice: the aggregate metrics below come from the 2026-08-21 pre-correction dataset. On 2026-08-28, four public Dev cases received reviewed scope corrections. These numbers have not been recomputed and must not be presented as results for the corrected dataset version.
+The frozen evaluation contains 200 cases: 140 public Dev cases and a withheld 60-case Test split. The following aggregate baseline was produced on the full frozen set (`golden-v1.2.1-reviewed-20260829`) on 2026-08-29, using the frozen index `20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71` and the `gpt-5.6-terra` router and answer model.
 
-The frozen evaluation contains 200 cases: 140 public Dev cases and a withheld 60-case Test split. The following aggregate baseline was produced on the full frozen set on 2026-08-21.
+## Retrieval (all 200 cases)
 
-## Retrieval
+- Recall@1: 70.93%
+- Recall@3: 87.21%
+- Recall@5: 92.44%
+- MRR: 0.769
+- nDCG@5: 0.790
 
-- Recall@1: 59.14%
-- Recall@3: 74.19%
-- Recall@5: 83.87%
-- MRR: 0.621
-- nDCG@5: 0.651
+Retrieval metrics over the public Dev split only: Recall@5 91.74%, MRR 0.766, nDCG@5 0.786.
 
-## End-to-end answers
+## Routing and end-to-end answers
 
+- Router route accuracy: 94.00% (188/200)
 - Successful generations: 200/200
-- Final pass rate: 74.50% (149 pass, 51 fail)
-- Knowledge-state accuracy: 94.00%
+- Final pass rate: 95.00% (190 pass, 10 fail)
 
 ## Domain results
 
 | Domain | Pass rate | Retrieval Recall@5 |
 |---|---:|---:|
-| Boundary | 75.00% | 90.00% |
-| Campus | 90.00% | 100.00% |
-| Course | 68.57% | 61.76% |
-| Platform | 97.50% | 97.50% |
-| Post | 58.00% | 96.00% |
+| Boundary | 95.00% | 90.00% |
+| Campus | 75.00% | 94.12% |
+| Course | 98.57% | 92.86% |
+| Platform | 95.00% | 85.00% |
+| Post | 98.00% | 97.96% |
 
 ## Limitations
 

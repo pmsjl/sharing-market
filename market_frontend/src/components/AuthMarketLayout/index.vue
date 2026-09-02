@@ -62,12 +62,6 @@
             </div>
           </article>
         </div>
-
-        <div class="showcase-assurance" aria-label="平台保障">
-          <span><i aria-hidden="true"></i>身份可追溯</span>
-          <span><i aria-hidden="true"></i>交易有记录</span>
-          <span><i aria-hidden="true"></i>隐私受保护</span>
-        </div>
       </aside>
     </section>
   </div>
@@ -277,8 +271,7 @@ onMounted(() => {
 }
 
 .showcase-copy,
-.showcase-grid,
-.showcase-assurance {
+.showcase-grid {
   position: relative;
   z-index: 1;
 }
@@ -521,30 +514,6 @@ onMounted(() => {
   color: var(--market-muted);
   font-size: 12px;
   font-weight: 700;
-}
-
-.showcase-assurance {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-top: 20px;
-  color: var(--market-muted);
-  font-size: 12px;
-  font-weight: 700;
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-  }
-
-  i {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--market-success);
-    box-shadow: 0 0 0 3px var(--market-success-soft);
-  }
 }
 
 :deep(.auth-entry-form) {
@@ -871,22 +840,6 @@ onMounted(() => {
     }
   }
 
-  .showcase-assurance {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    font-size: 11px;
-
-    span {
-      justify-content: center;
-      text-align: center;
-    }
-
-    i {
-      display: none;
-    }
-  }
-
   :deep(.auth-form-heading) {
     margin-bottom: 24px;
   }
@@ -897,16 +850,6 @@ onMounted(() => {
 
   :deep(.auth-entry-form .el-input__wrapper) {
     min-height: 48px;
-  }
-}
-
-@media (max-width: 380px) {
-  .showcase-assurance {
-    grid-template-columns: 1fr;
-
-    span {
-      justify-content: flex-start;
-    }
   }
 }
 </style>

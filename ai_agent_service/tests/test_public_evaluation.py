@@ -5,7 +5,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VALIDATOR = ROOT / "tools" / "validate_public_evaluation.py"
+VALIDATOR = (
+    ROOT / "ai_agent_service" / "evaluation" / "tools"
+    / "validate_public_evaluation.py"
+)
 
 
 def test_public_evaluation_bundle_is_valid() -> None:
@@ -18,4 +21,4 @@ def test_public_evaluation_bundle_is_valid() -> None:
     result = module.validate()
 
     assert result["caseCount"] == 140
-    assert result["qrelCount"] == 183
+    assert result["qrelCount"] == 172

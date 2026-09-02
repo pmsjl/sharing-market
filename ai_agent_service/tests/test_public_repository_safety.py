@@ -12,6 +12,20 @@ PUBLIC_EVALUATION_PREFIXES = (
     f"{EVALUATION_PREFIX}schemas/",
 )
 PUBLIC_EVALUATION_FILES = {f"{EVALUATION_PREFIX}README.md"}
+PUBLIC_EVALUATION_FILES.update({
+    f"{EVALUATION_PREFIX}tools/build_golden_v1_2_single_v2_final_results.py",
+    f"{EVALUATION_PREFIX}tools/compare_golden_runs.py",
+    f"{EVALUATION_PREFIX}tools/course_question_quality.py",
+    f"{EVALUATION_PREFIX}tools/golden_current_runtime_expectations.py",
+    f"{EVALUATION_PREFIX}tools/golden_v1_1_round2_paths.py",
+    f"{EVALUATION_PREFIX}tools/materialize_golden_v1_2_reviewed.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_pipeline.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_answer_generation.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_answer_judge.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_retrieval_eval.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_router_eval.py",
+    f"{EVALUATION_PREFIX}tools/validate_public_evaluation.py",
+})
 
 FORBIDDEN_DOC = re.compile(
     r"(?i)(^|/)(agents|claude|codex)\.md$|"
@@ -63,9 +77,9 @@ def _candidate_files() -> list[str]:
 
 
 def _read_text(path: Path) -> str | None:
-    if path.stat().st_size > 5 * 1024 * 1024:
-        return None
     try:
+        if path.stat().st_size > 5 * 1024 * 1024:
+            return None
         return path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return None
