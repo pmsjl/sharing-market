@@ -4,6 +4,10 @@
 
 # 智能 AI 校园二手交易平台 v1.0
 
+<p align="center">
+  <img src="docs/screenshots/market.webp" alt="平台界面预览" width="90%" />
+</p>
+
 一个面向校园场景的二手交易平台，覆盖商品浏览与交易、校园币模拟支付、攻略社区、公告、私信和个人内容管理，并提供结合实时商品数据与知识检索的多轮 AI 导购。
 
 项目采用 **Vue 3 前端 + Spring Boot 主后端 + FastAPI AI Agent** 三服务架构。
