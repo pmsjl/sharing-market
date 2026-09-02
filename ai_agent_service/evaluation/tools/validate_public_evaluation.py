@@ -9,9 +9,9 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 EVALUATION = ROOT / "ai_agent_service" / "evaluation"
-DATASET = EVALUATION / "public" / "dev_v1_1.jsonl"
+DATASET = EVALUATION / "public" / "dev_v1_2_1.jsonl"
 MANIFEST = EVALUATION / "public" / "manifest.json"
 SCHEMA = EVALUATION / "schemas" / "golden_case.schema.json"
 
@@ -54,7 +54,7 @@ def validate() -> dict[str, Any]:
     assert len(rows) == 140, f"expected 140 Dev cases, got {len(rows)}"
     assert len({row["caseId"] for row in rows}) == 140
     assert {row["split"] for row in rows} == {"dev"}
-    assert {row["version"] for row in rows} == {"golden-v1.1"}
+    assert {row["version"] for row in rows} == {"golden-v1.2.1"}
 
     validator = Draft202012Validator(schema)
     errors = sorted(

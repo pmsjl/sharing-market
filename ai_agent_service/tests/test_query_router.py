@@ -45,7 +45,7 @@ def _fallback(message: str, **overrides) -> RetrieveRouteDecision:
 def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
 ) -> None:
     dataset = (Path(__file__).resolve().parents[1] /
-               "evaluation/public/dev_v1_1.jsonl")
+               "evaluation/public/dev_v1_2_1.jsonl")
     cases = [
         json.loads(line)
         for line in dataset.read_text(encoding="utf-8").splitlines()
@@ -58,7 +58,7 @@ def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
         case for case in cases
         if case["expectedRoute"] in {"clarify", "out_of_scope"}
     ]
-    assert len(semantic_terminal_cases) == 8
+    assert len(semantic_terminal_cases) == 15
     assert all(
         build_fallback_decision(
             _request(case["query"]),
@@ -272,7 +272,7 @@ def test_router_prompt_balances_technical_and_campus_scope_boundaries(
 
 def test_public_scope_corrections_are_frozen_in_dev_dataset() -> None:
     dataset = (Path(__file__).resolve().parents[1] /
-               "evaluation/public/dev_v1_1.jsonl")
+               "evaluation/public/dev_v1_2_1.jsonl")
     cases = {
         row["caseId"]: row
         for row in (
@@ -290,16 +290,14 @@ def test_public_scope_corrections_are_frozen_in_dev_dataset() -> None:
     assert technical["preferredSourceType"] is None
 
     new_student = cases["campus-campus-lifecycle-new-student-01"]
-    previous_guide = cases["campus-campus-lifecycle-new-student-02"]
     move_checkout = cases["campus-campus-lifecycle-dorm-move-checkout-01"]
     assert "宿舍用品" in new_student["query"]
     assert "学校是否提供" in new_student["query"]
     assert new_student["qrels"][0]["documentId"] == (
         "GUIDE:campus-dorm-new-student-supplies")
-    assert "宿舍用品" in previous_guide["query"]
-    assert previous_guide["qrels"][0]["documentId"] == (
-        "GUIDE:campus-dorm-new-student-supplies")
-    assert "转卖、转赠或清理" in move_checkout["query"]
+    assert "个人物品" in move_checkout["query"]
+    assert move_checkout["qrels"][0]["documentId"] == (
+        "GUIDE:campus-lifecycle-dorm-move-checkout")
 
 
 def _router_settings(**overrides) -> Settings:

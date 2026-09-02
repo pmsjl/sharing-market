@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "tools/run_golden_v1_1_answer_judge.py"
+SCRIPT = ROOT / "ai_agent_service/evaluation/tools/run_golden_v1_1_answer_judge.py"
 SPEC = importlib.util.spec_from_file_location("golden_answer_judge_policy_test", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 judge = importlib.util.module_from_spec(SPEC)

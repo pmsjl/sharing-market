@@ -241,6 +241,20 @@ ai_agent_service/scratch/
 !/ai_agent_service/evaluation/public/**
 !/ai_agent_service/evaluation/schemas/
 !/ai_agent_service/evaluation/schemas/**
+!/ai_agent_service/evaluation/tools/
+/ai_agent_service/evaluation/tools/*
+!/ai_agent_service/evaluation/tools/build_golden_v1_2_single_v2_final_results.py
+!/ai_agent_service/evaluation/tools/compare_golden_runs.py
+!/ai_agent_service/evaluation/tools/course_question_quality.py
+!/ai_agent_service/evaluation/tools/golden_current_runtime_expectations.py
+!/ai_agent_service/evaluation/tools/golden_v1_1_round2_paths.py
+!/ai_agent_service/evaluation/tools/materialize_golden_v1_2_reviewed.py
+!/ai_agent_service/evaluation/tools/run_golden_pipeline.py
+!/ai_agent_service/evaluation/tools/run_golden_v1_1_answer_generation.py
+!/ai_agent_service/evaluation/tools/run_golden_v1_1_answer_judge.py
+!/ai_agent_service/evaluation/tools/run_golden_v1_1_retrieval_eval.py
+!/ai_agent_service/evaluation/tools/run_golden_v1_1_router_eval.py
+!/ai_agent_service/evaluation/tools/validate_public_evaluation.py
 
 ### 操作系统 ###
 # macOS
@@ -295,11 +309,10 @@ upload/
 *.7z
 
 ### 本地工具与可复现评测资产 ###
-# tools 默认不接收新文件，仅放行 Golden 评测脚本和人工审核语料。
+# tools 只放行 Post/Commodity 语料；Golden 评测脚本统一收在 evaluation/tools/。
 /tools/
 !/tools/
 /tools/*
-!/tools/validate_public_evaluation.py
 !/tools/post_corpus/
 /tools/post_corpus/*
 !/tools/post_corpus/purchase_experience_sample.md

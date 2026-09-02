@@ -1,15 +1,32 @@
-"""Regression checks for the user-reviewed Golden v1.2.1 input."""
+"""Regression checks for the user-reviewed Golden v1.2.1 input.
+
+The v1.1 source dataset that the one-time materializer consumed was removed
+from the workspace after the reviewed 200-case product was frozen, so this
+module now validates the frozen product in evaluation/runs/ instead of
+re-running the materialization pipeline.
+"""
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from collections import Counter
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "tools/materialize_golden_v1_2_reviewed.py"
-sys.path.insert(0, str(ROOT / "tools"))
+SCRIPT = ROOT / "ai_agent_service/evaluation/tools/materialize_golden_v1_2_reviewed.py"
+PRODUCT = (
+    ROOT
+    / "ai_agent_service/evaluation/dataset"
+    / "golden_v1_2_1_reviewed_200.jsonl"
+)
+PRODUCT_MANIFEST = (
+    ROOT
+    / "ai_agent_service/evaluation/dataset"
+    / "golden_v1_2_1_reviewed_200_manifest.json"
+)
+sys.path.insert(0, str(ROOT / "ai_agent_service" / "evaluation" / "tools"))
 
 COURSE_OUT_OF_SCOPE_IDS = {
     "course-material_mention-005",
@@ -40,9 +57,20 @@ def _load_module():
     return module
 
 
+def _load_product():
+    rows = [
+        json.loads(line)
+        for line in PRODUCT.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    manifest = json.loads(PRODUCT_MANIFEST.read_text(encoding="utf-8"))
+    return rows, manifest
+
+
 def test_reviewed_200_applies_current_scope_without_case_id_classifier_rules():
     module = _load_module()
-    rows, validation = module.materialize()
+    rows, manifest = _load_product()
+    validation = manifest["validation"]
     assert len(rows) == 200
     assert len({row["caseId"] for row in rows}) == 200
     assert module.DATASET_VERSION == "golden-v1.2.1-reviewed-20260829"
