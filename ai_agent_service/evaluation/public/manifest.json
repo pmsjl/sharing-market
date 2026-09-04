@@ -1,8 +1,8 @@
 {
   "datasetName": "sharing-market-rag-public-dev",
-  "datasetVersion": "public-dev-v1.2.1-20260902",
+  "datasetVersion": "public-dev-v1.2.1-20260905",
   "sourceDatasetVersion": "golden-v1.2.1-reviewed-20260829",
-  "publishedAt": "2026-09-02",
+  "publishedAt": "2026-09-05",
   "split": "dev",
   "caseCount": 140,
   "domainCounts": {
@@ -14,17 +14,17 @@
   },
   "routeCounts": {
     "clarify": 3,
-    "out_of_scope": 12,
-    "retrieve": 124,
+    "out_of_scope": 9,
+    "retrieve": 127,
     "skip_rag": 1
   },
   "knowledgeStateCounts": {
     "answerable": 80,
-    "not_applicable": 16,
-    "unknown_after_search": 44
+    "not_applicable": 13,
+    "unknown_after_search": 47
   },
-  "qrelCount": 172,
-  "sha256": "a1f5aba504528868b5345a9406d3192d5bebda2e1f1e44cd7ca531f448762b33",
+  "qrelCount": 178,
+  "sha256": "71990c2bce076c328955b06993bf175044fed17d9600e7618a5051ad823cfafb",
   "schema": "../schemas/golden_case.schema.json",
   "indexBuildId": "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71",
   "indexSnapshot": {
@@ -66,7 +66,16 @@
       ],
       "reason": "Align rewritten Query, expectedFacts and supportingChunkIds; restore scope-flipped or answer-leaking wording where required."
     },
-    "note": "The v1.1 corrections are incorporated into the v1.2.1-reviewed source dataset."
+    "note": "The v1.1 corrections are incorporated into the v1.2.1-reviewed source dataset.",
+    "humanAdjudicationCorrection": {
+      "correctedAt": "2026-09-05",
+      "caseIds": [
+        "course-material_mention-045",
+        "course-unknown_after_search-020",
+        "course-unknown_after_search-047"
+      ],
+      "reason": "Human review treats course equipment self-preparation questions as having a reasonable acquisition or purchase-decision interpretation."
+    }
   },
   "limitations": [
     "The 60-case test split and its qrels are withheld.",

@@ -53,7 +53,7 @@ evaluation/
 
 从完整集 dev 140 脱敏后发布：剥离评审记录、内部构造字段与扣留的 test 60。
 
-- 140 题、172 条 qrels。
+- 140 题、178 条 qrels。
 - 准确版本、数量、Hash 以 `public/manifest.json` 为准。
 - 用途：开发调试、数据格式验证、公开可复现基线。
 
@@ -233,7 +233,9 @@ runs/<run-name>/
 
 ### 公开基线
 
-`public/benchmark_summary.md` 给出完整冻结集的聚合指标（如 Router 94%、Recall@5 92.44%、Final 95%）。注意：Public Dev 一旦用于实现调整或参数选择，就不能再表述为"未见过的隐藏测试集"。
+`public/benchmark_summary.md` 给出 2026-09-05 人工复核后的完整聚合指标（Router 96.50%、Recall@5 92.57%、Final 97.00%）。注意：Public Dev 一旦用于实现调整或参数选择，就不能再表述为"未见过的隐藏测试集"。
+
+三个代码阶段的公开安全聚合对比见 [`../../docs/evaluation/three-stage-benchmark.md`](../../docs/evaluation/three-stage-benchmark.md)。该文档只披露汇总数据；逐题结果与 Judge 理由仍属于本地私有评测产物。
 
 ## 测试
 
