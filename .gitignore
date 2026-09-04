@@ -214,6 +214,7 @@ ai_agent_service/scratch/
 
 ### Local agent instructions and implementation notes ###
 .claude/
+.local-history/
 **/[Aa][Gg][Ee][Nn][Tt][Ss].md
 **/[Cc][Ll][Aa][Uu][Dd][Ee].md
 **/[Cc][Oo][Dd][Ee][Xx].md
