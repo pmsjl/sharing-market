@@ -34,17 +34,17 @@ COURSE_OUT_OF_SCOPE_IDS = {
     "course-material_mention-025",
     "course-material_mention-033",
     "course-material_mention-034",
-    "course-material_mention-045",
     "course-material_mention-052",
     "course-material_mention-054",
-    "course-unknown_after_search-020",
-    "course-unknown_after_search-047",
     "course-unknown_after_search-048",
     "course-unknown_after_search-066",
 }
 RETAINED_COURSE_RETRIEVE_IDS = {
+    "course-material_mention-045",
     "course-unknown_after_search-007",
     "course-unknown_after_search-009",
+    "course-unknown_after_search-020",
+    "course-unknown_after_search-047",
     "course-unknown_after_search-060",
 }
 
@@ -77,26 +77,26 @@ def test_reviewed_200_applies_current_scope_without_case_id_classifier_rules():
     assert module.DATASET_FILENAME == "golden_v1_2_1_reviewed_200.jsonl"
 
     assert Counter(row["expectedRoute"] for row in rows) == Counter({
-        "retrieve": 176,
-        "out_of_scope": 18,
+        "retrieve": 179,
+        "out_of_scope": 15,
         "clarify": 4,
         "skip_rag": 2,
     })
     assert Counter(row["expectedKnowledgeState"] for row in rows) == Counter({
         "answerable": 116,
-        "unknown_after_search": 60,
-        "not_applicable": 24,
+        "unknown_after_search": 63,
+        "not_applicable": 21,
     })
 
     courses = [row for row in rows if row["domain"] == "course"]
     assert len(courses) == 70
     assert Counter(row["expectedRoute"] for row in courses) == Counter({
-        "retrieve": 58,
-        "out_of_scope": 12,
+        "retrieve": 61,
+        "out_of_scope": 9,
     })
     assert Counter(row["scopeClass"] for row in courses) == Counter({
-        "commodity_decision_retrieve": 58,
-        "teaching_support_out_of_scope": 12,
+        "commodity_decision_retrieve": 61,
+        "teaching_support_out_of_scope": 9,
     })
     assert {
         row["caseId"] for row in courses if row["expectedRoute"] == "out_of_scope"
@@ -150,8 +150,8 @@ def test_reviewed_200_applies_current_scope_without_case_id_classifier_rules():
     assert validation["acceptedSmokeQuestionBindingsMatched"] == 35
     assert validation["routeCounts"] == {
         "clarify": 4,
-        "out_of_scope": 18,
-        "retrieve": 176,
+        "out_of_scope": 15,
+        "retrieve": 179,
         "skip_rag": 2,
     }
 

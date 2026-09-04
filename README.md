@@ -111,6 +111,8 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
   --dataset <私有200题.jsonl> --manifest <manifest.json> --run-name <run> --through final
 ```
 
+当前聚合基准见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，三个代码阶段的同口径对比见 [`docs/evaluation/three-stage-benchmark.md`](docs/evaluation/three-stage-benchmark.md)。原始运行结果与扣留 Test 不对外提交。
+
 完整指南见 [evaluation/README.md](ai_agent_service/evaluation/README.md)。
 
 ## 当前边界

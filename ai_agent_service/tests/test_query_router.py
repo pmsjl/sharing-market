@@ -58,7 +58,7 @@ def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
         case for case in cases
         if case["expectedRoute"] in {"clarify", "out_of_scope"}
     ]
-    assert len(semantic_terminal_cases) == 15
+    assert len(semantic_terminal_cases) == 12
     assert all(
         build_fallback_decision(
             _request(case["query"]),
