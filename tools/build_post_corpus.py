@@ -18,9 +18,10 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS_DIR = Path(__file__).resolve().parent / "post_corpus"
 POSTS_PATH = CORPUS_DIR / "posts.jsonl"
-HEADER_PATH = CORPUS_DIR / "seed_header.sql"
 REPORT_PATH = CORPUS_DIR / "quality_report.json"
-SEED_SQL_PATH = ROOT / "market_backend/sql/20260815_seed_campus_trade_posts.sql"
+SEED_SQL_PATH = ROOT / "market_backend/sql/seed/04_posts.sql"
+POST_ID_BASE = 2088602105676820480
+SNOWFLAKE_STEP = 4194304
 
 EXPECTED_TOPICS = {
     "digital": 50,
@@ -325,7 +326,13 @@ def sql_literal(value: str) -> str:
 
 
 def create_seed_sql(posts: list[dict[str, Any]]) -> str:
-    header = HEADER_PATH.read_text(encoding="utf-8").rstrip() + "\n\n"
+    header = f"""-- 由 tools/post_corpus/posts.jsonl 确定性生成的公开演示 Post。
+-- 依赖：01_demo_users.sql；预期 260 条。
+SET NAMES utf8mb4;
+START TRANSACTION;
+
+SET @seed_post_id_base = {POST_ID_BASE};
+SET @seed_snowflake_step = {SNOWFLAKE_STEP};"""
     blocks: list[str] = [header]
     for item in posts:
         index = item["index"]
@@ -363,7 +370,6 @@ def create_seed_sql(posts: list[dict[str, Any]]) -> str:
         "THEN 1 ELSE 0 END;\n"
         "DROP TEMPORARY TABLE `seed_post_content_guard`;\n\n"
         "COMMIT;\n"
-        "SET @seed_post_author_password_hash = NULL;\n"
     )
     return "\n".join(blocks)
 
@@ -371,8 +377,13 @@ def create_seed_sql(posts: list[dict[str, Any]]) -> str:
 def main(check_only: bool) -> None:
     posts = read_jsonl(POSTS_PATH)
     report = validate(posts)
-    REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    REPORT_PATH.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     if not check_only:
+        SEED_SQL_PATH.parent.mkdir(parents=True, exist_ok=True)
         SEED_SQL_PATH.write_text(create_seed_sql(posts), encoding="utf-8", newline="\n")
     print(json.dumps(report, ensure_ascii=False, indent=2))
 

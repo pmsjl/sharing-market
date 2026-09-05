@@ -60,3 +60,10 @@ def test_seed_sql_generation_is_deterministic_and_preserves_interactions():
     assert "`favourNum`" not in update_clause
     assert "`createTime`" not in update_clause
     assert "`userId`" not in update_clause
+    assert builder.SEED_SQL_PATH.as_posix().endswith(
+        "market_backend/sql/seed/04_posts.sql"
+    )
+    assert f"SET @seed_post_id_base = {builder.POST_ID_BASE};" in first
+    assert f"SET @seed_snowflake_step = {builder.SNOWFLAKE_STEP};" in first
+    assert "seed_header.sql" not in first
+    assert builder.SEED_SQL_PATH.read_text(encoding="utf-8") == first
