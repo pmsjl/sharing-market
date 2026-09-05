@@ -10,10 +10,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SQL_DIR = ROOT / "market_backend/sql"
-SEED_PATH = SQL_DIR / "20260819_post_aligned_commodity_seed.sql"
-ROLLBACK_PATH = SQL_DIR / "20260819_post_aligned_commodity_seed_rollback.sql"
-BATCH = "POST-ALIGNED-COMMODITY-20260819-V1"
+SEED_PATH = SQL_DIR / "seed/03_commodities.sql"
+ROLLBACK_PATH = SQL_DIR / "seed/rollback/03_commodities.sql"
+BATCH = "PUBLIC-DEMO-COMMODITY-V1"
 SELLER_ID = 2074697289959530497
+SELLER_ACCOUNT = "demo_seller"
 
 # 字段依次为：分类、名称、成色、价格、库存、图片标识、规格或状态、校园用途。
 ROWS = [
@@ -145,13 +146,14 @@ def build_seed() -> str:
         )
     value_sql = ",\n".join(values)
     return f"""-- 与校园帖子语料对应的确定性商品批次。
--- 批次：{BATCH}；预期 60 条；卖家：syff（{SELLER_ID}）。
+-- 依赖：01_demo_users.sql、02_commodity_types.sql。
+-- 批次：{BATCH}；预期 60 条；卖家：{SELLER_ACCOUNT}（{SELLER_ID}）。
 SET NAMES utf8mb4;
 START TRANSACTION;
 
 SET @seed_seller_id := (
     SELECT id FROM user
-    WHERE id = {SELLER_ID} AND userName = 'syff' AND userAccount = 'syff' AND isDelete = 0
+    WHERE id = {SELLER_ID} AND userAccount = '{SELLER_ACCOUNT}' AND isDelete = 0
     LIMIT 1
 );
 SET @existing_batch_count := (
@@ -276,6 +278,8 @@ COMMIT;
 
 
 def main() -> None:
+    SEED_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ROLLBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
     SEED_PATH.write_text(build_seed(), encoding="utf-8", newline="\n")
     ROLLBACK_PATH.write_text(build_rollback(), encoding="utf-8", newline="\n")
     print(f"rows={len(ROWS)} seed={SEED_PATH.name} rollback={ROLLBACK_PATH.name}")

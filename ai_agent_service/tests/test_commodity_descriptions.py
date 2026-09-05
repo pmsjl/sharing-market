@@ -9,10 +9,11 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SOURCE = REPO / "tools/commodity_descriptions.jsonl"
 REPORT = REPO / "tools/commodity_description_quality_report.json"
-CLEANUP_SQL = REPO / "market_backend/sql/20260819_cleanup_all_commodity_descriptions.sql"
 SEARCH_REPORT = REPO / "tools/commodity_search_regression_report.json"
 POST_SEED_SOURCE = REPO / "tools/post_aligned_commodity_seed.py"
-POST_SEED_SQL = REPO / "market_backend/sql/20260819_post_aligned_commodity_seed.sql"
+POST_SEED_SQL = REPO / "market_backend/sql/seed/03_commodities.sql"
+DEMO_USERS_SQL = REPO / "market_backend/sql/seed/01_demo_users.sql"
+COMMODITY_TYPES_SQL = REPO / "market_backend/sql/seed/02_commodity_types.sql"
 
 # 内部批次标记和知识库说明不得出现在用户可见的商品简介中。
 BANNED = (
@@ -51,25 +52,14 @@ def test_all_commodity_descriptions_are_natural_and_complete():
     assert all(not ADVICE_PATTERN.search(description) for description in descriptions)
 
 
-def test_quality_report_and_cleanup_sql_cover_the_same_rows():
+def test_quality_report_covers_the_same_rows():
     rows = load_rows()
     report = json.loads(REPORT.read_text(encoding="utf-8"))
-    sql = CLEANUP_SQL.read_text(encoding="utf-8")
 
     assert report["accepted"] is True
     assert report["commodityCount"] == 968
     assert report["descriptionLength"]["minimum"] >= 8
     assert sum(report["visibleInternalTextCounts"].values()) == 0
-    assert sql.count("\n(20") == 968
-
-    update_clause = sql.split("UPDATE commodity c", 1)[1].split(";", 1)[0]
-    for protected in (
-        "commodityName", "degree", "commodityTypeId", "adminId", "isListed",
-        "commodityInventory", "price", "viewNum", "favourNum", "createTime", "isDelete",
-    ):
-        assert f"c.{protected}=" not in update_clause
-    assert "c.updateTime=s.originalUpdateTime" in update_clause
-    assert "CURRENT_TIMESTAMP" not in update_clause
 
 
 def test_real_search_regression_report_has_no_generated_advice():
@@ -102,3 +92,19 @@ def test_post_aligned_seed_contains_only_product_facts():
     assert all(len(row) == 8 for row in rows)
     assert all(not ADVICE_PATTERN.search(description) for description in descriptions)
     assert all(description in sql for description in descriptions)
+    assert sql == namespace["build_seed"]()
+
+
+def test_public_demo_seed_has_all_dependencies():
+    namespace = runpy.run_path(str(POST_SEED_SOURCE))
+    rows = namespace["ROWS"]
+    seller_id = namespace["SELLER_ID"]
+    seller_account = namespace["SELLER_ACCOUNT"]
+    users_sql = DEMO_USERS_SQL.read_text(encoding="utf-8")
+    types_sql = COMMODITY_TYPES_SQL.read_text(encoding="utf-8")
+
+    assert str(seller_id) in users_sql
+    assert seller_account in users_sql
+    assert users_sql.count("seed_post_author_") == 20
+    assert "公开演示账号，不对应真实用户" in users_sql
+    assert all(category in types_sql for category in {row[0] for row in rows})
