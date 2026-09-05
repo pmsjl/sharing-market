@@ -199,6 +199,21 @@ venv/
 /ai_agent_service/tools/
 /ai_agent_service/tests/test_knowledge_pipeline.py
 
+# 公开仓库只保留 knowledge/runtime/ 与 documents/effective/。
+# 以下知识采集、审计和中间产物应放入仓库外的私人归档。
+/ai_agent_service/knowledge/normalized/
+/ai_agent_service/knowledge/pipeline/
+/ai_agent_service/knowledge/documents/draft/
+/ai_agent_service/knowledge/documents/reference/
+/ai_agent_service/knowledge/sources/
+/ai_agent_service/knowledge/acceptance_report.json
+/ai_agent_service/knowledge/qa_source_answer_review.jsonl
+/ai_agent_service/knowledge/requirements_traceability.json
+/ai_agent_service/knowledge/review_report.json
+/ai_agent_service/knowledge/snapshot_diff_report.json
+/ai_agent_service/knowledge/source_coverage_report.json
+/ai_agent_service/knowledge/unknown_information_report.json
+
 ### 临时脚本（用完即删，不提交） ###
 # 一次性/开发用脚本放这里，用完删除，不进版本库。
 /scratch/
@@ -310,11 +325,25 @@ upload/
 *.7z
 
 ### 本地工具与可复现评测资产 ###
-# tools 只放行 Post/Commodity 语料；Golden 评测脚本统一收在 evaluation/tools/。
+# tools 只放行可重复生成公开 seed 所需的源数据和生成器。
 /tools/
 !/tools/
 /tools/*
+!/tools/build_post_corpus.py
+!/tools/post_aligned_commodity_seed.py
 !/tools/post_corpus/
 /tools/post_corpus/*
-!/tools/post_corpus/purchase_experience_sample.md
-!/tools/post_corpus/manual_purchase_batch_*.md
+!/tools/post_corpus/posts.jsonl
+!/tools/post_corpus/quality_report.json
+!/tools/post_corpus/retrieval_regression_report.json
+
+# Post 创作草稿与历史商品清洗管线只进入私人归档。
+/tools/post_corpus/authoring/
+/tools/post_corpus/topic_briefs*.jsonl
+/tools/post_corpus/manual_purchase_batch_*.md
+/tools/post_corpus/purchase_experience_sample.md
+/tools/commodity_descriptions.jsonl
+/tools/commodity_description_quality_report.json
+/tools/commodity_search_regression_report.json
+/tools/build_commodity_description_cleanup.py
+/tools/sync_commodity_seed_descriptions.py

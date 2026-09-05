@@ -31,10 +31,10 @@ def _relation(**overrides):
 
 
 def _index(tmp_path: Path, rows: list[dict] | None = None) -> CourseRelationIndex:
-    normalized = tmp_path / "normalized"
-    normalized.mkdir()
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
     rows = rows or [_relation()]
-    (normalized / "course_material_relations.jsonl").write_text(
+    (runtime / "course_material_relations.jsonl").write_text(
         "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
         encoding="utf-8",
     )

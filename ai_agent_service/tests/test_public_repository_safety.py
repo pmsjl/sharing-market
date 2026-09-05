@@ -27,6 +27,29 @@ PUBLIC_EVALUATION_FILES.update({
     f"{EVALUATION_PREFIX}tools/validate_public_evaluation.py",
 })
 
+FORBIDDEN_PRIVATE_DATA_PREFIXES = (
+    "ai_agent_service/knowledge/documents/draft/",
+    "ai_agent_service/knowledge/documents/reference/",
+    "ai_agent_service/knowledge/normalized/",
+    "ai_agent_service/knowledge/pipeline/",
+    "ai_agent_service/knowledge/sources/",
+    "tools/post_corpus/authoring/",
+)
+FORBIDDEN_PRIVATE_DATA_FILES = {
+    "ai_agent_service/knowledge/acceptance_report.json",
+    "ai_agent_service/knowledge/qa_source_answer_review.jsonl",
+    "ai_agent_service/knowledge/requirements_traceability.json",
+    "ai_agent_service/knowledge/review_report.json",
+    "ai_agent_service/knowledge/snapshot_diff_report.json",
+    "ai_agent_service/knowledge/source_coverage_report.json",
+    "ai_agent_service/knowledge/unknown_information_report.json",
+    "tools/build_commodity_description_cleanup.py",
+    "tools/commodity_description_quality_report.json",
+    "tools/commodity_descriptions.jsonl",
+    "tools/commodity_search_regression_report.json",
+    "tools/sync_commodity_seed_descriptions.py",
+}
+
 FORBIDDEN_DOC = re.compile(
     r"(?i)(^|/)(agents|claude|codex)\.md$|"
     r"[^/]*(plan|progress|implementation|code_analysis|"
@@ -90,6 +113,9 @@ def test_repository_contains_no_forbidden_public_paths() -> None:
     for path in _candidate_files():
         normalized = path.replace("\\", "/")
         if FORBIDDEN_DOC.search(normalized):
+            violations.append(normalized)
+        if (normalized in FORBIDDEN_PRIVATE_DATA_FILES
+                or normalized.startswith(FORBIDDEN_PRIVATE_DATA_PREFIXES)):
             violations.append(normalized)
         if normalized.startswith(EVALUATION_PREFIX) and not (
             normalized in PUBLIC_EVALUATION_FILES
