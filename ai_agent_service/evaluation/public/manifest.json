@@ -24,7 +24,7 @@
     "unknown_after_search": 47
   },
   "qrelCount": 178,
-  "sha256": "71990c2bce076c328955b06993bf175044fed17d9600e7618a5051ad823cfafb",
+  "sha256": "19f551fccb74ccbfd9f09086614cf500876668063ffadef86e97dc78ab18c1ff",
   "schema": "../schemas/golden_case.schema.json",
   "indexBuildId": "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71",
   "indexSnapshot": {

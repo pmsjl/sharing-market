@@ -85,7 +85,7 @@ class CourseRelationIndex:
     @classmethod
     def load(cls, knowledge_root: Path) -> "CourseRelationIndex":
         obj = cls()
-        path = knowledge_root / "normalized" / "course_material_relations.jsonl"
+        path = knowledge_root / "runtime" / "course_material_relations.jsonl"
         for index, line in enumerate(
                 path.read_text(encoding="utf-8-sig").splitlines(), start=1):
             if not line.strip():

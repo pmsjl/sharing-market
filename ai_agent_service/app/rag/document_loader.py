@@ -7,9 +7,9 @@ import yaml
 from app.rag.models import GuideDocumentMeta
 
 MANIFEST_FILES = (
-    "normalized/platform_rag_document_manifest.jsonl",
-    "normalized/campus_guidance_manifest.jsonl",
-    "normalized/rag_document_manifest.jsonl",
+    "runtime/platform_rag_document_manifest.jsonl",
+    "runtime/campus_guidance_manifest.jsonl",
+    "runtime/rag_document_manifest.jsonl",
 )
 
 

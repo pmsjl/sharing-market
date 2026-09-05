@@ -36,9 +36,9 @@ def _relation(**overrides):
 
 
 def _load_index(tmp_path: Path, rows: list[dict]) -> CourseRelationIndex:
-    normalized = tmp_path / "normalized"
-    normalized.mkdir()
-    (normalized / "course_material_relations.jsonl").write_text(
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "course_material_relations.jsonl").write_text(
         "\n".join(json.dumps(row, ensure_ascii=False) for row in rows),
         encoding="utf-8",
     )
