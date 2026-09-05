@@ -83,7 +83,7 @@ sharing-market-v1.0/
 │   └── src/views/user/agentGuide/   # 智能导购（多轮 AI 会话 UI）
 ├── market_backend/           # Java 主后端
 │   ├── src/main/java/com/pmsjl/     # controller/service/mapper/manager(Java→Python 出口)
-│   └── sql/                           # 增量 Schema 迁移脚本（无完整建表基线）
+│   └── sql/                           # MySQL 完整建表基线脚本
 └── ai_agent_service/         # Python Agent + 知识库 + 评测
     ├── app/                  # FastAPI（routing/rag/services/prompts/clients）
     ├── knowledge/            # GUIDE 知识文档与管线
@@ -119,7 +119,7 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
 
 - 私信目前没有未读数、撤回、删除和独立会话资源。
 - AI 当前返回同步 JSON，不提供流式输出。
-- 仓库没有从空库初始化完整业务 Schema 的基线脚本（`market_backend/sql/` 只含增量 Schema 迁移）。
+- `market_backend/sql/script.sql` 是面向空库的完整建表基线，不包含演示或种子数据。
 
 ## 技术栈
 
@@ -153,7 +153,14 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
 
 ### 1. 准备数据库和 Redis
 
-请先准备已有的 `trade` 基础 Schema。`market_backend/sql/` 只包含增量 Schema 迁移，不能对空库整目录执行；应根据当前数据库版本选择适用脚本。基础业务表（用户/商品/帖子）需自行准备。
+先创建全新的 `trade` Schema，再从仓库根目录执行完整建表脚本：
+
+```powershell
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS trade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p trade -e "source market_backend/sql/script.sql"
+```
+
+`script.sql` 会创建平台业务表和索引，但不包含演示或种子数据。该脚本未使用 `IF NOT EXISTS`，仅应在空库中执行；已有数据库请先备份并确认不会与现有表冲突。
 
 ### 2. 启动 Java 后端
 

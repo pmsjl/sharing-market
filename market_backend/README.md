@@ -135,19 +135,20 @@ mvn spring-boot:run
 
 ## 数据库脚本
 
-`sql/` 目录**不包含从空库建立全部业务表的完整基线**，只含增量 Schema 迁移与数据修正脚本。**不要对空库或未知版本数据库整目录执行**，先确认当前 Schema 与脚本用途，按需选择对应日期的增量脚本。
+`sql/script.sql` 是 MySQL 8 的完整建表基线，包含平台业务表及索引，不包含 `CREATE DATABASE`、演示数据或种子数据。
 
 | 脚本 | 用途 |
 | --- | --- |
-| `20260712_ai_agent_schema.sql` | AI 会话/消息/轨迹表建表 |
-| `20260715_rename_ai_message_agent_error_key.sql` | AI 消息错误标识列更名 |
-| `20260727_add_ai_message_pending_scan_index.sql` | PENDING 扫描索引 |
-| `20260727_remove_user_ai_remain_number.sql` | 移除不再使用的每用户 AI 次数列 |
-| `20260819_cleanup_all_commodity_descriptions.sql` | 商品简介批量重写（由 jsonl 生成） |
-| `20260819_post_aligned_commodity_seed.sql` | 与帖子语料对应的确定性商品种子 |
-| `20260830_add_campus_coin_and_ai_quota.sql` | 校园币台账 + 数据库 AI 每日额度表 |
+| `script.sql` | 从空库创建完整业务表和索引 |
 
-种子脚本与回滚脚本已在整理仓库时移除；商品/帖子演示数据需要时由各工具按需重建。
+从仓库根目录初始化：
+
+```powershell
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS trade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p trade -e "source market_backend/sql/script.sql"
+```
+
+脚本未使用 `IF NOT EXISTS`，仅应在全新或已清空的 `trade` Schema 中执行。已有数据库请先备份并确认不会与现有表冲突。
 
 ## 测试
 
