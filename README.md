@@ -30,6 +30,12 @@
 
 ### AI 导购
 
+<p align="center">
+  <img src="docs/screenshots/agent.webp" alt="平台界面预览" width="90%" />
+</p>
+
+
+
 - 结合用户需求、实时商品信息和脱敏偏好生成推荐。
 - 使用 GUIDE 文档与社区 Post 构建 FAISS 检索索引。
 - 推荐结果由 Java 后端校验商品和 Post 信息后再返回前端。
