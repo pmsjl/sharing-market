@@ -12,7 +12,7 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
                  Python Agent (FastAPI + FAISS)
 ```
 
-- Java 是**唯一业务入口**：负责鉴权、业务数据、AI 会话编排与可信结果组装。
+- Java 是**唯一业务入口**：负责鉴权、业务数据、AI 会话编排，以及最终返回结果的校验和整理。
 - Python Agent 不直接连业务 MySQL，只通过 Java 的只读内部接口取商品/Post 快照。
 - Java 与 Python 必须配置相同的 `ai.agent.internal-token`。
 
@@ -29,7 +29,7 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 ### AI 会话
 
 - 会话：创建、续聊、归档、恢复、删除；历史上下文最多近 5 轮。
-- 消息：先写 PENDING，再调 Agent，成功后 CAS 落为 SUCCESS/FAILED（行锁防并发）。
+- 消息：先记录为 PENDING，再调用 Agent；调用结束后使用 CAS 将状态更新为 SUCCESS 或 FAILED，并通过行锁避免重复处理。
 - 额度：按 `AiUsageDaily`/`AiUsageGlobalDaily` 每日限量（用户默认 10、平台默认 100，`ai.access` 配置，时区 Asia/Shanghai）。
 - 定时任务：清理超时 PENDING 消息（每 30 秒）、释放过期未支付订单（每分钟）、同步商品浏览量（每 5 分钟）。
 
@@ -50,11 +50,11 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 | 接口 | 路径 | 用途 |
 | --- | --- | --- |
 | 商品搜索 | `internal/ai/tools/commodities/search` | 关键词/分类/价格/成色过滤，仅可售（上架且有库存） |
-| 用户偏好 | `internal/ai/tools/users/{userId}/preference-signals` | 脱敏偏好画像（购买+收藏聚合，含冷启动） |
+| 用户偏好 | `internal/ai/tools/users/{userId}/preference-signals` | 根据购买和收藏记录汇总的用户偏好（已脱敏） |
 | Post 校验 | `internal/ai/tools/posts/validate` | Post 版本校验 |
-| Post 快照 | `internal/ai/rag/posts?afterId=&limit=` | 离线 RAG 重建用的 Post 游标快照 |
+| Post 快照 | `internal/ai/rag/posts?afterId=&limit=` | 重建 RAG 索引时，使用游标分页获取当前帖子快照 |
 
-推荐结果在 Java 侧复核（`AiStructuredContentAssembler`）：用实时 DB 商品替换模型返回的商品 ID，仅保留可售项，并对 Post 引用做版本复验——**防止模型推荐已下架/失效内容**。
+Java 会通过 `AiStructuredContentAssembler` 校验推荐结果：根据模型返回的商品 ID 查询数据库，仅保留仍在售且有库存的商品；Post 引用也会再次校验版本，避免推荐已经下架或失效的内容。
 
 ## 技术栈
 
@@ -70,11 +70,11 @@ com.pmsjl/
 ├── mapper/         MyBatis-Plus 持久层（18 个 Mapper）
 ├── model/
 │   ├── entity/     18 张表实体
-│   ├── dto/ai/     AI 会话请求与购物上下文
-│   ├── dto/ai/internal/  Java↔Python 内部契约模型
+│   ├── dto/ai/     AI 会话请求与购买需求信息
+│   ├── dto/ai/internal/  Java 与 Python 之间的请求响应模型
 │   ├── vo/         视图对象（含 AI 结构化内容 VO）
 │   └── enums/      枚举（AI 意图、角色、状态、校园币流水类型等）
-├── manager/        Java→Python 出口（AiAgentClient）、推荐复核（AiStructuredContentAssembler）
+├── manager/        Java 调用 Python 的客户端（AiAgentClient）、推荐结果校验（AiStructuredContentAssembler）
 ├── interceptor/    三层鉴权拦截器
 ├── cycle/          定时任务（PENDING 清理、订单释放、浏览量同步）
 ├── config/         各配置组绑定与注册
@@ -135,11 +135,16 @@ mvn spring-boot:run
 
 ## 数据库脚本
 
-`sql/script.sql` 是 MySQL 8 的完整建表基线，包含平台业务表及索引，不包含 `CREATE DATABASE`、演示数据或种子数据。
+`sql/script.sql` 是适用于 MySQL 8 的完整数据库初始化脚本，包含平台业务表及索引，不包含 `CREATE DATABASE` 或演示数据。用于本地开发和课程展示的种子数据脚本位于 `sql/seed/`。
 
 | 脚本 | 用途 |
 | --- | --- |
 | `script.sql` | 从空库创建完整业务表和索引 |
+| `seed/01_demo_users.sql` | 写入演示账号 |
+| `seed/02_commodity_types.sql` | 写入商品分类 |
+| `seed/03_commodities.sql` | 写入 60 条演示商品 |
+| `seed/04_posts.sql` | 写入 260 篇演示攻略帖子 |
+| `seed/rollback/03_commodities.sql` | 撤销对应的商品种子数据 |
 
 从仓库根目录初始化：
 
@@ -150,13 +155,15 @@ mysql -u root -p trade -e "source market_backend/sql/script.sql"
 
 脚本未使用 `IF NOT EXISTS`，仅应在全新或已清空的 `trade` Schema 中执行。已有数据库请先备份并确认不会与现有表冲突。
 
+如需导入本地开发数据，请在建表脚本执行成功后，按 `01_demo_users.sql`、`02_commodity_types.sql`、`03_commodities.sql`、`04_posts.sql` 的顺序执行 `sql/seed/` 下的脚本。种子数据仅用于本地开发和课程展示，不要在生产数据库执行。
+
 ## 测试
 
 ```powershell
 mvn test
 ```
 
-测试覆盖：配置校验（CORS/Redis/Agent 属性）、AI 服务层（会话/消息/内部工具/RAG 快照/偏好/额度）、推荐复核组装、校园币与用户 Service。多数为 Mockito 单元测试；**无 User/Commodity/Post 主流程的端到端 MockMvc 测试**。
+测试覆盖：配置校验（CORS/Redis/Agent 属性）、AI 服务层（会话/消息/内部工具/RAG 快照/偏好/额度）、推荐结果校验与整理、校园币与用户 Service。多数为 Mockito 单元测试；**无 User/Commodity/Post 主流程的端到端 MockMvc 测试**。
 
 ## License
 

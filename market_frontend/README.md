@@ -36,22 +36,22 @@ Vue (8080) ──axios──→ Java API (8102/api) ──→ MySQL/Redis
 
 **不是 SSE/流式**：前端一次性 `POST /api/ai/conversations/{id}/messages`，Java 返回完整 `AiChatVO` 后，前端用 `requestAnimationFrame` 按设定速度逐字显示回答（打字机效果），支持打字速度档位（含"立即"）。
 
-- 因 Java 最长等 Python Agent 整轮 120 秒，AI 接口的 axios 超时单独覆盖为 `160000` ms。
-- 失败消息标记 `FAILED` 且可重试，成功后重新提交原用户消息。
+- Java 等待 Python Agent 完成一次请求的最长时间为 120 秒，因此 AI 接口的 axios 超时时间单独设为 `160000` ms。
+- 失败消息会标记为 `FAILED`；用户重试时，前端会重新提交原消息。
 
 ### 引用来源与结构化内容
 
-回答由 `structuredContent.sources` 驱动展示：
+前端根据 `structuredContent.sources` 展示引用来源：
 
 - **回答参考来源**：`sourceType ∈ GUIDE/COMMODITY/POST/NOTICE/COMMENT`，最多展示 8 条、每条最多 2 条引用；GUIDE 来源点击打开引用片段弹窗，其他跳转详情。
 - **推荐商品**：渲染匹配商品卡（匹配度/理由/风险提示/价格）。
-- **相关帖子**：被回答引用的帖子打"引用"徽标并排到最前。
+- **相关帖子**：回答中引用的帖子会显示"引用"徽标，并排在最前。
 - Markdown 正文用 `md-editor-v3` 渲染。
 
-### 购物上下文与额度
+### 购买需求与额度
 
-- 每次发送消息携带 `shoppingContext`（预算区间/使用场景/偏好标签/避雷项），并在响应后回填表单。
-- 展示今日/全局剩余 AI 额度（`GET /api/ai/quota/me`）；额度用尽（错误码 40901/42901/42902）做保护性拦截。
+- 每次发送消息都会携带 `shoppingContext`（预算区间/使用场景/偏好标签/避雷项），并在收到响应后回填表单。
+- 展示用户今日剩余额度和平台当日剩余额度（`GET /api/ai/quota/me`）；额度用尽时（错误码 40901/42901/42902）直接阻止继续发送。
 - 会话支持归档/恢复/删除；归档会话在个人中心"已归档对话"查看。
 
 ## 路由与角色
@@ -86,7 +86,7 @@ token/角色等同时持久化到 localStorage（`utils/token.ts`）。
 src/
 ├── main.ts            应用入口：ElementPlus(zh-cn)/Pinia/router/主题
 ├── permission.ts      全局路由守卫（角色动态路由）
-├── api/               每后端 Controller 一个 API 模块 + index 汇总
+├── api/               每个后端 Controller 对应一个 API 模块，再由 index 汇总
 ├── components/        公共组件（CommodityCard、Post、PrivateMessage、
 │                      CalendarChart、AuthMarketLayout 等，全局注册）
 ├── layout/            用户端/管理端外壳（logo/menu/tabbar/main）

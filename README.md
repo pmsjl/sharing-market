@@ -32,7 +32,7 @@
 
 - 结合用户需求、实时商品信息和脱敏偏好生成推荐。
 - 使用 GUIDE 文档与社区 Post 构建 FAISS 检索索引。
-- 推荐结果由 Java 后端复核商品与 Post 字段后再返回前端。
+- 推荐结果由 Java 后端校验商品和 Post 信息后再返回前端。
 - 模型只使用商品搜索和当前用户脱敏偏好两个只读工具。
 
 ## 系统架构
@@ -50,7 +50,7 @@ flowchart LR
 ```
 
 - 浏览器只访问 Java 后端，不直接调用 Python Agent。
-- Java 负责鉴权、业务数据、AI 会话和可信结果组装。
+- Java 负责鉴权、业务数据、AI 会话以及最终返回结果的校验和整理。
 - Python 负责模型编排与 RAG，不直接连接业务 MySQL。
 - Java 与 Python 必须配置相同的 `AI_AGENT_INTERNAL_TOKEN`。
 
@@ -60,12 +60,12 @@ flowchart LR
 前端(agentGuide) ──> Java /ai/conversations ──> Python /agent/v1/runs
      ▲                                            │ Router → RAG → 生成
      │  <—— AiChatVO（回答+来源+推荐）<───────────┘
-        └ Java 复核商品可售/Post 版本后返回
+         └ Java 确认商品仍可售、Post 版本仍有效后返回
 ```
 
 - 交互为**同步请求 + 前端打字机动画**（非流式）。
-- 购物上下文（预算/场景/偏好/避雷项）随每次消息发送。
-- 历史最多近 5 轮，Java 侧做 PENDING→SUCCESS 的 CAS 落库与行锁防并发。
+- 每次发送消息时都会携带购买需求（预算/场景/偏好/避雷项）。
+- 最多携带最近 5 轮历史对话。Java 使用 CAS 更新消息状态，并通过行锁避免并发重复处理。
 
 ## 三服务详述
 
@@ -82,44 +82,53 @@ sharing-market-v1.0/
 ├── market_frontend/          # Vue 前端
 │   └── src/views/user/agentGuide/   # 智能导购（多轮 AI 会话 UI）
 ├── market_backend/           # Java 主后端
-│   ├── src/main/java/com/pmsjl/     # controller/service/mapper/manager(Java→Python 出口)
-│   └── sql/                           # MySQL 完整建表基线脚本
+│   ├── src/main/java/com/pmsjl/     # controller/service/mapper/manager（含 Java 调用 Python 的客户端）
+│   └── sql/                           # MySQL 完整数据库初始化脚本
 └── ai_agent_service/         # Python Agent + 知识库 + 评测
     ├── app/                  # FastAPI（routing/rag/services/prompts/clients）
-    ├── knowledge/            # GUIDE 知识文档与管线
-    └── evaluation/           # Golden Test 评测体系
+    ├── knowledge/
+    │   ├── documents/effective/  # 当前使用的 GUIDE 文档
+    │   └── runtime/              # 程序运行所需的知识元数据
+    └── evaluation/           # 公开评测集与评测脚本
 ```
 
 ## 评测（Golden Test）
 
-平台 AI 导购依赖 LLM 路由与检索，改动可能悄悄影响回答质量。`ai_agent_service/evaluation/` 提供一套**人工评审题目集 + 五阶段端到端评测**：
+平台 AI 导购依赖 LLM 意图路由和知识检索，任一环节的改动都可能在不易察觉的情况下影响回答质量。`ai_agent_service/evaluation/` 提供了**经人工审核的固定评测题目 + 五阶段端到端评测**：
 
 ```
 Router(意图路由) → Retrieval(向量检索) → Generation(答案生成) → Judge(自动裁判) → Final(合并判定)
 ```
 
-- **题目集**：200 题（dev 140 + test 60，test 为扣留考核集），按课程/二手/平台/边界/校园五领域分层。完整集私有（`evaluation/dataset/`，不进 Git）；公开脱敏包 140 题在 `evaluation/public/`。
-- **一条命令跑完整评测**：`run_golden_pipeline.py`（选题→绑定冻结索引→依序调 4 个执行器→合并结果）。
-- **新旧对照**：`compare_golden_runs.py` 对比两次运行的契约字段（路由/状态/PASS），并校验脚本哈希确认"同一版代码"。
+- **题目集**：共 200 题（dev 140 + test 60），按课程/二手/平台/边界/校园五个领域分层。test 中的 60 题是不参与开发调试的独立测试集。完整评测集不随仓库发布（`evaluation/dataset/`，不进 Git）；脱敏后的 140 题公开评测集位于 `evaluation/public/`。
+- **一条命令运行完整评测**：`run_golden_pipeline.py`（选题→指定评测使用的索引版本→依次运行 4 个阶段脚本→汇总结果）。
+- **改动前后对比**：`compare_golden_runs.py` 对比两次评测的关键判定字段（路由/状态/PASS），并校验脚本哈希，确认是否使用了同一版代码。
 
 ```powershell
 # 校验公开评测包（不调用模型）
 python ai_agent_service/evaluation/tools/validate_public_evaluation.py
 
-# 跑代表性子集（如跨 5 领域各 1 题，含 4 个 holdout 题）
+# 跑代表性子集（如跨 5 个领域各 1 题，含 4 道独立测试题）
 python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
-  --dataset <私有200题.jsonl> --manifest <manifest.json> --run-name <run> --through final
+  --dataset <完整评测集.jsonl> --manifest <manifest.json> --run-name <run> --through final
 ```
 
-当前聚合基准见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，三个代码阶段的同口径对比见 [`docs/evaluation/three-stage-benchmark.md`](docs/evaluation/three-stage-benchmark.md)。原始运行结果与扣留 Test 不对外提交。
+当前汇总指标见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，三个代码阶段采用相同统计方式的对比见 [`docs/evaluation/three-stage-benchmark.md`](docs/evaluation/three-stage-benchmark.md)。原始评测结果与未参与开发调试的 Test 题目不对外提交。
 
 完整指南见 [evaluation/README.md](ai_agent_service/evaluation/README.md)。
+
+## 仓库中保留的知识与评测资料
+
+- `ai_agent_service/knowledge/documents/effective/` 保存当前用于知识检索的 GUIDE 文档。
+- `ai_agent_service/knowledge/runtime/` 保存程序读取的 4 份 JSONL，包括文档信息和课程关系。这些文件是运行和重建索引所必需的，因此继续随仓库发布。
+- 知识采集过程、待审核草稿、来源核对材料、中间文件和检查报告不参与程序运行，已由 `.gitignore` 排除。
+- 评测目录只公开脱敏后的 dev 题目、Schema、汇总指标和运行评测所需的脚本；完整题目集、独立测试集、逐题结果和人工评审记录不随仓库发布。
 
 ## 当前边界
 
 - 私信目前没有未读数、撤回、删除和独立会话资源。
 - AI 当前返回同步 JSON，不提供流式输出。
-- `market_backend/sql/script.sql` 是面向空库的完整建表基线，不包含演示或种子数据。
+- `market_backend/sql/script.sql` 是用于初始化空数据库的完整建表脚本；演示账号、商品分类、商品和攻略帖子等种子数据位于 `market_backend/sql/seed/`，与建表脚本分开提供。
 
 ## 技术栈
 
@@ -153,14 +162,25 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
 
 ### 1. 准备数据库和 Redis
 
-先创建全新的 `trade` Schema，再从仓库根目录执行完整建表脚本：
+先创建全新的 `trade` Schema，再从仓库根目录执行建表脚本：
 
 ```powershell
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS trade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root -p trade -e "source market_backend/sql/script.sql"
 ```
 
-`script.sql` 会创建平台业务表和索引，但不包含演示或种子数据。该脚本未使用 `IF NOT EXISTS`，仅应在空库中执行；已有数据库请先备份并确认不会与现有表冲突。
+`script.sql` 会创建平台业务表和索引，但不包含演示数据。该脚本未使用 `IF NOT EXISTS`，仅应在空数据库中执行；已有数据库请先备份并确认不会与现有表冲突。
+
+如需本地开发或课程展示数据，再按顺序执行种子脚本：
+
+```powershell
+mysql -u root -p trade -e "source market_backend/sql/seed/01_demo_users.sql"
+mysql -u root -p trade -e "source market_backend/sql/seed/02_commodity_types.sql"
+mysql -u root -p trade -e "source market_backend/sql/seed/03_commodities.sql"
+mysql -u root -p trade -e "source market_backend/sql/seed/04_posts.sql"
+```
+
+这组脚本会写入演示账号、商品分类、60 条商品和 260 篇攻略帖子，仅用于本地开发和课程展示，不要在生产数据库执行。商品批次回滚脚本位于 `market_backend/sql/seed/rollback/03_commodities.sql`，只用于撤销对应的商品种子数据。
 
 ### 2. 启动 Java 后端
 
@@ -224,7 +244,7 @@ npm run lint
 npm run build
 ```
 
-README 不固定测试通过数量，以当前命令输出为准。评测体系自身的回归测试包含在 Python 测试套件中（`tests/test_golden_*`、`tests/test_public_evaluation.py` 等）。
+README 不固定测试通过数量，以当前命令输出为准。评测工具的回归测试已包含在 Python 测试中（`tests/test_golden_*`、`tests/test_public_evaluation.py` 等）。
 
 ## License
 
