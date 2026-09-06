@@ -579,7 +579,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             captured["request"].headers["accept"],
-            "application/json",
+            "text/event-stream",
         )
         self.assertEqual(captured["payload"]["model"], "gpt-5.6-terra")
         self.assertEqual(captured["payload"]["reasoning"],
@@ -649,7 +649,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             output_schema["properties"]["searchKeywords"]["description"],
         )
         self.assertIs(captured["payload"]["store"], False)
-        self.assertIs(captured["payload"]["stream"], False)
+        self.assertIs(captured["payload"]["stream"], True)
         self.assertNotIn("temperature", captured["payload"])
         self.assertNotIn("messages", captured["payload"])
 

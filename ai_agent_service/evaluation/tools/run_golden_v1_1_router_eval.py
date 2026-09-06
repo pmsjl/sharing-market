@@ -122,6 +122,9 @@ def summarize(
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "dataset": dataset_name,
         "routerModel": settings.openai_router_model,
+        "reasoningEffort": settings.openai_router_reasoning_effort,
+        "textVerbosity": settings.openai_router_text_verbosity,
+        "timeoutSeconds": settings.openai_router_timeout_seconds,
         "confidenceThreshold": settings.intent_router_confidence_threshold,
         "caseCount": len(rows),
         "routeCorrectCount": len(rows) - len(misses),
@@ -172,6 +175,11 @@ async def main() -> None:
     )
     parser.add_argument("--case-id", action="append", default=[])
     parser.add_argument("--misses-from", type=Path)
+    parser.add_argument(
+        "--non-llm-from",
+        type=Path,
+        help="only rerun cases whose previous decision source was not llm",
+    )
     parser.add_argument("--require-llm", action="store_true")
     args = parser.parse_args()
 
@@ -204,6 +212,13 @@ async def main() -> None:
         previous = read_jsonl(args.misses_from)
         selected = {
             row["caseId"] for row in previous if not row.get("routeCorrect")
+        }
+        cases = [case for case in cases if case["caseId"] in selected]
+    if args.non_llm_from:
+        previous = read_jsonl(args.non_llm_from)
+        selected = {
+            row["caseId"] for row in previous
+            if row.get("diagnostics", {}).get("decision_source") != "llm"
         }
         cases = [case for case in cases if case["caseId"] in selected]
     settings = Settings()

@@ -186,6 +186,7 @@ runs/<run-name>/
 ```
 
 `PIPELINE_MANIFEST.json` 记录 `implementationSha256`（各脚本哈希），两次运行据此可确认是否使用了**同一版代码**，从而判断是否修改了核心评测逻辑。
+Router、Answer Generation 和 Judge 的报告还会分别记录实际模型、`reasoningEffort` 与 `textVerbosity`；正式对比不得只记录模型名称而省略推理强度。
 
 ## 对照两次运行
 

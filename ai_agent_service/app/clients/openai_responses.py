@@ -54,9 +54,9 @@ class OpenAIResponsesClient:
                 #利用json schema实现结构化输出
             },
             "store": False,
-            # OpenAI 官方默认非流式，但部分兼容中转在省略时会返回 SSE。
-            # 本服务只实现同步 JSON 契约，因此必须显式关闭流式输出。
-            "stream": False,
+            # 上游以 SSE 返回事件；本客户端仍会缓冲到 response.completed，
+            # 再向 AgentService 提供完整 JSON 契约。
+            "stream": True,
         }
 
         try:
@@ -70,7 +70,7 @@ class OpenAIResponsesClient:
                         "Content-Type": "application/json",
                         # 避免部分中转的 Cloudflare 规则拦截 httpx 默认标识。
                         "User-Agent": "sharing-market-ai-agent/0.1",
-                        "Accept": "application/json",
+                        "Accept": "text/event-stream",
                     },
                     json=payload,
                 )
@@ -122,7 +122,7 @@ class OpenAIResponsesClient:
                 "format": text_format,
             },
             "store": False,
-            "stream": False,
+            "stream": True,
         }
         return await self._post_payload(
             payload,
@@ -144,7 +144,7 @@ class OpenAIResponsesClient:
                         "Authorization": f"Bearer {self.settings.openai_api_key}",
                         "Content-Type": "application/json",
                         "User-Agent": "sharing-market-ai-agent/0.1",
-                        "Accept": "application/json",
+                        "Accept": "text/event-stream",
                     },
                     json=payload,
                 )
@@ -172,7 +172,7 @@ class OpenAIResponsesClient:
 
     @classmethod
     def _parse_response_data(cls, response: httpx.Response) -> dict[str, Any]:
-        """兼容普通 JSON，以及忽略 stream=false 的中转所返回的缓冲 SSE。"""
+        """兼容普通 JSON，以及中转返回的缓冲 SSE。"""
         content_type = response.headers.get("content-type", "").lower()
         response_text = response.text
         if ("text/event-stream" in content_type

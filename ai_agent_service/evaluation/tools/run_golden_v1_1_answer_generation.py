@@ -48,7 +48,7 @@ DATASET = EVAL / "dataset/golden_v1_2_1_reviewed_200.jsonl"
 MANIFEST = EVAL / "dataset/golden_v1_2_1_reviewed_200_manifest.json"
 OUTPUT = RESULTS_DIR / "golden_v1_1_round2_answer_generation.jsonl"
 SUMMARY = REPORTS_DIR / "golden_v1_1_round2_answer_generation_summary.json"
-CONCURRENCY = 6
+CONCURRENCY = 12
 EXPECTED_MODEL = "gpt-5.6-terra"
 
 _REFERENCE_ATTEMPTS: ContextVar[list[dict[str, Any]] | None] = ContextVar(

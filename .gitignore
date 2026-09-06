@@ -270,6 +270,7 @@ ai_agent_service/scratch/
 !/ai_agent_service/evaluation/tools/run_golden_v1_1_answer_judge.py
 !/ai_agent_service/evaluation/tools/run_golden_v1_1_retrieval_eval.py
 !/ai_agent_service/evaluation/tools/run_golden_v1_1_router_eval.py
+!/ai_agent_service/evaluation/tools/merge_golden_router_attempts.py
 !/ai_agent_service/evaluation/tools/validate_public_evaluation.py
 
 ### 操作系统 ###

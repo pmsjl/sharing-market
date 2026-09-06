@@ -39,6 +39,7 @@ EXPECTED_MODEL = "gpt-5.6-terra"
 # 多 Case Judge 已实测发生跨 Case 答案串读：Case ID 顺序正确，但理由和
 # 分数描述的是相邻 Case 的答案。单 Case 调用牺牲吞吐量，换取评分绑定可靠性。
 BATCH_SIZE = 1
+JUDGE_CONCURRENCY = 12
 RUBRIC_VERSION = "v2_current_runtime"
 BADCASES = REPORTS_DIR / f"golden_v1_1_round2_answer_evaluation_badcases_{RUBRIC_VERSION}.json"
 FORMAT = {
@@ -352,14 +353,14 @@ def grouped(rows: list[dict[str, Any]], key: str) -> dict[str, list[dict[str, An
     return dict(sorted(result.items()))
 
 
-def summary(generated: list[dict[str, Any]], judged: list[dict[str, Any]], truths: dict[str, dict[str, Any]], human: dict[str, bool | None] | None) -> tuple[dict[str, Any], dict[str, Any]]:
+def summary(generated: list[dict[str, Any]], judged: list[dict[str, Any]], truths: dict[str, dict[str, Any]], human: dict[str, bool | None] | None, settings: Settings | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     generated_by_id = {row["caseId"]: row for row in generated}
     merged = [{**generated_by_id[item["caseId"]], "truth": truths[item["caseId"]], "judgment": item} for item in judged]
     keys = ["answerRelevance", "factCoverage", "groundedness", "actionAppropriateness", "citationAlignment"]
     def metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         return {"caseCount": len(rows), "passRate": round(sum(row["judgment"]["overallPass"] for row in rows) / len(rows), 6) if rows else None, "knowledgeStateAccuracy": round(sum(row["judgment"]["knowledgeStateCorrect"] for row in rows) / len(rows), 6) if rows else None, **{key: mean([row["judgment"] for row in rows], key) for key in keys}, "meanCitationPrecision": mean(rows, "citationPrecision"), "meanRequiredCitationRecall": mean(rows, "requiredCitationRecall"), "toolSelectionAccuracy": mean([{"value": float(row["toolSelectionCorrect"])} for row in rows if row.get("searchToolExpected") or row.get("searchToolForbidden")], "value")}
     result = {
-        "status": "COMPLETE", "datasetVersion": generated[0].get("datasetVersion", "golden-v1.1") if generated else "golden-v1.1", "rubricVersion": RUBRIC_VERSION, "judgeModel": EXPECTED_MODEL, "judgeUsesFullChunks": True, "judgeUsesRuntimeSystemPrompt": True, "judgeUsesTrustedInstitution": True, "sameModelAsGeneration": True,
+        "status": "COMPLETE", "datasetVersion": generated[0].get("datasetVersion", "golden-v1.1") if generated else "golden-v1.1", "rubricVersion": RUBRIC_VERSION, "judgeModel": EXPECTED_MODEL, "judgeReasoningEffort": settings.openai_reasoning_effort if settings else "medium", "judgeTextVerbosity": settings.openai_text_verbosity if settings else "low", "judgeUsesFullChunks": True, "judgeUsesRuntimeSystemPrompt": True, "judgeUsesTrustedInstitution": True, "sameModelAsGeneration": True,
         "overall": metrics(merged), "byDomain": {key: metrics(value) for key, value in grouped(merged, "domain").items()}, "byRoute": {key: metrics(value) for key, value in grouped([dict(row, expectedRoute=effective_expectations(row, row["truth"])["expectedRoute"]) for row in merged], "expectedRoute").items()}, "byKnowledgeState": {key: metrics(value) for key, value in grouped([dict(row, expectedKnowledgeState=effective_expectations(row, row["truth"])["expectedKnowledgeState"]) for row in merged], "expectedKnowledgeState").items()},
         "generation": {"caseCount": len(generated), "successCount": sum(row["status"] == "SUCCESS" for row in generated), "inputTokens": sum((row.get("response", {}).get("usage", {}).get("inputTokens") or 0) for row in generated), "outputTokens": sum((row.get("response", {}).get("usage", {}).get("outputTokens") or 0) for row in generated)},
         "judge": {"inputTokens": round(sum(row.get("judgeInputTokens", 0) for row in judged)), "outputTokens": round(sum(row.get("judgeOutputTokens", 0) for row in judged))},
@@ -448,17 +449,22 @@ async def main() -> None:
     settings = replace(Settings(), openai_model=EXPECTED_MODEL, openai_timeout_seconds=240, openai_reasoning_effort="medium", openai_text_verbosity="low")
     client = OpenAIResponsesClient(settings)
     relations = CourseRelationIndex.load(Path(os.getenv("GOLDEN_KNOWLEDGE_ROOT", str(DEFAULT_KNOWLEDGE_ROOT))))
-    for start in range(0, len(pending), BATCH_SIZE):
-        batch = pending[start:start + BATCH_SIZE]
-        items = await judge_batch(client, batch, truths, relations, args.round)
-        for item in items: existing[item["caseId"]] = item
+    semaphore = asyncio.Semaphore(JUDGE_CONCURRENCY)
+    async def judge_one(row):
+        async with semaphore:
+            return await judge_batch(client, [row], truths, relations, args.round)
+    for start in range(0, len(pending), JUDGE_CONCURRENCY):
+        batch = pending[start:start + JUDGE_CONCURRENCY]
+        results = await asyncio.gather(*(judge_one(row) for row in batch))
+        for items in results:
+            for item in items: existing[item["caseId"]] = item
         ordered = [existing[row["caseId"]] for row in generated if row["caseId"] in existing]
         write_jsonl(output, ordered)
         print(f"judged {len(ordered)}/{len(generated)}", flush=True)
     judged = [existing[row["caseId"]] for row in generated]
     human = None
     if args.round == "round1": human = {row["caseId"]: row["humanOverallPass"] for row in read_jsonl(ADJUDICATION)}
-    result, bad = summary(generated, judged, truths, human)
+    result, bad = summary(generated, judged, truths, human, settings)
     write_json(report, result)
     write_json(badcases_path, bad)
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
