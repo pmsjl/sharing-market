@@ -575,7 +575,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             captured["request"].headers["user-agent"],
-            "sharing-market-ai-agent/0.1",
+            f"python-httpx/{httpx.__version__}",
         )
         self.assertEqual(
             captured["request"].headers["accept"],
@@ -657,6 +657,7 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         captured = {}
 
         def handler(request: httpx.Request) -> httpx.Response:
+            captured["request"] = request
             captured["payload"] = json.loads(request.content)
             return httpx.Response(
                 200,
@@ -692,6 +693,8 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(captured["payload"]["model"], "router-small")
+        self.assertEqual(captured["request"].headers["user-agent"],
+                         f"python-httpx/{httpx.__version__}")
         self.assertEqual(captured["payload"]["tools"], [])
         self.assertEqual(captured["payload"]["tool_choice"], "none")
         self.assertEqual(captured["payload"]["reasoning"], {"effort": "low"})

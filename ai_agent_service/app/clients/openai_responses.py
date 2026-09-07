@@ -68,8 +68,7 @@ class OpenAIResponsesClient:
                         "Authorization":
                         f"Bearer {self.settings.openai_api_key}",
                         "Content-Type": "application/json",
-                        # 避免部分中转的 Cloudflare 规则拦截 httpx 默认标识。
-                        "User-Agent": "sharing-market-ai-agent/0.1",
+                        # 保留 httpx 默认客户端标识；旧自定义标识会被中转网关拒绝。
                         "Accept": "text/event-stream",
                     },
                     json=payload,
@@ -143,7 +142,7 @@ class OpenAIResponsesClient:
                     headers={
                         "Authorization": f"Bearer {self.settings.openai_api_key}",
                         "Content-Type": "application/json",
-                        "User-Agent": "sharing-market-ai-agent/0.1",
+                        # 与生成请求一致，保留 httpx 默认客户端标识。
                         "Accept": "text/event-stream",
                     },
                     json=payload,
