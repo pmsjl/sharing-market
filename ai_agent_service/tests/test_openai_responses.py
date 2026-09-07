@@ -869,6 +869,127 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
             "AI_MODEL_RESPONSE_INVALID",
         )
 
+    async def test_http_200_overload_error_is_retried_once(self):
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return httpx.Response(
+                    200,
+                    json={
+                        "error": {
+                            "message": (
+                                "Our servers are currently overloaded. "
+                                "Please try again later."
+                            )
+                        }
+                    },
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                json={"output": [], "usage": {}},
+                request=request,
+            )
+
+        with patch("app.clients.openai_responses.asyncio.sleep") as sleep:
+            result = await create_response_with_handler(
+                OpenAIResponsesClient(make_settings()), handler
+            )
+
+        self.assertEqual(result["output"], [])
+        self.assertEqual(calls, 2)
+        sleep.assert_awaited_once_with(1)
+
+    async def test_http_200_overload_error_fails_after_one_retry(self):
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            return httpx.Response(
+                200,
+                json={
+                    "error": {
+                        "message": (
+                            "Our servers are currently overloaded. "
+                            "Please try again later."
+                        )
+                    }
+                },
+                request=request,
+            )
+
+        with patch("app.clients.openai_responses.asyncio.sleep"), self.assertRaises(
+            OpenAIResponsesClientError
+        ) as raised:
+            await create_response_with_handler(
+                OpenAIResponsesClient(make_settings()), handler
+            )
+
+        self.assertEqual(raised.exception.agent_error_key, "AI_MODEL_OVERLOADED")
+        self.assertTrue(raised.exception.retryable)
+        self.assertEqual(calls, 2)
+
+    async def test_streamed_failed_overload_is_retried_once(self):
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                body = "\n".join([
+                    "event: response.failed",
+                    "data: " + json.dumps({
+                        "type": "response.failed",
+                        "response": {
+                            "status": "failed",
+                            "error": {
+                                "code": "server_error",
+                                "message": "Our servers are currently overloaded.",
+                            },
+                        },
+                    }),
+                    "",
+                ])
+                return httpx.Response(
+                    200,
+                    text=body,
+                    headers={"Content-Type": "text/event-stream"},
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                json={"output": [], "usage": {}},
+                request=request,
+            )
+
+        with patch("app.clients.openai_responses.asyncio.sleep"):
+            result = await create_response_with_handler(
+                OpenAIResponsesClient(make_settings()), handler
+            )
+
+        self.assertEqual(result["output"], [])
+        self.assertEqual(calls, 2)
+
+    async def test_timeout_is_not_automatically_retried(self):
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            raise httpx.ReadTimeout("timeout", request=request)
+
+        with self.assertRaises(OpenAIResponsesClientError) as raised:
+            await create_response_with_handler(
+                OpenAIResponsesClient(make_settings()), handler
+            )
+
+        self.assertEqual(raised.exception.agent_error_key, "AI_MODEL_TIMEOUT")
+        self.assertEqual(calls, 1)
+
 
 class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
 

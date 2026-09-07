@@ -1,5 +1,6 @@
 """OpenAI Responses 兼容接口客户端。"""
 
+import asyncio
 import json
 from typing import Any
 
@@ -59,48 +60,10 @@ class OpenAIResponsesClient:
             "stream": True,
         }
 
-        try:
-            async with httpx.AsyncClient(
-                    timeout=self.settings.openai_timeout_seconds, ) as client:
-                response = await client.post(
-                    f"{self.settings.openai_base_url.rstrip('/')}/responses",
-                    headers={
-                        "Authorization":
-                        f"Bearer {self.settings.openai_api_key}",
-                        "Content-Type": "application/json",
-                        # 保留 httpx 默认客户端标识；旧自定义标识会被中转网关拒绝。
-                        "Accept": "text/event-stream",
-                    },
-                    json=payload,
-                )
-                response.raise_for_status()
-        except httpx.TimeoutException as exception:
-            raise OpenAIResponsesClientError(
-                504,
-                "AI_MODEL_TIMEOUT",
-                "模型响应超时",
-                True,
-            ) from exception
-        except httpx.HTTPStatusError as exception:
-            raise self._map_status_error(exception) from exception
-        except httpx.HTTPError as exception:
-            raise OpenAIResponsesClientError(
-                503,
-                "AI_MODEL_UNAVAILABLE",
-                "模型服务暂不可用",
-                True,
-            ) from exception
-
-        response_data = self._parse_response_data(response)
-
-        if not isinstance(response_data, dict):
-            raise OpenAIResponsesClientError(
-                502,
-                "AI_MODEL_RESPONSE_INVALID",
-                "模型返回内容格式异常",
-                True,
-            )
-        return response_data
+        return await self._post_payload(
+            payload,
+            timeout_seconds=self.settings.openai_timeout_seconds,
+        )
 
     async def create_router_response(
         self,
@@ -134,36 +97,82 @@ class OpenAIResponsesClient:
         *,
         timeout_seconds: float,
     ) -> dict[str, Any]:
-        """供Router使用的同契约请求路径；生成调用暂保持原有代码。"""
-        try:
-            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-                response = await client.post(
-                    f"{self.settings.openai_base_url.rstrip('/')}/responses",
-                    headers={
-                        "Authorization": f"Bearer {self.settings.openai_api_key}",
-                        "Content-Type": "application/json",
-                        # 与生成请求一致，保留 httpx 默认客户端标识。
-                        "Accept": "text/event-stream",
-                    },
-                    json=payload,
-                )
-                response.raise_for_status()
-        except httpx.TimeoutException as exception:
-            raise OpenAIResponsesClientError(
-                504, "AI_MODEL_TIMEOUT", "模型响应超时", True
-            ) from exception
-        except httpx.HTTPStatusError as exception:
-            raise self._map_status_error(exception) from exception
-        except httpx.HTTPError as exception:
-            raise OpenAIResponsesClientError(
-                503, "AI_MODEL_UNAVAILABLE", "模型服务暂不可用", True
-            ) from exception
-        response_data = self._parse_response_data(response)
-        if not isinstance(response_data, dict):
-            raise OpenAIResponsesClientError(
-                502, "AI_MODEL_RESPONSE_INVALID", "模型返回内容格式异常", True
+        """发送并解析请求；只对尚未产生有效结果的临时故障重试一次。"""
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+            for attempt in range(2):
+                try:
+                    response = await client.post(
+                        f"{self.settings.openai_base_url.rstrip('/')}/responses",
+                        headers={
+                            "Authorization": f"Bearer {self.settings.openai_api_key}",
+                            "Content-Type": "application/json",
+                            # 保留 httpx 默认标识；自定义标识会被当前中转网关拒绝。
+                            "Accept": "text/event-stream",
+                        },
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    response_data = self._parse_response_data(response)
+                    self._raise_for_embedded_error(response_data)
+                    return response_data
+                except httpx.TimeoutException as exception:
+                    # 超时后的上游执行状态不明确，自动重试可能重复计费。
+                    raise OpenAIResponsesClientError(
+                        504, "AI_MODEL_TIMEOUT", "模型响应超时", True
+                    ) from exception
+                except httpx.HTTPStatusError as exception:
+                    error = self._map_status_error(exception)
+                except httpx.HTTPError as exception:
+                    error = OpenAIResponsesClientError(
+                        503, "AI_MODEL_UNAVAILABLE", "模型服务暂不可用", True
+                    )
+                    error.__cause__ = exception
+                except OpenAIResponsesClientError as exception:
+                    error = exception
+
+                if attempt == 1 or not self._can_retry(error):
+                    raise error
+                await asyncio.sleep(1)
+
+        raise AssertionError("model retry loop must return or raise")
+
+    @staticmethod
+    def _can_retry(error: OpenAIResponsesClientError) -> bool:
+        return error.agent_error_key in {
+            "AI_MODEL_OVERLOADED",
+            "AI_MODEL_RATE_LIMITED",
+            "AI_MODEL_UNAVAILABLE",
+        }
+
+    @classmethod
+    def _raise_for_embedded_error(cls, response_data: dict[str, Any]) -> None:
+        """识别中转将上游错误包装为 HTTP 200 的非标准响应。"""
+        error = response_data.get("error")
+        if not isinstance(error, dict):
+            return
+        message = error.get("message")
+        if not isinstance(message, str) or not message.strip():
+            return
+        raise cls._map_embedded_error(error)
+
+    @staticmethod
+    def _map_embedded_error(error: dict[str, Any]) -> OpenAIResponsesClientError:
+        message = str(error.get("message") or "").lower()
+        code = str(error.get("code") or "").lower()
+        if ("overload" in message or "try again later" in message
+                or code in {"server_error", "overloaded"}):
+            return OpenAIResponsesClientError(
+                503,
+                "AI_MODEL_OVERLOADED",
+                "模型服务当前繁忙",
+                True,
             )
-        return response_data
+        return OpenAIResponsesClientError(
+            502,
+            "AI_MODEL_REQUEST_REJECTED",
+            "模型服务返回错误",
+            False,
+        )
 
 
 #使用openai中转出现内容不兼容，
@@ -199,6 +208,7 @@ class OpenAIResponsesClient:
     @staticmethod
     def _parse_completed_sse_response(response_text: str) -> dict[str, Any]:
         completed_response: dict[str, Any] | None = None
+        failed_error: dict[str, Any] | None = None
         completed_items: dict[int, dict[str, Any]] = {}
         for line in response_text.splitlines():
             stripped_line = line.strip()
@@ -215,6 +225,16 @@ class OpenAIResponsesClient:
                 continue
 
             event_type = event_data.get("type")
+            if event_type == "error":
+                failed_error = event_data
+                continue
+            if event_type in {"response.failed", "response.incomplete"}:
+                event_response = event_data.get("response")
+                if isinstance(event_response, dict):
+                    event_error = event_response.get("error")
+                    if isinstance(event_error, dict):
+                        failed_error = event_error
+                continue
             if event_type == "response.output_item.done":
                 output_index = event_data.get("output_index")
                 output_item = event_data.get("item")
@@ -233,6 +253,8 @@ class OpenAIResponsesClient:
                 completed_response = event_data
 
         if completed_response is None:
+            if failed_error is not None:
+                raise OpenAIResponsesClient._map_embedded_error(failed_error)
             raise OpenAIResponsesClientError(
                 502,
                 "AI_MODEL_RESPONSE_INVALID",
