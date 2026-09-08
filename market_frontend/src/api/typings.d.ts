@@ -13,13 +13,6 @@ declare namespace API {
     message?: string;
   };
 
-  type BaseResponseCommentVO_ = {
-    code?: number;
-    data?: CommentVO;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
   type BaseResponseCommodityOrderVO_ = {
     code?: number;
     data?: CommodityOrderVO;
@@ -111,20 +104,6 @@ declare namespace API {
     message?: string;
   };
 
-  type BaseResponsePageComment_ = {
-    code?: number;
-    data?: PageComment_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
-  type BaseResponsePageCommentVO_ = {
-    code?: number;
-    data?: PageCommentVO_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
   type BaseResponsePageCommodity_ = {
     code?: number;
     data?: PageCommodity_;
@@ -209,13 +188,6 @@ declare namespace API {
     message?: string;
   };
 
-  type BaseResponsePagePrivateMessage_ = {
-    code?: number;
-    data?: PagePrivateMessage_;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
   type BaseResponsePagePrivateMessageVO_ = {
     code?: number;
     data?: PagePrivateMessageVO_;
@@ -251,13 +223,6 @@ declare namespace API {
     message?: string;
   };
 
-  type BaseResponsePrivateMessageVO_ = {
-    code?: number;
-    data?: PrivateMessageVO;
-    hashMap?: Record<string, any>;
-    message?: string;
-  };
-
   type BaseResponseString_ = {
     code?: number;
     data?: string;
@@ -287,17 +252,6 @@ declare namespace API {
     remark?: string;
   };
 
-  type checkUsingGETParams = {
-    /** echostr */
-    echostr?: string;
-    /** nonce */
-    nonce?: string;
-    /** signature */
-    signature?: string;
-    /** timestamp */
-    timestamp?: string;
-  };
-
   type Comment = {
     ancestorId?: string;
     content?: string;
@@ -314,32 +268,6 @@ declare namespace API {
     content?: string;
     parentId?: string;
     postId?: string;
-  };
-
-  type CommentEditRequest = {
-    content?: string;
-    id?: string;
-  };
-
-  type CommentQueryRequest = {
-    ancestorId?: string;
-    content?: string;
-    current?: number;
-    id?: string;
-    pageSize?: number;
-    parentId?: string;
-    postId?: string;
-    sortField?: string;
-    sortOrder?: string;
-    userId?: string;
-  };
-
-  type CommentUpdateRequest = {
-    content?: string;
-    id?: string;
-    parentId?: string;
-    postId?: string;
-    userId?: string;
   };
 
   type CommentVO = {
@@ -388,21 +316,6 @@ declare namespace API {
     viewNum?: number;
   };
 
-  type CommodityEditRequest = {
-    adminId?: string;
-    commodityAvatar?: string;
-    commodityDescription?: string;
-    commodityInventory?: number;
-    commodityName?: string;
-    commodityTypeId?: string;
-    degree?: string;
-    favourNum?: number;
-    id?: string;
-    isListed?: number;
-    price?: number;
-    viewNum?: number;
-  };
-
   type CommodityOrder = {
     buyNumber?: number;
     commodityId?: string;
@@ -423,12 +336,6 @@ declare namespace API {
     paymentAmount?: number;
     remark?: string;
     userId?: string;
-  };
-
-  type CommodityOrderEditRequest = {
-    id?: string;
-    payStatus?: number;
-    remark?: string;
   };
 
   type CommodityOrderQueryRequest = {
@@ -507,13 +414,6 @@ declare namespace API {
     userId?: string;
   };
 
-  type CommodityScoreEditRequest = {
-    commodityId?: string;
-    id?: string;
-    score?: number;
-    userId?: string;
-  };
-
   type CommodityScoreQueryRequest = {
     commodityId?: string;
     current?: number;
@@ -522,13 +422,6 @@ declare namespace API {
     score?: number;
     sortField?: string;
     sortOrder?: string;
-    userId?: string;
-  };
-
-  type CommodityScoreUpdateRequest = {
-    commodityId?: string;
-    id?: string;
-    score?: number;
     userId?: string;
   };
 
@@ -551,11 +444,6 @@ declare namespace API {
   };
 
   type CommodityTypeAddRequest = {
-    typeName?: string;
-  };
-
-  type CommodityTypeEditRequest = {
-    id?: string;
     typeName?: string;
   };
 
@@ -628,11 +516,6 @@ declare namespace API {
     postId?: string;
   };
 
-  type getCommentVOByIdUsingGETParams = {
-    /** id */
-    id?: string;
-  };
-
   type getCommodityOrderHeatmapDataUsingGETParams = {
     /** payStatus */
     payStatus: number;
@@ -664,11 +547,6 @@ declare namespace API {
   };
 
   type getPostVOByIdUsingGETParams = {
-    /** id */
-    id?: string;
-  };
-
-  type getPrivateMessageVOByIdUsingGETParams = {
     /** id */
     id?: string;
   };
@@ -750,32 +628,6 @@ declare namespace API {
   type OrderItem = {
     asc?: boolean;
     column?: string;
-  };
-
-  type PageComment_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: Comment[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
-  };
-
-  type PageCommentVO_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: CommentVO[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
   };
 
   type PageCommodity_ = {
@@ -934,19 +786,6 @@ declare namespace API {
     total?: number;
   };
 
-  type PagePrivateMessage_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: OrderItem[];
-    pages?: number;
-    records?: PrivateMessage[];
-    searchCount?: boolean;
-    size?: number;
-    total?: number;
-  };
-
   type PagePrivateMessageVO_ = {
     countId?: string;
     current?: number;
@@ -1033,15 +872,6 @@ declare namespace API {
     postId?: string;
   };
 
-  type PostFavourQueryRequest = {
-    current?: number;
-    pageSize?: number;
-    postQueryRequest?: PostQueryRequest;
-    sortField?: string;
-    sortOrder?: string;
-    userId?: string;
-  };
-
   type PostQueryRequest = {
     content?: string;
     current?: number;
@@ -1106,32 +936,12 @@ declare namespace API {
     type?: string;
   };
 
-  type PrivateMessageEditRequest = {
-    alreadyRead?: number;
-    content?: string;
-    id?: string;
-    isRecalled?: number;
-    recipientId?: string;
-    senderId?: string;
-    type?: string;
-  };
-
   type PrivateMessageQueryRequest = {
     contactUserId?: string;
     current?: number;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-  };
-
-  type PrivateMessageUpdateRequest = {
-    alreadyRead?: number;
-    content?: string;
-    id?: string;
-    isRecalled?: number;
-    recipientId?: string;
-    senderId?: string;
-    type?: string;
   };
 
   type PrivateMessageVO = {
@@ -1156,8 +966,6 @@ declare namespace API {
     editTime?: string;
     id?: string;
     isDelete?: number;
-    mpOpenId?: string;
-    unionId?: string;
     updateTime?: string;
     userAccount?: string;
     userAvatar?: string;
@@ -1210,11 +1018,6 @@ declare namespace API {
     viewNum?: number;
   };
 
-  type userLoginByWxOpenUsingGETParams = {
-    /** code */
-    code: string;
-  };
-
   type UserLoginRequest = {
     userAccount?: string;
     userPassword?: string;
@@ -1224,11 +1027,9 @@ declare namespace API {
     balance?: number;
     current?: number;
     id?: string;
-    mpOpenId?: string;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-    unionId?: string;
     userName?: string;
     userProfile?: string;
     userRole?: string;

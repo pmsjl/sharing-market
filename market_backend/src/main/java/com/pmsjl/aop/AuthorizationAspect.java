@@ -1,4 +1,4 @@
-package com.pmsjl.interceptor;
+package com.pmsjl.aop;
 
 
 import com.pmsjl.annotation.AuthCheck;
@@ -25,7 +25,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  */
 @Aspect
 @Component
-public class AuthInterceptor {
+public class AuthorizationAspect {
 
     @Autowired
     private UserService userService;
@@ -38,7 +38,7 @@ public class AuthInterceptor {
      * @return
      */
     @Around("@annotation(authCheck)")
-    public Object doInterceptor(ProceedingJoinPoint joinPoint, AuthCheck authCheck) throws Throwable {
+    public Object doAuthCheck(ProceedingJoinPoint joinPoint, AuthCheck authCheck) throws Throwable {
         //除了传入切入点，还有对应的注解内容
         String mustRole = authCheck.mustRole();
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();

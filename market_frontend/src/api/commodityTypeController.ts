@@ -32,21 +32,6 @@ export async function deleteCommodityTypeUsingPost(
   });
 }
 
-/** editCommodityType POST /api/commodityType/edit */
-export async function editCommodityTypeUsingPost(
-  body: API.CommodityTypeEditRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponseBoolean_>("/api/commodityType/edit", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    data: body,
-    ...(options || {})
-  });
-}
-
 /** getCommodityTypeVOById GET /api/commodityType/get/vo */
 export async function getCommodityTypeVoByIdUsingGet(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
@@ -72,24 +57,6 @@ export async function listCommodityTypeVoByPageUsingPost(
 ) {
   return request<API.BaseResponsePageCommodityTypeVO_>(
     "/api/commodityType/list/page/vo",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      data: body,
-      ...(options || {})
-    }
-  );
-}
-
-/** listMyCommodityTypeVOByPage POST /api/commodityType/my/list/page/vo */
-export async function listMyCommodityTypeVoByPageUsingPost(
-  body: API.CommodityTypeQueryRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponsePageCommodityTypeVO_>(
-    "/api/commodityType/my/list/page/vo",
     {
       method: "POST",
       headers: {

@@ -1,7 +1,7 @@
 # 公共配置示例
 #
 # 本地可复制为 application.yml；生产部署直接启用已提交的 application-prod.yml。
-# 不要把真实的数据库、Redis、微信、OSS 或服务间 Token 提交到 Git。
+# 不要把真实的数据库、Redis、OSS 或服务间 Token 提交到 Git。
 
 spring:
   application:
@@ -15,9 +15,6 @@ spring:
       matching-strategy: ant_path_matcher
     async:
       request-timeout: 6000000
-
-  session:
-    timeout: 2592000
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -47,10 +44,6 @@ server:
   forward-headers-strategy: framework
   servlet:
     context-path: /api
-    session:
-      cookie:
-        max-age: 2592000
-        http-only: true
 
 app:
   cors:
@@ -70,23 +63,6 @@ mybatis-plus:
       logic-delete-field: isDelete
       logic-delete-value: 1
       logic-not-delete-value: 0
-
-wx:
-  mp:
-    token: ${WX_MP_TOKEN:}
-    aesKey: ${WX_MP_AES_KEY:}
-    appId: ${WX_MP_APP_ID:}
-    secret: ${WX_MP_SECRET:}
-    config-storage:
-      http-client-type: HttpClient
-      key-prefix: wx
-      redis:
-        host: ${WX_REDIS_HOST:127.0.0.1}
-        port: ${WX_REDIS_PORT:6379}
-      type: Memory
-  open:
-    appId: ${WX_OPEN_APP_ID:}
-    appSecret: ${WX_OPEN_APP_SECRET:}
 
 oss:
   client:
@@ -109,7 +85,6 @@ knife4j:
 
 jwt:
   tokenHeader: Authorization
-  expiration: 36000000
   tokenHead: Bearer
 
 ai:

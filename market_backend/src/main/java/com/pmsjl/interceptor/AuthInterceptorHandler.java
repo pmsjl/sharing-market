@@ -1,7 +1,6 @@
 package com.pmsjl.interceptor;
 
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
-import com.pmsjl.common.JwtProperties;
 import com.pmsjl.model.vo.LoginUserVO;
 import com.pmsjl.utils.UserHolder;
 import jakarta.servlet.http.HttpServletRequest;

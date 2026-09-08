@@ -31,22 +31,6 @@ export async function getAverageScoreUsingGet(
   });
 }
 
-/** editCommodityScore POST /api/commodityScore/edit */
-export async function editCommodityScoreUsingPost(
-  body: API.CommodityScoreEditRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponseBoolean_>("/api/commodityScore/edit", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    data: body,
-    ...(options || {})
-  });
-}
-
-  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
 /** listCommodityScoreVOByPage POST /api/commodityScore/list/page/vo */
 export async function listCommodityScoreVoByPageUsingPost(
   body: API.CommodityScoreQueryRequest,
@@ -81,19 +65,4 @@ export async function listMyCommodityScoreVoByPageUsingPost(
       ...(options || {})
     }
   );
-}
-
-/** updateCommodityScore POST /api/commodityScore/update */
-export async function updateCommodityScoreUsingPost(
-  body: API.CommodityScoreUpdateRequest,
-  options?: { [key: string]: any }
-) {
-  return request<API.BaseResponseBoolean_>("/api/commodityScore/update", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    data: body,
-    ...(options || {})
-  });
 }

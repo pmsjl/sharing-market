@@ -164,7 +164,7 @@ public class UserController {
 
         stringRedisTemplate.opsForHash().putAll(key, userMap);
         stringRedisTemplate.expire(key, LOGIN_USER_TTL, TimeUnit.MINUTES);
-        //修改处：不再采取jwt令牌进行token生成，
+
         // 采取redis的token+user的存储形式，既可以获得user，又可以进行token删除，以进行拦截
         HashMap<String, Object> hashMap = new HashMap<>(0);
         hashMap.put("token", token);

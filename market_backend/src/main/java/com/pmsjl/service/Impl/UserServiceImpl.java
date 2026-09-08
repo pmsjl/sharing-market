@@ -158,10 +158,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 // 用户简介模糊搜索
                 .like(StringUtils.isNotBlank(userQueryRequest.getUserProfile()), User::getUserProfile, userQueryRequest.getUserProfile())
 
-                // 其他字段按需加（根据你实际业务决定）
-                .eq(StringUtils.isNotBlank(userQueryRequest.getMpOpenId()), User::getMpOpenId, userQueryRequest.getMpOpenId())
-                .eq(StringUtils.isNotBlank(userQueryRequest.getUnionId()), User::getUnionId, userQueryRequest.getUnionId())
-
                 // 余额不做模糊搜索，这里用精确匹配
                 .eq(userQueryRequest.getBalance() != null && userQueryRequest.getBalance().compareTo(BigDecimal.ZERO) > 0,
                         User::getBalance, userQueryRequest.getBalance())

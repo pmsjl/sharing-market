@@ -2,7 +2,6 @@
 /* eslint-disable */
 // API 更新时间：
 // API 唯一标识：
-import * as wxMpController from "./wxMpController";
 import * as commentController from "./commentController";
 import * as commodityController from "./commodityController";
 import * as commodityOrderController from "./commodityOrderController";
@@ -18,7 +17,6 @@ import * as userController from "./userController";
 import * as aiController from "./aiController";
 import * as userCommodityFavoritesController from "./userCommodityFavoritesController";
 export default {
-  wxMpController,
   commentController,
   commodityController,
   commodityOrderController,

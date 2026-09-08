@@ -8,8 +8,6 @@ spring:
     async:
       request-timeout: ${MVC_ASYNC_REQUEST_TIMEOUT_MS:6000000}
 
-  session:
-
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL}
@@ -56,9 +54,6 @@ server:
   forward-headers-strategy: framework
   servlet:
     context-path: /api
-    session:
-      cookie:
-        http-only: true
 
 mybatis-plus:
   configuration:

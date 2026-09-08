@@ -119,11 +119,6 @@ public class CommodityController {
 
 
     /***
-     * 用户可更新商品的部分信息
-     * @param commodityEditRequest
-     * @return
-     */
-    /***
      * 根据id查询商品
      * @param id
      * @return
