@@ -83,9 +83,9 @@ knife4j:
         api-rule-resources:
           - com.xiaobaitiao.springbootinit.controller
 
-jwt:
-  tokenHeader: Authorization
-  tokenHead: Bearer
+auth-token:
+  header: Authorization
+  prefix: Bearer
 
 ai:
   access:
