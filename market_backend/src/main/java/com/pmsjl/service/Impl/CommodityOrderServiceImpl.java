@@ -60,6 +60,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
 
 
     }
+
     private static void validCommodityOrder(CommodityOrder commodityOrder) {
         Long commodityId = commodityOrder.getCommodityId();
         Integer buyNumber = commodityOrder.getBuyNumber();
@@ -68,7 +69,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean deleteCommodityOrder(DeleteRequest deleteRequest, HttpServletRequest request) {
         Long id = deleteRequest.getId();
         if (id == null || id <= 0) {
@@ -90,7 +91,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean updateCommodityOrder(CommodityOrder commodityOrder) {
         validCommodityOrder(commodityOrder);
         Long id = commodityOrder.getId();
@@ -154,7 +155,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
             // 默认按更新时间降序
             page.addOrder(OrderItem.desc("updateTime"));
         }
-        Page<CommodityOrder> commodityOrderPage=this.lambdaQuery().like(StringUtils.isNotBlank(remark), CommodityOrder::getRemark, remark)
+        Page<CommodityOrder> commodityOrderPage = this.lambdaQuery().like(StringUtils.isNotBlank(remark), CommodityOrder::getRemark, remark)
                 .eq(ObjectUtils.isNotEmpty(payStatus), CommodityOrder::getPayStatus, payStatus)
                 .eq(ObjectUtils.isNotEmpty(buyNumber), CommodityOrder::getBuyNumber, buyNumber)
                 .eq(ObjectUtils.isNotEmpty(commodityId), CommodityOrder::getCommodityId, commodityId)
@@ -174,7 +175,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         long current = commodityOrderPage.getCurrent();
         long pageSize = commodityOrderPage.getSize();
         long total = commodityOrderPage.getTotal();
-        Page<CommodityOrderVO>page=new Page<>(current,pageSize,total);
+        Page<CommodityOrderVO> page = new Page<>(current, pageSize, total);
         if (records == null || records.isEmpty()) {
             page.setRecords(List.of());
             return page;
@@ -258,7 +259,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
     public CommodityOrder getByIdWithLock(Long orderId) {
         return lambdaQuery()
                 .eq(CommodityOrder::getId, orderId)
-                .eq(CommodityOrder::getIsDelete,0)
+                .eq(CommodityOrder::getIsDelete, 0)
                 .last("FOR UPDATE")
                 .one();
     }

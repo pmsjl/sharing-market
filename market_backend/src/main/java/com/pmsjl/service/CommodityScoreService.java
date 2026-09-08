@@ -23,7 +23,7 @@ public interface CommodityScoreService extends IService<CommodityScore> {
 
     Page<CommodityScoreVO> listMyCommodityScoreVOByPage(CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request);
 
-    void validCommodityScore(CommodityScore commodityScore, boolean add);
+    void validCommodityScore(CommodityScore commodityScore);
 
     Double getAverageScoreById(Long commodityId);
 }

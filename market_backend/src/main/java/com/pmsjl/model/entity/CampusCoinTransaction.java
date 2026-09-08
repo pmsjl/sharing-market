@@ -1,8 +1,6 @@
 package com.pmsjl.model.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -24,7 +22,6 @@ public class CampusCoinTransaction implements Serializable {
     private String businessId;
     private Long operatorId;
     private String remark;
-    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private Date createTime;
 
     private static final long serialVersionUID = 1L;

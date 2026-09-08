@@ -47,7 +47,7 @@ import static com.pmsjl.constant.RedisConstant.*;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
     public static final String SALT = "pmsjl";
     private static final Set<String> ALLOWED_USER_SORT_FIELDS = Set.of(
-            "id", "userName", "userRole", "balance", "editTime", "createTime", "updateTime"
+            "id", "userName", "userRole", "balance", "createTime", "updateTime"
     );
     public final StringRedisTemplate stringRedisTemplate;
     private final CampusCoinService campusCoinService;

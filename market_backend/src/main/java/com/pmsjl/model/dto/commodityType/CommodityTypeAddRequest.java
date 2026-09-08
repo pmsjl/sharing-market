@@ -13,8 +13,6 @@ import java.io.Serializable;
 @Data
 public class CommodityTypeAddRequest implements Serializable {
 
-
-
     /**
      * 商品类别名称
      */

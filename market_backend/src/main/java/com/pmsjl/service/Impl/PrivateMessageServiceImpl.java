@@ -46,9 +46,6 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
         Long userId = loginUser.getId();
         privateMessage.setSenderId(userId);
         validPrivateMessage(privateMessage);
-        privateMessage.setType(loginUser.getUserRole());
-        privateMessage.setAlreadyRead(0);
-        privateMessage.setIsRecalled(0);
         privateMessage.setContent(privateMessage.getContent().trim());
         boolean result = save(privateMessage);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);

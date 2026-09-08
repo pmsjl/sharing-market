@@ -37,21 +37,6 @@ public class PrivateMessageVO implements Serializable {
     private String content;
 
     /**
-     * 0-未阅读 1-已阅读
-     */
-    private Integer alreadyRead;
-
-    /**
-     * 消息发送类型（用户发送还是管理员发送,user Or admin)枚举
-     */
-    private String type;
-
-    /**
-     * 是否撤回  0-未撤回 1-已撤回
-     */
-    private Integer isRecalled;
-
-    /**
      * 创建时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")

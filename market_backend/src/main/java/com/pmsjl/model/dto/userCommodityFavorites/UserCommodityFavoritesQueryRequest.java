@@ -18,7 +18,5 @@ public class UserCommodityFavoritesQueryRequest extends PageRequest implements S
 
     private Integer status;
 
-    private String remark;
-
     private static final long serialVersionUID = 1L;
 }

@@ -915,25 +915,18 @@ declare namespace API {
   };
 
   type PrivateMessage = {
-    alreadyRead?: number;
     content?: string;
     createTime?: string;
     id?: string;
     isDelete?: number;
-    isRecalled?: number;
     recipientId?: string;
     senderId?: string;
-    type?: string;
     updateTime?: string;
   };
 
   type PrivateMessageAddRequest = {
-    alreadyRead?: number;
     content?: string;
-    isRecalled?: number;
     recipientId?: string;
-    senderId?: string;
-    type?: string;
   };
 
   type PrivateMessageQueryRequest = {
@@ -945,14 +938,11 @@ declare namespace API {
   };
 
   type PrivateMessageVO = {
-    alreadyRead?: number;
     content?: string;
     createTime?: string;
     id?: string;
-    isRecalled?: number;
     recipientId?: string;
     senderId?: string;
-    type?: string;
     updateTime?: string;
   };
 
@@ -963,7 +953,6 @@ declare namespace API {
   type User = {
     balance?: number;
     createTime?: string;
-    editTime?: string;
     id?: string;
     isDelete?: number;
     updateTime?: string;
@@ -990,7 +979,6 @@ declare namespace API {
     current?: number;
     id?: string;
     pageSize?: number;
-    remark?: string;
     sortField?: string;
     sortOrder?: string;
     status?: number;
@@ -1011,7 +999,6 @@ declare namespace API {
     id?: string;
     isListed?: number;
     price?: number;
-    remark?: string;
     status?: number;
     updateTime?: string;
     userId?: string;

@@ -17,5 +17,5 @@ public interface UserCommodityFavoritesService extends IService<UserCommodityFav
     Page<UserCommodityFavoritesVO> listMyUserCommodityFavoritesVOByPage(UserCommodityFavoritesQueryRequest queryRequest,
                                                                         HttpServletRequest request);
 
-    void validUserCommodityFavorites(UserCommodityFavorites userCommodityFavorites, boolean add);
+    void validUserCommodityFavorites(UserCommodityFavorites userCommodityFavorites);
 }

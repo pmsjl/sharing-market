@@ -8,7 +8,6 @@
             f.userId,
             f.commodityId,
             f.status,
-            f.remark,
             f.createTime,
             f.updateTime,
             c.commodityName,
@@ -37,9 +36,6 @@
         </if>
         <if test="queryRequest.status != null">
             AND f.status = #{queryRequest.status}
-        </if>
-        <if test="queryRequest.remark != null and queryRequest.remark != ''">
-            AND f.remark LIKE CONCAT('%', #{queryRequest.remark}, '%')
         </if>
         <choose>
             <when test="queryRequest.sortField == 'createTime'">

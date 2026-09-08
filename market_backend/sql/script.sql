@@ -125,21 +125,6 @@ create table ai_usage_global_daily
 )
     comment '全平台 AI 每日用量' collate = utf8mb4_unicode_ci;
 
-create table barrage
-(
-    id         bigint auto_increment comment 'id'
-        primary key,
-    message    varchar(255)                       not null comment '弹幕文本',
-    userAvatar varchar(1024)                      not null comment '用户头像',
-    userId     bigint                             not null comment '用户id',
-    isSelected tinyint  default 0                 not null comment '是否精选（默认0，精选为1）',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete   tinyint  default 0                 not null comment '是否删除'
-)
-    charset = utf8mb3
-    row_format = DYNAMIC;
-
 create table campus_coin_transaction
 (
     id              bigint                             not null comment '应用侧雪花 ID'
@@ -335,9 +320,6 @@ create table private_message
     senderId    bigint                                   not null comment '发送者 ID',
     recipientId bigint                                   not null comment '接收者 ID',
     content     varchar(4096) collate utf8mb4_unicode_ci null comment '消息内容(UTF8MB4 支持Emoji表情)',
-    alreadyRead tinyint  default 0                       null comment '0-未阅读 1-已阅读',
-    type        varchar(255)                             not null comment '消息发送类型（用户发送还是管理员发送,user Or admin)枚举',
-    isRecalled  tinyint  default 0                       null comment '是否撤回  0-未撤回 1-已撤回',
     createTime  datetime default CURRENT_TIMESTAMP       not null comment '创建时间',
     updateTime  datetime default CURRENT_TIMESTAMP       not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete    tinyint  default 0                       null comment '是否删除'
@@ -357,7 +339,6 @@ create table user
     userRole     varchar(256)   default 'user'            not null comment '用户角色：user/admin/ban',
     userPhone    varchar(255)                             null comment '联系电话',
     balance      decimal(12, 2) default 0.00              not null comment '不可充值、不可提现的校园币余额',
-    editTime     datetime       default CURRENT_TIMESTAMP not null comment '编辑时间',
     createTime   datetime       default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime   datetime       default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete     tinyint        default 0                 not null comment '是否删除',
@@ -374,7 +355,6 @@ create table user_commodity_favorites
     userId      bigint                             not null comment '用户 ID',
     commodityId bigint                             not null comment '商品 ID',
     status      tinyint  default 1                 null comment '1-正常收藏 0-取消收藏',
-    remark      varchar(255)                       null comment '用户备注',
     createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete    tinyint  default 0                 null comment '是否删除',

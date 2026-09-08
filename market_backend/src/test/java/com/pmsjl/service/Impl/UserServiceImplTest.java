@@ -24,7 +24,7 @@ class UserServiceImplTest {
         assertNotNull(sortFields);
         assertEquals(Set.of(
                 "id", "userName", "userRole", "balance",
-                "editTime", "createTime", "updateTime"), sortFields);
+                "createTime", "updateTime"), sortFields);
     }
 
     @Test

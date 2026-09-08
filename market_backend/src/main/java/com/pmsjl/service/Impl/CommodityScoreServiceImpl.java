@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * <p>
- *  服务实现类
+ * 服务实现类
  * </p>
  *
  * @author pmsjl
@@ -53,7 +53,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
     public Long addCommodityScore(CommodityScore commodityScore, HttpServletRequest request) {
         User loginUser = userService.getLoginUser();
         commodityScore.setUserId(loginUser.getId());
-        validCommodityScore(commodityScore, true);
+        validCommodityScore(commodityScore);
         // 3. 校验商品是否存在
         Long commodityId = commodityScore.getCommodityId();
         Commodity commodity = commodityService.getById(commodityId);
@@ -151,19 +151,15 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
 
 
     @Override
-    public void validCommodityScore(CommodityScore commodityScore, boolean add) {
+    public void validCommodityScore(CommodityScore commodityScore) {
         ThrowUtils.throwIf(commodityScore == null, ErrorCode.PARAMS_ERROR);
         Long commodityId = commodityScore.getCommodityId();
         Long userId = commodityScore.getUserId();
         Integer score = commodityScore.getScore();
-        if (add) {
-            ThrowUtils.throwIf(commodityId == null, ErrorCode.PARAMS_ERROR, "商品id不能为空");
-            ThrowUtils.throwIf(userId==null,ErrorCode.PARAMS_ERROR,"评价者id不能为空");
-        }
         ThrowUtils.throwIf(score == null, ErrorCode.PARAMS_ERROR, "评分不能为空");
         ThrowUtils.throwIf((score < 1 || score > 5), ErrorCode.PARAMS_ERROR, "评分范围应为1到5");
-        ThrowUtils.throwIf(commodityId != null && commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品id非法");
-        ThrowUtils.throwIf(userId != null && userId <= 0, ErrorCode.PARAMS_ERROR, "用户id非法");
+        ThrowUtils.throwIf(commodityId == null || commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品id非法");
+        ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "用户id非法");
 
     }
 

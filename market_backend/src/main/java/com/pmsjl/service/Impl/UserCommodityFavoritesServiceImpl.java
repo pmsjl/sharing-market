@@ -48,7 +48,7 @@ public class UserCommodityFavoritesServiceImpl
         User loginUser = userService.getLoginUser();
         userCommodityFavorites.setUserId(loginUser.getId());
         userCommodityFavorites.setStatus(1);
-        validUserCommodityFavorites(userCommodityFavorites, true);
+        validUserCommodityFavorites(userCommodityFavorites);
         commodityService.validateCommodityExists(userCommodityFavorites.getCommodityId());
         boolean saved = save(userCommodityFavorites);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "收藏记录已存在或数据库异常");
@@ -112,17 +112,13 @@ public class UserCommodityFavoritesServiceImpl
     }
 
     @Override
-    public void validUserCommodityFavorites(UserCommodityFavorites userCommodityFavorites, boolean add) {
+    public void validUserCommodityFavorites(UserCommodityFavorites userCommodityFavorites) {
         ThrowUtils.throwIf(userCommodityFavorites == null, ErrorCode.PARAMS_ERROR);
         Long userId = userCommodityFavorites.getUserId();
         Long commodityId = userCommodityFavorites.getCommodityId();
         Integer status = userCommodityFavorites.getStatus();
-        if (add) {
-            ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "收藏用户 id 非法");
-            ThrowUtils.throwIf(commodityId == null || commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品 id 非法");
-        }
-        ThrowUtils.throwIf(commodityId != null && commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品 id 非法");
-        ThrowUtils.throwIf(userId != null && userId <= 0, ErrorCode.PARAMS_ERROR, "收藏用户 id 非法");
+        ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "收藏用户 id 非法");
+        ThrowUtils.throwIf(commodityId == null || commodityId <= 0, ErrorCode.PARAMS_ERROR, "商品 id 非法");
         ThrowUtils.throwIf(!isValidStatus(status), ErrorCode.PARAMS_ERROR, "收藏状态只能为 0 或 1");
     }
 

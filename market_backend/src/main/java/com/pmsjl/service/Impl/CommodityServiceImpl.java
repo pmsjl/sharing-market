@@ -229,7 +229,11 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 .eq(CommodityOrder::getIsDelete, 0)
                 .update();
         ThrowUtils.throwIf(!orderUpdated, ErrorCode.OPERATION_ERROR, "订单状态更新失败");
-//订单锁防止重复支付，CampusCoinService 内的用户锁防止多个订单并发扣成负数。
+        //CampusCoinService 内的用户锁防止多个订单并发扣成负数。
+        //并且其实可以防止重复支付的情况，因为里面的事务和外面事务是相关联的，
+        //如果没有上面的订单锁，可能会出现第二个请求依然停留在status=0并且在这里等待锁的情况，支付成功后
+        //到这里mysql更新才会抛出异常，但这样也会回滚。
+        //只是加上订单锁就可以使得第二次重复获取时得到最新的订单状态
         return true;
     }
 
@@ -440,5 +444,4 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
     }
 
 
-    //TODO 关于推荐算法和购买商品还有三个接口尚未实现
 }

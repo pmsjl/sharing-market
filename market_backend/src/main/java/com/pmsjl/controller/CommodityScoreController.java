@@ -70,8 +70,7 @@ public class CommodityScoreController {
         if(score<0){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        //这里没有放在service层的原因就是controller才是统一负责响应result的层
-        //不应该返回不同result类型的层放到service层
+
         return ResultUtils.success(score);
     }
 }
