@@ -204,7 +204,7 @@ class AiMessageServiceImplTest {
         when(conversationMapper.selectByIdForUpdate(500L)).thenReturn(conversation);
         when(messageMapper.markPendingMessageTimedOut(
                 eq(700L), eq(expireBefore), eq(PENDING_TIMEOUT_MESSAGE),
-                eq(PENDING_TIMEOUT_ERROR_KEY), any(Date.class))).thenReturn(1);
+                eq(PENDING_TIMEOUT_ERROR_KEY))).thenReturn(1);
         when(conversationMapper.updateById(conversation)).thenReturn(1);
         when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
             TransactionCallback<Boolean> callback = invocation.getArgument(0);
@@ -235,7 +235,7 @@ class AiMessageServiceImplTest {
         when(conversationMapper.selectByIdForUpdate(500L)).thenReturn(conversation);
         when(messageMapper.markPendingMessageTimedOut(
                 eq(700L), eq(expireBefore), eq(PENDING_TIMEOUT_MESSAGE),
-                eq(PENDING_TIMEOUT_ERROR_KEY), any(Date.class))).thenReturn(0);
+                eq(PENDING_TIMEOUT_ERROR_KEY))).thenReturn(0);
         when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
             TransactionCallback<Boolean> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));

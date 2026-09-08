@@ -13,7 +13,6 @@ import com.pmsjl.utils.ThrowUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
 import java.util.List;
 
 /** AI Agent 工具调用轨迹持久化实现。 */
@@ -34,14 +33,12 @@ public class AiAgentTraceServiceImpl
             return;
         }
 
-        Date now = new Date();
         List<AiAgentTrace> traceEntities = traces.stream()
                 .map(trace -> toEntity(
                         requestId,
                         conversationId,
                         messageId,
-                        trace,
-                        now
+                        trace
                 ))
                 .toList();
 
@@ -55,8 +52,7 @@ public class AiAgentTraceServiceImpl
     private AiAgentTrace toEntity(String requestId,
                                   Long conversationId,
                                   Long messageId,
-                                  AgentToolTrace trace,
-                                  Date createTime) {
+                                  AgentToolTrace trace) {
         ThrowUtils.throwIf(
                 trace == null || trace.getStatus() == null,
                 ErrorCode.SYSTEM_ERROR,
@@ -73,7 +69,6 @@ public class AiAgentTraceServiceImpl
         entity.setStatus(trace.getStatus().getValue());
         entity.setLatencyMs(trace.getLatencyMs());
         entity.setErrorMessage(trace.getErrorMessage());
-        entity.setCreateTime(createTime);
         return entity;
     }
 

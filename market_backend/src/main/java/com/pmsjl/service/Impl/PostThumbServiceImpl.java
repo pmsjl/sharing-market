@@ -1,6 +1,5 @@
 package com.pmsjl.service.Impl;
 
-import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pmsjl.common.ErrorCode;
@@ -83,8 +82,6 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
         PostThumb oldPostThumb = this.getOne(wrapper);
 
         if (oldPostThumb == null) {
-            postThumb.setCreateTime(DateTime.now());
-            postThumb.setUpdateTime(DateTime.now());
             boolean saved = this.save(postThumb);
             ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR);
             boolean updated = postService.update()

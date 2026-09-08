@@ -15,9 +15,9 @@ public interface AiUsageDailyMapper extends BaseMapper<AiUsageDaily> {
     @Insert("""
             INSERT INTO ai_usage_daily
                 (id,userId, usageDate, requestCount, successCount, failedCount,
-                 inputTokens, outputTokens, createTime, updateTime)
+                 inputTokens, outputTokens)
             VALUES
-                (#{id},#{userId}, #{usageDate}, 0, 0, 0, 0, 0, NOW(), NOW())
+                (#{id},#{userId}, #{usageDate}, 0, 0, 0, 0, 0)
             ON DUPLICATE KEY UPDATE id=id
             """)
     int insertUsageUserDaily(@Param("id") Long id, @Param("userId") Long userId,
@@ -26,8 +26,7 @@ public interface AiUsageDailyMapper extends BaseMapper<AiUsageDaily> {
     @Update("""
             UPDATE ai_usage_daily
             SET requestCount = requestCount + 1,
-                lastRequestTime = #{requestTime},
-                updateTime = #{requestTime}
+                lastRequestTime = #{requestTime}
             WHERE userId = #{userId}
               AND usageDate = #{usageDate}
               AND requestCount < #{limit}
@@ -41,8 +40,7 @@ public interface AiUsageDailyMapper extends BaseMapper<AiUsageDaily> {
             UPDATE ai_usage_daily
             SET successCount = successCount + 1,
                 inputTokens = inputTokens + #{inputTokens},
-                outputTokens = outputTokens + #{outputTokens},
-                updateTime = NOW()
+                outputTokens = outputTokens + #{outputTokens}
             WHERE userId = #{userId} AND usageDate = #{usageDate}
             """)
     int recordSuccess(@Param("userId") Long userId,
@@ -52,7 +50,7 @@ public interface AiUsageDailyMapper extends BaseMapper<AiUsageDaily> {
 
     @Update("""
             UPDATE ai_usage_daily
-            SET failedCount = failedCount + 1, updateTime = NOW()
+            SET failedCount = failedCount + 1
             WHERE userId = #{userId} AND usageDate = #{usageDate}
             """)
     int recordFailure(@Param("userId") Long userId,

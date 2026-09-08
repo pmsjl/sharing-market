@@ -1,7 +1,6 @@
 package com.pmsjl.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -56,14 +55,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 是否为管理员
-     *那你就问了，已经有admin注解加上aop了，为什么还要单独再实现一遍逻辑
+     * 那你就问了，已经有admin注解加上aop了，为什么还要单独再实现一遍逻辑
      * 因为可能出现除了admin还有其他用户也能访问的情况，这时候就不能只通过注解去限制了
      * 而是在类的内部进行条件判断
-     * @param request
+     *
      * @return
      */
     @Override
-    public boolean isAdmin(HttpServletRequest request) {
+    public boolean isAdmin() {
         // 仅管理员可查询
         User user = getLoginUser();
         return UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
@@ -250,8 +249,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setUserAccount(userAccount);
         user.setUserName(username);
         //这里我自己加上了username，因为后续都要用到，先默认和account一致
-        user.setUpdateTime(DateTime.now());
-        user.setCreateTime(DateTime.now());
         boolean result = save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "数据库操作失败，请重试");
         campusCoinService.grantForRegistration(user.getId());

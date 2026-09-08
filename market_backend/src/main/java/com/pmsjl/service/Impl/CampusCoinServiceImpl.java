@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Date;
 
 @Service
 @RequiredArgsConstructor
@@ -237,7 +236,6 @@ public class CampusCoinServiceImpl implements CampusCoinService {
         transaction.setBusinessId(businessId);
         transaction.setOperatorId(operatorId);
         transaction.setRemark(remark);
-        transaction.setCreateTime(new Date());
         ThrowUtils.throwIf(campusCoinTransactionMapper.insert(transaction) != 1,
                 ErrorCode.OPERATION_ERROR, "校园币流水写入失败");
     }

@@ -21,8 +21,7 @@ public interface AiMessageMapper extends BaseMapper<AiMessage> {
     int markPendingMessageTimedOut(@Param("messageId") Long messageId,
                                    @Param("expireBefore") Date expireBefore,
                                    @Param("content") String content,
-                                   @Param("agentErrorKey") String agentErrorKey,
-                                   @Param("updateTime") Date updateTime);
+                                   @Param("agentErrorKey") String agentErrorKey);
 
     List<AiMessage> selectRecentSuccessfulHistory(
             @Param("conversationId") Long conversationId,

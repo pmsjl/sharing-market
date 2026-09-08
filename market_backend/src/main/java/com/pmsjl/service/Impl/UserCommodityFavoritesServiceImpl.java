@@ -128,7 +128,7 @@ public class UserCommodityFavoritesServiceImpl
 
     private void checkOwnerOrAdmin(UserCommodityFavorites favorite, HttpServletRequest request) {
         User loginUser = userService.getLoginUser();
-        if (!Objects.equals(loginUser.getId(), favorite.getUserId()) && !userService.isAdmin(request)) {
+        if (!Objects.equals(loginUser.getId(), favorite.getUserId()) && !userService.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
     }

@@ -113,8 +113,8 @@ public class AiChatServiceImpl implements AiChatService {
         Date now = new Date();
         AiUsageDate usageReservation = aiAccessService.reserveRequest(loginUser.getId());
         AiConversation conversation = getAiConversation(loginUser, content, shoppingContext, now);
-        AiMessage userMessage = getUserMessage(conversation, loginUser, content, requestId, now);
-        AiMessage assistantMessage = getAssistantMessage(conversation, loginUser, requestId, now);
+        AiMessage userMessage = getUserMessage(conversation, loginUser, content, requestId);
+        AiMessage assistantMessage = getAssistantMessage(conversation, loginUser, requestId);
         return new PendingChat(requestId, loginUser, shoppingContext, conversation, userMessage,
                 assistantMessage, usageReservation);
     }
@@ -146,9 +146,10 @@ public class AiChatServiceImpl implements AiChatService {
             assistantMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
             assistantMessage.setAgentErrorKey(null);
             assistantMessage.setRetryable(false);
-            assistantMessage.setUpdateTime(now);
             ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 回复失败");
+            assistantMessage = aiMessageMapper.selectById(assistantMessage.getId());
+            ThrowUtils.throwIf(assistantMessage == null, ErrorCode.OPERATION_ERROR, "读取 AI 回复失败");
 
             aiAgentTraceService.saveAgentTraces(
                     pendingChat.requestId(),
@@ -167,9 +168,10 @@ public class AiChatServiceImpl implements AiChatService {
             conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
             conversation.setLastMessageTime(now);
-            conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
+            conversation = aiConversationMapper.selectById(conversation.getId());
+            ThrowUtils.throwIf(conversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
             return buildChatVO(pendingChat.requestId(), conversation, pendingChat.shoppingContext(),
                     pendingChat.userMessage(), assistantMessage);
         });
@@ -184,16 +186,18 @@ public class AiChatServiceImpl implements AiChatService {
             assistantMessage.setStatus(AiMessageStatusEnum.FAILED.getValue());
             assistantMessage.setAgentErrorKey(exception.getAgentErrorKey());
             assistantMessage.setRetryable(exception.isRetryable());
-            assistantMessage.setUpdateTime(now);
             ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
                     "记录 AI 回复失败状态失败");
+            assistantMessage = aiMessageMapper.selectById(assistantMessage.getId());
+            ThrowUtils.throwIf(assistantMessage == null, ErrorCode.OPERATION_ERROR, "读取 AI 回复失败");
 
             AiConversation conversation = pendingChat.conversation();
             conversation.setLastMessagePreview(FAILED_MESSAGE);
             conversation.setLastMessageTime(now);
-            conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
+            conversation = aiConversationMapper.selectById(conversation.getId());
+            ThrowUtils.throwIf(conversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
             aiAccessService.recordFailure(
                     pendingChat.loginUser().getId(),
                     pendingChat.aiUsageDate()
@@ -204,7 +208,7 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @NotNull
-    private AiMessage getAssistantMessage(AiConversation conversation, User loginUser, String requestId, Date now) {
+    private AiMessage getAssistantMessage(AiConversation conversation, User loginUser, String requestId) {
         AiMessage assistantMessage = new AiMessage();
         assistantMessage.setConversationId(conversation.getId());
         assistantMessage.setUserId(loginUser.getId());
@@ -213,16 +217,16 @@ public class AiChatServiceImpl implements AiChatService {
         assistantMessage.setContent(PENDING_MESSAGE);
         assistantMessage.setStatus(AiMessageStatusEnum.PENDING.getValue());
         assistantMessage.setRequestId(requestId);
-        assistantMessage.setCreateTime(now);
-        assistantMessage.setUpdateTime(now);
         assistantMessage.setIsDelete(0);
         ThrowUtils.throwIf(aiMessageMapper.insert(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
                 "创建助手消息失败");
-        return assistantMessage;
+        AiMessage persistedMessage = aiMessageMapper.selectById(assistantMessage.getId());
+        ThrowUtils.throwIf(persistedMessage == null, ErrorCode.OPERATION_ERROR, "读取助手消息失败");
+        return persistedMessage;
     }
 
     @NotNull
-    private AiMessage getUserMessage(AiConversation conversation, User loginUser, String content, String requestId, Date now) {
+    private AiMessage getUserMessage(AiConversation conversation, User loginUser, String content, String requestId) {
         AiMessage userMessage = new AiMessage();
         userMessage.setConversationId(conversation.getId());
         userMessage.setUserId(loginUser.getId());
@@ -231,12 +235,12 @@ public class AiChatServiceImpl implements AiChatService {
         userMessage.setContent(content);
         userMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
         userMessage.setRequestId(requestId);
-        userMessage.setCreateTime(now);
-        userMessage.setUpdateTime(now);
         userMessage.setIsDelete(0);
         ThrowUtils.throwIf(aiMessageMapper.insert(userMessage) != 1, ErrorCode.OPERATION_ERROR,
                 "保存用户消息失败");
-        return userMessage;
+        AiMessage persistedMessage = aiMessageMapper.selectById(userMessage.getId());
+        ThrowUtils.throwIf(persistedMessage == null, ErrorCode.OPERATION_ERROR, "读取用户消息失败");
+        return persistedMessage;
     }
 
     @NotNull
@@ -249,12 +253,12 @@ public class AiChatServiceImpl implements AiChatService {
         conversation.setStatus(AiConversationStatusEnum.ACTIVE.getValue());
         conversation.setLastMessagePreview(PENDING_MESSAGE);
         conversation.setLastMessageTime(now);
-        conversation.setCreateTime(now);
-        conversation.setUpdateTime(now);
         conversation.setIsDelete(0);
         ThrowUtils.throwIf(aiConversationMapper.insert(conversation) != 1, ErrorCode.OPERATION_ERROR,
                 "创建 AI 会话失败");
-        return conversation;
+        AiConversation persistedConversation = aiConversationMapper.selectById(conversation.getId());
+        ThrowUtils.throwIf(persistedConversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
+        return persistedConversation;
     }
 
     public void validateShoppingContext(AiShoppingContext shoppingContext) {

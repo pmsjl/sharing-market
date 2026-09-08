@@ -3,7 +3,7 @@ package com.pmsjl.service.Impl;
 import static com.pmsjl.constant.RedisConstant.*;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.date.DateTime;
+import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -94,8 +94,6 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         if (commodity.getFavourNum() == null) {
             commodity.setFavourNum(0);
         }
-        commodity.setCreateTime(DateTime.now());
-        commodity.setUpdateTime(DateTime.now());
         validCommodity(commodity);
         boolean result = this.save(commodity);
         ThrowUtils.throwIf(result == false, ErrorCode.OPERATION_ERROR);
@@ -187,7 +185,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
 
         ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
 
-        if (!order.getUserId().equals(loginUser.getId()) && !userService.isAdmin(request)) {
+        if (!order.getUserId().equals(loginUser.getId()) && !userService.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无法操作他人订单");
         }
 
@@ -255,7 +253,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         User loginUser = userService.getLoginUser();
         Commodity commodity = getById(id);
         ThrowUtils.throwIf(commodity == null, ErrorCode.NOT_FOUND_ERROR);
-        if (!userService.isAdmin(request) && !Objects.equals(commodity.getAdminId(), loginUser.getId())) {
+        if (!userService.isAdmin() && !Objects.equals(commodity.getAdminId(), loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean result = removeById(id);
@@ -294,7 +292,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             } else {
                 String commodityStr = objectMapper.writeValueAsString(commodity);
                 //随机增加0-5分钟防止缓存雪崩
-                long ttl = 30L + cn.hutool.core.util.RandomUtil.randomInt(0, 5);
+                long ttl = 30L + RandomUtil.randomInt(0, 5);
                 stringRedisTemplate.opsForValue().set(CACHE_COMMODITY_KEY + id, commodityStr, ttl, TimeUnit.MINUTES);
             }
         } else {

@@ -1,6 +1,5 @@
 package com.pmsjl.service.Impl;
 
-import cn.hutool.core.date.DateTime;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
@@ -53,9 +52,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         comment.setUserId(userId);
-        comment.setCreateTime(DateTime.now());
-        comment.setUpdateTime(DateTime.now());
-
         Long parentId = comment.getParentId();
         if (parentId != null) {
             Comment parentComment = this.getById(parentId);
@@ -79,7 +75,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
         User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
-        if ((!comment.getUserId().equals(userId)) && !userService.isAdmin(request)) {
+        if ((!comment.getUserId().equals(userId)) && !userService.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "权限不足");
         }
         List<Comment> commentList = lambdaQuery().eq(Comment::getPostId, comment.getPostId()).list();

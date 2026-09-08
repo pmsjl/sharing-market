@@ -195,8 +195,8 @@ create table commodity
     price                decimal(10, 2)                     not null comment '商品价格',
     viewNum              int      default 0                 null comment '商品浏览量',
     favourNum            int      default 0                 null comment '商品收藏量',
-    createTime           datetime default CURRENT_TIMESTAMP null comment '创建时间',
-    updateTime           datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    createTime           datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime           datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete             tinyint  default 0                 null comment '是否删除'
 )
     charset = utf8mb3
@@ -218,8 +218,8 @@ create table commodity_order
     buyNumber     int                                null comment '购买数量',
     paymentAmount decimal(10, 2)                     null comment '订单总支付金额',
     payStatus     tinyint  default 0                 null comment '0-未支付 1-已支付',
-    createTime    datetime default CURRENT_TIMESTAMP null comment '创建时间',
-    updateTime    datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    createTime    datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime    datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete      tinyint  default 0                 null comment '是否删除'
 )
     charset = utf8mb3
@@ -235,9 +235,8 @@ create table commodity_score
     commodityId bigint                             not null comment '商品 ID',
     userId      bigint                             not null comment '用户 ID',
     score       int                                not null comment '评分（0-5，星级评分）',
-    createTime  datetime default CURRENT_TIMESTAMP null comment '创建时间
-',
-    updateTime  datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete    tinyint  default 0                 null comment '是否删除',
     constraint scoreId
         unique (commodityId, userId)
@@ -250,8 +249,8 @@ create table commodity_type
     id         bigint auto_increment comment '商品分类 ID'
         primary key,
     typeName   varchar(255)                       not null comment '商品类别名称',
-    createTime datetime default CURRENT_TIMESTAMP null comment '创建时间',
-    updateTime datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete   tinyint  default 0                 null comment '是否删除'
 )
     charset = utf8mb3
@@ -339,8 +338,8 @@ create table private_message
     alreadyRead tinyint  default 0                       null comment '0-未阅读 1-已阅读',
     type        varchar(255)                             not null comment '消息发送类型（用户发送还是管理员发送,user Or admin)枚举',
     isRecalled  tinyint  default 0                       null comment '是否撤回  0-未撤回 1-已撤回',
-    createTime  datetime default CURRENT_TIMESTAMP       null comment '创建时间',
-    updateTime  datetime default CURRENT_TIMESTAMP       null on update CURRENT_TIMESTAMP comment '更新时间',
+    createTime  datetime default CURRENT_TIMESTAMP       not null comment '创建时间',
+    updateTime  datetime default CURRENT_TIMESTAMP       not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete    tinyint  default 0                       null comment '是否删除'
 )
     charset = utf8mb3
@@ -376,8 +375,8 @@ create table user_commodity_favorites
     commodityId bigint                             not null comment '商品 ID',
     status      tinyint  default 1                 null comment '1-正常收藏 0-取消收藏',
     remark      varchar(255)                       null comment '用户备注',
-    createTime  datetime default CURRENT_TIMESTAMP null comment '创建时间',
-    updateTime  datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete    tinyint  default 0                 null comment '是否删除',
     constraint unique_favorite
         unique (userId, commodityId)

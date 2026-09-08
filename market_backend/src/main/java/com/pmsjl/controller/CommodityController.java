@@ -79,7 +79,7 @@ public class CommodityController {
         return ResultUtils.success(result);
     }
     /***
-     * //TODO 这里原本采取了自定义isAdmin方法，为什么不用注解我不理解
+     *
      * 删除商品,仅管理员可删除
      * @param deleteRequest
      * @return
@@ -111,8 +111,6 @@ public class CommodityController {
         BeanUtils.copyProperties(commodityUpdateRequest, commodity);
         Boolean result = commodityService.updateCommodity(commodity);
         ThrowUtils.throwIf(result==false,ErrorCode.OPERATION_ERROR);
-        Long id = commodity.getId();
-        stringRedisTemplate.delete(CACHE_COMMODITY_KEY+id);
         return ResultUtils.success(result);
 
     }

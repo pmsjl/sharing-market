@@ -1,6 +1,5 @@
 package com.pmsjl.service.Impl;
 
-import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
@@ -143,8 +142,6 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
         PostFavour oldPostFavour = this.getOne(wrapper);
 
         if(oldPostFavour==null){
-            postFavour.setUpdateTime(DateTime.now());
-            postFavour.setCreateTime(DateTime.now());
             boolean result = this.save(postFavour);
             ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR);
             boolean updateResult = postService.update().

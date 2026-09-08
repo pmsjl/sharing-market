@@ -3,7 +3,6 @@ package com.pmsjl.service.Impl;
 import static com.pmsjl.constant.RedisConstant.*;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.toolkit.Db;
@@ -54,8 +53,6 @@ public class CommodityTypeServiceImpl extends ServiceImpl<CommodityTypeMapper, C
     public Long addCommodityType(String typeName) {
         CommodityType commodityType = new CommodityType();
         commodityType.setTypeName(typeName);
-        commodityType.setCreateTime(DateTime.now());
-        commodityType.setUpdateTime(DateTime.now());
         boolean result = save(commodityType);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         Long id = commodityType.getId();
@@ -140,7 +137,6 @@ public class CommodityTypeServiceImpl extends ServiceImpl<CommodityTypeMapper, C
         }
         CommodityType commodityType = new CommodityType();
         BeanUtil.copyProperties(commodityTypeUpdateRequest, commodityType);
-        commodityType.setUpdateTime(DateTime.now());
         boolean result = updateById(commodityType);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         stringRedisTemplate.delete(COMMODITY_TYPE_KEY + id);

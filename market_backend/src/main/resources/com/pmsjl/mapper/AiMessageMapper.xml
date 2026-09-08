@@ -24,8 +24,7 @@
         SET content = #{content},
         status = 'FAILED',
         agentErrorKey = #{agentErrorKey},
-        retryable = 1,
-        updateTime = #{updateTime}
+        retryable = 1
         WHERE id = #{messageId}
         AND role = 'ASSISTANT'
         AND status = 'PENDING'

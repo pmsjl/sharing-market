@@ -15,17 +15,16 @@ public interface AiUsageGlobalDailyMapper extends BaseMapper<AiUsageGlobalDaily>
     @Insert("""
             INSERT IGNORE INTO ai_usage_global_daily
                 (usageDate, requestCount, successCount, failedCount,
-                 inputTokens, outputTokens, createTime, updateTime)
+                inputTokens, outputTokens)
             VALUES
-                (#{usageDate}, 0, 0, 0, 0, 0, NOW(), NOW())
+                (#{usageDate}, 0, 0, 0, 0, 0)
             """)
     int insertUsageGlobalDaily(@Param("usageDate") LocalDate usageDate);
 
     @Update("""
             UPDATE ai_usage_global_daily
             SET requestCount = requestCount + 1,
-                lastRequestTime = #{requestTime},
-                updateTime = #{requestTime}
+                lastRequestTime = #{requestTime}
             WHERE usageDate = #{usageDate}
               AND requestCount < #{limit}
             """)
@@ -37,8 +36,7 @@ public interface AiUsageGlobalDailyMapper extends BaseMapper<AiUsageGlobalDaily>
             UPDATE ai_usage_global_daily
             SET successCount = successCount + 1,
                 inputTokens = inputTokens + #{inputTokens},
-                outputTokens = outputTokens + #{outputTokens},
-                updateTime = NOW()
+                outputTokens = outputTokens + #{outputTokens}
             WHERE usageDate = #{usageDate}
             """)
     int recordSuccess(@Param("usageDate") LocalDate usageDate,
@@ -47,7 +45,7 @@ public interface AiUsageGlobalDailyMapper extends BaseMapper<AiUsageGlobalDaily>
 
     @Update("""
             UPDATE ai_usage_global_daily
-            SET failedCount = failedCount + 1, updateTime = NOW()
+            SET failedCount = failedCount + 1
             WHERE usageDate = #{usageDate}
             """)
     int recordFailure(@Param("usageDate") LocalDate usageDate);

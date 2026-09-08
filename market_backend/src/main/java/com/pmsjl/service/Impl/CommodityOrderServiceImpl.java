@@ -78,7 +78,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         ThrowUtils.throwIf(commodityOrder == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在无法删除");
         User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
-        if (!ObjectUtil.equals(userId, commodityOrder.getUserId()) && !userService.isAdmin(request)) {
+        if (!ObjectUtil.equals(userId, commodityOrder.getUserId()) && !userService.isAdmin()) {
             //注意这里的删除权限除了管理员还可以是订单的创建者进行删除
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
@@ -108,7 +108,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         CommodityOrder commodityOrder = getById(id);
         ThrowUtils.throwIf(commodityOrder == null, ErrorCode.NOT_FOUND_ERROR);
         User loginUser = userService.getLoginUser();
-        if (!ObjectUtil.equals(loginUser.getId(), commodityOrder.getUserId()) && !userService.isAdmin(request)) {
+        if (!ObjectUtil.equals(loginUser.getId(), commodityOrder.getUserId()) && !userService.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         //这里是我添加的权限校验，对于订单查询，查询人应该只能查询到自己的订单，或者管理员也行
