@@ -221,6 +221,9 @@ venv/
 ai_agent_service/scratch/
 *.scratch.py
 
+# 数据库迁移脚本由部署时手动传输，不进入公开仓库。
+/market_backend/sql/migrations/
+
 # 一次性种子/语料生成器及采集产物不进入仓库。
 /ai_agent_service/*_commodity_seed.py
 /ai_agent_service/tests/test_*_commodity_seed.py
