@@ -1,5 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pmsjl.mapper.PrivateMessageMapper">
-
+    <!-- Scope both directions to the authenticated user, including old conversations. -->
+    <sql id="myContacts">
+        SELECT contactUserId, MAX(receivedMessageId) AS lastReceivedMessageId
+        FROM (
+            SELECT recipientId AS contactUserId, NULL AS receivedMessageId
+            FROM private_message WHERE senderId = #{userId} AND isDelete = 0
+            UNION ALL
+            SELECT senderId AS contactUserId, id AS receivedMessageId
+            FROM private_message WHERE recipientId = #{userId} AND isDelete = 0
+        ) directions
+        WHERE contactUserId != #{userId}
+        GROUP BY contactUserId
+    </sql>
+    <select id="countMyConversations" resultType="long">
+        SELECT COUNT(*) FROM (<include refid="myContacts"/>) contacts
+    </select>
+    <select id="listMyConversations" resultType="com.pmsjl.model.vo.PrivateConversationVO">
+        SELECT contacts.contactUserId,
+               COALESCE(NULLIF(u.userName, ''), '对方用户') AS userName,
+               u.userAvatar, latest.id AS lastMessageId,
+               LEFT(latest.content, 120) AS lastMessageContent,
+               latest.createTime AS lastMessageTime, contacts.lastReceivedMessageId
+        FROM (<include refid="myContacts"/>) contacts
+        JOIN private_message latest ON latest.id = (
+            SELECT m.id FROM private_message m
+            WHERE m.isDelete = 0 AND (
+                (m.senderId = #{userId} AND m.recipientId = contacts.contactUserId)
+                OR (m.recipientId = #{userId} AND m.senderId = contacts.contactUserId)
+            )
+            ORDER BY m.createTime DESC, m.id DESC LIMIT 1
+        )
+        LEFT JOIN user u ON u.id = contacts.contactUserId AND u.isDelete = 0
+        ORDER BY latest.createTime DESC, latest.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
 </mapper>

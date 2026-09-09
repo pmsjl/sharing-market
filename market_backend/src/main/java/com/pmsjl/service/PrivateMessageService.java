@@ -6,6 +6,8 @@ import com.pmsjl.model.dto.privateMessage.PrivateMessageQueryRequest;
 import com.pmsjl.model.entity.PrivateMessage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pmsjl.model.vo.PrivateMessageVO;
+import com.pmsjl.model.vo.PrivateConversationVO;
+import com.pmsjl.common.PageRequest;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -17,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * @since 2026-07-08
  */
 public interface PrivateMessageService extends IService<PrivateMessage> {
+    Page<PrivateConversationVO> listMyConversations(PageRequest query);
 
     Long addPrivateMessage(PrivateMessageAddRequest privateMessageAddRequest, HttpServletRequest request);
 

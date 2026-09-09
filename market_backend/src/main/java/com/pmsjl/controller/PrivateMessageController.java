@@ -2,6 +2,8 @@ package com.pmsjl.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
+import com.pmsjl.common.PageRequest;
+import com.pmsjl.model.vo.PrivateConversationVO;
 import com.pmsjl.common.Result;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageAddRequest;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageQueryRequest;
@@ -29,6 +31,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PrivateMessageController {
     @Autowired
     private PrivateMessageService privateMessageService;
+
+    @PostMapping("/my/conversation/list/page/vo")
+    public Result<Page<PrivateConversationVO>> listMyConversations(@RequestBody PageRequest query) {
+        return ResultUtils.success(privateMessageService.listMyConversations(query));
+    }
 
     @PostMapping("/add")
     public Result<Long> addPrivateMessage(@RequestBody PrivateMessageAddRequest privateMessageAddRequest, HttpServletRequest request) {

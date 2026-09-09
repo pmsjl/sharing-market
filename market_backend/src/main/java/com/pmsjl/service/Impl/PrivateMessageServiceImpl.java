@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
+import com.pmsjl.common.PageRequest;
+import com.pmsjl.model.vo.PrivateConversationVO;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageAddRequest;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageQueryRequest;
 import com.pmsjl.model.entity.PrivateMessage;
@@ -37,6 +39,21 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
     @Autowired
     UserService userService;
     private static final Set<String> ALLOWED_PRIVATE_MESSAGE_SORT_FIELDS = Set.of("id", "createTime");
+
+    @Override
+    public Page<PrivateConversationVO> listMyConversations(PageRequest query) {
+        ThrowUtils.throwIf(query == null, ErrorCode.PARAMS_ERROR);
+        Long userId = userService.getLoginUser().getId();
+        int current = Math.max(1, query.getCurrent());
+        int size = query.getPageSize() <= 0 ? 20 : Math.min(100, query.getPageSize());
+        long total = baseMapper.countMyConversations(userId);
+        Page<PrivateConversationVO> page = new Page<>(current, size, total);
+        long offset = (long) (current - 1) * size;
+        if (offset < total) {
+            page.setRecords(baseMapper.listMyConversations(userId, offset, size));
+        }
+        return page;
+    }
 
     @Override
     public Long addPrivateMessage(PrivateMessageAddRequest privateMessageAddRequest, HttpServletRequest request) {

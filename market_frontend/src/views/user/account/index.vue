@@ -21,7 +21,12 @@
           <span>身份：{{ user.userRole || "-" }}</span>
         </div>
       </div>
-      <el-button type="primary" @click="updateUserInfo">保存资料</el-button>
+      <el-button
+        class="profile-paper-button"
+        type="primary"
+        @click="updateUserInfo"
+        >保存资料</el-button
+      >
     </section>
 
     <section class="coin-summary market-panel">
@@ -57,7 +62,9 @@
                 :show-file-list="false"
                 accept="image/*"
               >
-                <el-button type="primary">上传头像</el-button>
+                <el-button class="profile-paper-button" plain
+                  >上传头像</el-button
+                >
               </el-upload>
             </div>
 
@@ -72,12 +79,13 @@
                   <el-button
                     v-if="!isEditing"
                     size="small"
-                    type="primary"
+                    class="profile-edit-button"
+                    text
                     icon="Edit"
                     @click="startEditing"
-                    circle
                     aria-label="编辑昵称"
-                  />
+                    >编辑</el-button
+                  >
                 </div>
               </label>
               <label class="field-card">
@@ -197,16 +205,19 @@
         </section>
       </el-tab-pane>
 
-      <el-tab-pane
-        v-if="showPrivateMessageTab"
-        :label="chatTabLabel"
-        name="seventh"
-      >
-        <section class="tab-panel market-panel">
-          <PrivateMessage
-            :initial-contact="routeChatContact"
-            :allow-directory-contacts="isAdmin"
-          />
+      <el-tab-pane label="私聊" name="seventh">
+        <section class="tab-panel market-panel account-mail-entry">
+          <span class="market-eyebrow">CAMPUS MAIL</span>
+          <h2>和同学的来往，都在这里</h2>
+          <p>查看最近联系，接着上次的话题聊。</p>
+          <el-button
+            type="primary"
+            class="profile-paper-button"
+            @click="privateChat.openContact()"
+            >打开私信<span v-if="privateChat.hasUnread">
+              · 有新消息</span
+            ></el-button
+          >
         </section>
       </el-tab-pane>
     </el-tabs>
@@ -214,12 +225,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute } from "vue-router";
 import { GET_ID } from "@/utils/token";
 import useUserStore from "@/store/modules/user";
-import PrivateMessage from "@/components/PrivateMessage/index.vue";
+import usePrivateMessageStore from "@/store/modules/privateMessage";
 import Post from "@/components/Post/index.vue";
 import MyPost from "@/components/MyPost/index.vue";
 import MyComment from "@/components/MyComment/index.vue";
@@ -259,7 +270,7 @@ const total = ref(0);
 const commodityOrderList = ref<API.CommodityOrderVO[]>([]);
 const commodityList = ref<any[]>([]);
 const favoritesTotal = ref(0);
-const routeChatContact = ref<API.UserVO | undefined>();
+const privateChat = usePrivateMessageStore();
 const currentUserId = String(GET_ID() || "");
 const campusCoinWallet = ref<CampusCoinWalletVO>({
   balance: 0
@@ -276,12 +287,6 @@ const user = ref({
   userProfile: "",
   userRole: ""
 });
-
-const isAdmin = computed(() => user.value.userRole === "admin");
-const showPrivateMessageTab = computed(
-  () => isAdmin.value || Boolean(routeChatContact.value?.id)
-);
-const chatTabLabel = computed(() => (isAdmin.value ? "聊天室" : "私聊"));
 
 const queryParams = ref({
   current: 1,
@@ -478,10 +483,6 @@ const resolveChatContactFromRoute = async () => {
   const contactUserId = getQueryValue(route.query.contactUserId);
 
   if (!contactUserId || contactUserId === currentUserId) {
-    routeChatContact.value = undefined;
-    if (activeName.value === "seventh" && !isAdmin.value) {
-      activeName.value = "first";
-    }
     return;
   }
 
@@ -503,9 +504,8 @@ const resolveChatContactFromRoute = async () => {
     }
   }
 
-  routeChatContact.value = contact;
   if (route.query.tab === "chat") {
-    activeName.value = "seventh";
+    privateChat.openContact(contact);
   }
 };
 
@@ -541,6 +541,26 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+.profile-paper-button {
+  border-radius: 5px 12px 5px 5px;
+  padding: 11px 20px;
+  min-height: 42px;
+}
+.profile-edit-button {
+  border-radius: 5px;
+  color: var(--market-primary);
+}
+.account-mail-entry {
+  padding: 32px;
+  h2 {
+    font-family: var(--market-font-display);
+  }
+  p {
+    color: var(--market-muted);
+    margin: 12px 0 20px;
+  }
+}
+
 .personal-home-page {
   display: grid;
   gap: 20px;

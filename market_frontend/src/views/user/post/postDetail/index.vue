@@ -132,6 +132,7 @@
 </template>
 
 <script setup lang="ts">
+import usePrivateMessageStore from "@/store/modules/privateMessage";
 import Comments from "@/components/Comment/index.vue";
 import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -328,16 +329,13 @@ const returnToAgent = () => {
       : {}
   });
 };
+const privateChat = usePrivateMessageStore();
 const goToPrivateChat = () => {
   if (!canChatWithAuthor.value) return;
-  router.push({
-    path: "/user/account",
-    query: {
-      tab: "chat",
-      contactUserId: authorId.value,
-      contactName: post.value.user?.userName || "帖子作者",
-      contactAvatar: post.value.user?.userAvatar || ""
-    }
+  privateChat.openContact({
+    id: authorId.value,
+    userName: post.value.user?.userName || "帖子作者",
+    userAvatar: post.value.user?.userAvatar || ""
   });
 };
 // 在组件挂载时获取数据（hasThumb/hasFavour 已在 fetchPostDetail 中获取）

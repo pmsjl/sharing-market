@@ -1,7 +1,33 @@
 <template>
   <div class="top-actions">
-    <el-button size="small" @click="updateRefsh" icon="Refresh" circle />
-    <el-button size="small" @click="fullScren" icon="FullScreen" circle />
+    <button
+      class="paper-tool message-entry"
+      type="button"
+      :aria-label="chat.hasUnread ? '校园私信，有新消息' : '校园私信'"
+      :aria-expanded="chat.opened"
+      @click="chat.openContact()"
+    >
+      <el-icon><Message /></el-icon><span>消息</span
+      ><i v-if="chat.hasUnread" class="message-dot" aria-hidden="true"></i>
+    </button>
+    <el-tooltip content="刷新页面" placement="bottom"
+      ><button
+        class="paper-tool utility-tool"
+        type="button"
+        aria-label="刷新页面"
+        @click="updateRefsh"
+      >
+        <el-icon><Refresh /></el-icon></button
+    ></el-tooltip>
+    <el-tooltip content="切换全屏" placement="bottom"
+      ><button
+        class="paper-tool utility-tool fullscreen-tool"
+        type="button"
+        aria-label="切换全屏"
+        @click="fullScren"
+      >
+        <el-icon><FullScreen /></el-icon></button
+    ></el-tooltip>
 
     <el-popover
       placement="bottom"
@@ -48,22 +74,51 @@
         </div>
       </div>
       <template #reference>
-        <el-button size="small" icon="Setting" circle />
+        <button
+          class="paper-tool"
+          type="button"
+          aria-label="市集外观设置"
+          title="市集外观设置"
+        >
+          <el-icon><SettingIcon /></el-icon>
+        </button>
       </template>
     </el-popover>
 
-    <img class="user-avatar" :src="userStore.avatar" alt="用户头像" />
-    <el-dropdown>
-      <button class="user-trigger" type="button">
-        <span>{{ userStore.userAccount || "同学" }}</span>
+    <el-dropdown trigger="click" popper-class="campus-account-menu">
+      <button class="user-trigger" type="button" aria-label="打开个人菜单">
+        <el-avatar class="user-avatar" :src="userStore.avatar" shape="square">{{
+          (userStore.userName || "同学").slice(0, 1)
+        }}</el-avatar>
+        <span class="user-trigger-copy"
+          ><small>校园通行证</small
+          ><strong>{{
+            userStore.userName || userStore.userAccount || "同学"
+          }}</strong></span
+        >
         <el-icon class="el-icon--right"><arrow-down /></el-icon>
       </button>
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item icon="UserFilled" @click="goPersonalHomePage"
+          <li class="account-menu-identity" role="presentation">
+            <el-avatar :size="38" :src="userStore.avatar" shape="square">{{
+              (userStore.userName || "同学").slice(0, 1)
+            }}</el-avatar>
+            <span
+              ><small>我的校园通行证</small
+              ><strong>{{
+                userStore.userName || userStore.userAccount || "同学"
+              }}</strong></span
+            >
+          </li>
+          <el-dropdown-item icon="User" @click="goPersonalHomePage"
             >个人主页</el-dropdown-item
           >
-          <el-dropdown-item @click="logout" icon="CircleClose"
+          <el-dropdown-item
+            divided
+            class="account-logout"
+            @click="logout"
+            icon="SwitchButton"
             >退出登录</el-dropdown-item
           >
         </el-dropdown-menu>
@@ -73,10 +128,12 @@
 </template>
 
 <script setup lang="ts">
+import { Setting as SettingIcon } from "@element-plus/icons-vue";
 import { useRouter } from "vue-router";
 import { onMounted, ref } from "vue";
 import userUserStore from "@/store/modules/user";
 import useLayOutSettingStore from "@/store/modules/setting";
+import usePrivateMessageStore from "@/store/modules/privateMessage";
 import { GET_ID } from "@/utils/token";
 import { UserData } from "@/api/user/type";
 import { getUserVoByIdUsingGet } from "@/api/userController";
@@ -92,6 +149,7 @@ import {
 const $router = useRouter();
 const layOutSettingStore = useLayOutSettingStore();
 const userStore = userUserStore();
+const chat = usePrivateMessageStore();
 const dark = ref<boolean>(getStoredThemeMode() === "night");
 const accentPreset = ref<ThemeAccentPreset>(getStoredAccentPreset());
 const accentOptions: Array<{
@@ -136,15 +194,20 @@ const getUserInformationById = async () => {
   });
   if (result.code == 200) user.value = result.data;
   userStore.avatar = user.value.userAvatar;
+  userStore.userName = user.value.userName;
   userStore.userAccount = user.value.userAccount;
 };
 const updateRefsh = () => {
   layOutSettingStore.refsh = !layOutSettingStore.refsh;
 };
-const fullScren = () =>
-  document.fullscreenElement
-    ? document.exitFullscreen()
-    : document.documentElement.requestFullscreen();
+const fullScren = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch {
+    ElMessage.info("当前浏览器暂不支持全屏");
+  }
+};
 const goPersonalHomePage = () => $router.push("/user/account");
 const logout = async () => {
   await userStore.userLogout();
@@ -166,29 +229,94 @@ export default { name: "Setting" };
   align-items: center;
   gap: 8px;
 }
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  margin-left: 4px;
-  padding: 2px;
+.paper-tool {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--market-line);
-  border-radius: 10px;
+  border-radius: 5px 11px 5px 5px;
+  color: var(--market-ink);
   background: var(--market-surface);
-  object-fit: cover;
-  box-shadow: var(--market-shadow-soft);
+  box-shadow: 0 3px 0 var(--market-surface-soft);
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms;
+  .el-icon {
+    font-size: 17px;
+  }
+  &:hover {
+    border-color: var(--market-primary);
+    color: var(--market-primary);
+    background: var(--market-primary-soft);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--market-primary);
+    outline-offset: 3px;
+  }
+}
+.message-entry {
+  border-color: var(--market-line-strong);
+  font-weight: 700;
+}
+.message-dot {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--market-danger);
+  box-shadow: 0 0 0 2px var(--market-surface);
+}
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--market-primary-soft);
+  color: var(--market-primary);
 }
 .user-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 40px;
-  max-width: 160px;
-  border: 0;
+  gap: 10px;
+  min-height: 50px;
+  max-width: 210px;
+  padding: 6px 11px 6px 7px;
+  margin-left: 4px;
+  border: 1px solid var(--market-line);
+  border-left: 3px solid var(--market-orange);
+  border-radius: 5px 11px 5px 5px;
   color: var(--market-ink);
-  font-weight: 750;
-  background: transparent;
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow-soft);
   cursor: pointer;
-  span {
+  &:hover {
+    border-color: var(--market-orange);
+    background: var(--market-paper);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--market-primary);
+    outline-offset: 3px;
+  }
+}
+.user-trigger-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  text-align: left;
+  small {
+    color: var(--market-muted);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  strong {
+    font-size: 13px;
+    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -287,13 +415,104 @@ export default { name: "Setting" };
     font-size: 11px;
   }
 }
-@media (max-width: 560px) {
-  .top-actions .el-button:nth-child(2),
-  .top-actions .el-button:nth-child(3) {
+@media (max-width: 760px) {
+  .utility-tool {
+    display: none;
+  }
+  .user-trigger-copy {
     display: none;
   }
   .user-trigger {
-    max-width: 88px;
+    margin-left: 0;
+    min-height: 44px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .user-trigger .el-icon--right {
+    margin-left: 0;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  .paper-tool {
+    padding: 0 10px;
+  }
+}
+@media (max-width: 420px) {
+  .message-entry > span {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paper-tool {
+    transition: none;
+  }
+}
+</style>
+<style lang="scss">
+.campus-account-menu.el-popper {
+  min-width: 200px;
+  border: 1px solid var(--market-line);
+  border-top: 3px solid var(--market-orange);
+  border-top-color: var(--market-orange) !important;
+  border-radius: 6px 14px 6px 6px;
+  background: var(--market-surface);
+  box-shadow: var(--market-shadow);
+  .el-dropdown-menu {
+    padding: 8px;
+    background: transparent;
+  }
+  .account-menu-identity {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 14px 16px;
+    margin-bottom: 7px;
+    border-bottom: 1px dashed var(--market-line-strong);
+    .el-avatar {
+      flex-shrink: 0;
+      background: var(--market-primary-soft);
+      color: var(--market-primary);
+      border-radius: 4px;
+    }
+    span {
+      display: grid;
+      gap: 5px;
+      max-width: 150px;
+    }
+    small {
+      color: var(--market-muted);
+      font-size: 11px;
+    }
+    strong {
+      color: var(--market-ink);
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  .el-dropdown-menu__item {
+    min-height: 44px;
+    padding: 10px 14px;
+    gap: 9px;
+    border-radius: 5px;
+    color: var(--market-ink);
+    font-size: 14px;
+  }
+  .el-dropdown-menu__item:not(.is-disabled):hover,
+  .el-dropdown-menu__item:focus {
+    color: var(--market-primary);
+    background: var(--market-primary-soft);
+  }
+  .el-dropdown-menu__item--divided {
+    border-top: 1px dashed var(--market-line-strong);
+    margin-top: 7px;
+  }
+  .account-logout:hover,
+  .account-logout:focus {
+    color: var(--market-danger) !important;
+    background: var(--market-danger-soft) !important;
   }
 }
 </style>

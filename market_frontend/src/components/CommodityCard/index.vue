@@ -159,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+import usePrivateMessageStore from "@/store/modules/privateMessage";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
@@ -361,15 +362,13 @@ const returnToAgent = () => {
   });
 };
 
+const privateChat = usePrivateMessageStore();
 const handleContactSeller = () => {
   if (!canContactSeller.value) return;
-  router.push({
-    path: "/user/account",
-    query: {
-      tab: "chat",
-      contactUserId: sellerId.value,
-      contactName: commodity.value.adminName || "卖家"
-    }
+  privateChat.openContact({
+    id: sellerId.value,
+    userName: commodity.value.adminName || "卖家",
+    userAvatar: ""
   });
 };
 

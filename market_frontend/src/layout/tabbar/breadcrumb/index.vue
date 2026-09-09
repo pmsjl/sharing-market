@@ -57,7 +57,29 @@ export default {
   }
 }
 @media (max-width: 600px) {
+  .chalk-breadcrumb {
+    width: 100%;
+    :deep(.el-breadcrumb__item:last-child) {
+      max-width: 100%;
+    }
+    :deep(.el-breadcrumb__inner) {
+      max-width: 100%;
+    }
+    :deep(.el-breadcrumb__inner > span) {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    :deep(.el-breadcrumb__inner > .el-icon) {
+      flex-shrink: 0;
+    }
+  }
   .chalk-breadcrumb :deep(.el-breadcrumb__item:not(:last-child)) {
+    display: none;
+  }
+}
+@media (max-width: 420px) {
+  .chalk-breadcrumb :deep(.el-breadcrumb__inner > .el-icon) {
     display: none;
   }
 }

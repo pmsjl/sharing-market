@@ -53,6 +53,8 @@ request.interceptors.response.use(
       }
     }
     error.message = responseData?.message || msg;
+    // Background message polling reports connection state in the message panel.
+    if (error.config?.silent) return Promise.reject(error);
     error.requestMessageShown = true;
     ElMessage({
       type: "error",
