@@ -497,7 +497,7 @@ onMounted(() => {
   }
 
   strong {
-    color: var(--market-orange);
+    color: var(--market-orange-text);
     font-family: var(--market-font-mono);
     font-size: 20px;
     font-variant-numeric: tabular-nums;
@@ -815,7 +815,7 @@ onMounted(() => {
     .showcase-meta strong {
       display: block;
       margin-bottom: 5px;
-      color: var(--market-orange);
+      color: var(--market-orange-text);
       font-size: 17px;
     }
 

@@ -49,7 +49,7 @@
           </el-button>
           <el-button
             v-if="canContactSeller"
-            type="success"
+            type="primary"
             plain
             @click="handleContactSeller"
           >
@@ -532,7 +532,7 @@ onMounted(async () => {
 .price-cell strong {
   display: block;
   margin-top: 6px;
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-family: var(--market-font-mono);
   font-size: 40px;
   font-weight: 900;

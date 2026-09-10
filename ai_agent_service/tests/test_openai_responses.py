@@ -535,6 +535,57 @@ class OpenAIResponsesClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(
             all(len(source.citations) == 1 for source in response.sources))
 
+    def test_source_contract_cleans_unicode_and_limits_document_citations(self):
+        chunks = [
+            RetrievedChunk(
+                chunk_id=f"GUIDE:emoji#chunk-{index}",
+                document_id="GUIDE:emoji",
+                source_type="GUIDE",
+                source_id="emoji",
+                category="platform_policy",
+                title="  " + "😀" * 201 + "  ",
+                section=None,
+                content="\x00  " + "😀" * 1201 + "  ",
+                score=1 - index / 100,
+                metadata={},
+            ) for index in range(3)
+        ]
+        context = RagContext(plan=RagQueryPlan(), retrieved=chunks)
+        knowledge_map = {
+            f"K{index}": item.chunk_id
+            for index, item in enumerate(chunks, 1)
+        }
+        output = AgentModelOutput.model_validate({
+            "intent": "GENERAL_GUIDE",
+            "summary": "摘要",
+            "memorySummary": "会话摘要",
+            "recommendations": [],
+            "purchaseAdvice": [],
+            "warnings": [],
+            "searchKeywords": [],
+            "knowledgeReferences": ["K1", "K1", "K2", "K3"],
+            "courseReferences": [],
+        })
+        service = AgentService(
+            make_settings(),
+            openai_client=StubOpenAIClient([]),
+            java_backend_client=StubJavaBackendClient(),
+        )
+
+        sources = service._validate_model_references(
+            output, set(), context, knowledge_map, {},
+        )
+
+        self.assertEqual(len(sources), 1)
+        self.assertEqual(sources[0].title, "😀" * 200)
+        self.assertEqual(
+            [item.chunkId for item in sources[0].citations],
+            ["GUIDE:emoji#chunk-0", "GUIDE:emoji#chunk-1"],
+        )
+        self.assertIsNone(sources[0].citations[0].section)
+        self.assertEqual(sources[0].citations[0].excerpt, "😀" * 300)
+        self.assertEqual(sources[0].citations[0].content, "😀" * 1200)
+
     async def test_request_uses_responses_payload(self):
         captured = {}
 

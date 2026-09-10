@@ -60,13 +60,13 @@ class AiAccessServiceImplTest {
         AgentUsage usage = new AgentUsage();
         usage.setInputTokens(120);
         usage.setOutputTokens(45);
-        when(usageDailyService.recordSuccess(7L, usageDate, 120L, 45L)).thenReturn(true);
-        when(globalDailyService.recordSuccess(usageDate, 120L, 45L)).thenReturn(true);
+        when(usageDailyService.updateUsageSuccess(7L, usageDate, 120L, 45L)).thenReturn(true);
+        when(globalDailyService.updateUsageSuccess(usageDate, 120L, 45L)).thenReturn(true);
 
         service.recordSuccess(7L, new AiUsageDate(usageDate), usage);
 
-        verify(usageDailyService).recordSuccess(7L, usageDate, 120L, 45L);
-        verify(globalDailyService).recordSuccess(usageDate, 120L, 45L);
+        verify(usageDailyService).updateUsageSuccess(7L, usageDate, 120L, 45L);
+        verify(globalDailyService).updateUsageSuccess(usageDate, 120L, 45L);
     }
 
     @Test

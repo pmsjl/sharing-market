@@ -1,5 +1,14 @@
 <template>
-  <div class="post-browse">
+  <div class="market-page post-browse">
+    <header class="market-page-header">
+      <div>
+        <span class="market-eyebrow">同学交流墙</span>
+        <h1 class="market-title">交易攻略</h1>
+        <p class="market-subtitle">
+          淘好物、避小坑，分享你在校园市集里的经验。
+        </p>
+      </div>
+    </header>
     <!-- 搜索区域 -->
     <div class="search-bar">
       <div class="post-toolbar" v-if="!addPost">
@@ -27,12 +36,7 @@
         </div>
       </div>
       <div class="post-toolbar post-toolbar--back" v-else>
-        <el-button
-          type="success"
-          class="toolbar-button"
-          @click="addPost = false"
-          :icon="Back"
-        >
+        <el-button class="toolbar-button" @click="addPost = false" :icon="Back">
           返回攻略列表
         </el-button>
       </div>
@@ -225,9 +229,8 @@ const truncateContent = (text: string, length: number) => {
 
 <style scoped lang="scss">
 .post-browse {
-  max-width: 1200px;
+  width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 20px;
 
   .search-bar {
     margin-bottom: 20px;
@@ -393,8 +396,9 @@ const truncateContent = (text: string, length: number) => {
     }
 
     .post-header .post-title {
-      font-family: var(--market-font-display);
-      font-size: 21px;
+      font-family: var(--market-font-body);
+      font-size: 20px;
+      font-weight: 700;
     }
 
     .user-info .user-details .post-time,
@@ -405,7 +409,7 @@ const truncateContent = (text: string, length: number) => {
   }
 
   .post-list .post-item .post-footer .post-actions .action-item--active {
-    color: var(--market-orange);
+    color: var(--market-orange-text);
   }
 
   .post-tags {
@@ -421,14 +425,14 @@ const truncateContent = (text: string, length: number) => {
     font-weight: 800;
 
     b {
-      color: var(--market-orange);
+      color: var(--market-orange-text);
     }
   }
 }
 
 @media (max-width: 760px) {
   .post-browse {
-    padding: 12px;
+    padding: 0;
 
     .post-toolbar {
       grid-template-columns: 1fr;

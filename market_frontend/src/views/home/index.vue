@@ -47,6 +47,44 @@
       </button>
     </section>
 
+    <section class="fresh-section" aria-labelledby="fresh-title">
+      <div class="market-page-header">
+        <div>
+          <span class="market-eyebrow">今日好物橱窗</span>
+          <h2 id="fresh-title" class="market-title">市集精选</h2>
+          <p class="market-subtitle">
+            书籍、数码、穿搭与宿舍生活，发现适合自己的校园好物。
+          </p>
+        </div>
+        <el-button @click="$router.push('/user/commodity')"
+          >逛全部商品 →</el-button
+        >
+      </div>
+      <el-skeleton
+        v-if="freshLoading"
+        :rows="5"
+        animated
+        aria-label="正在加载精选商品"
+      />
+      <div
+        v-else-if="freshFailed"
+        class="fresh-fallback market-panel"
+        role="status"
+      >
+        <p>精选商品暂时没有加载出来，再试一次吧。</p>
+        <el-button @click="loadFreshCommodities">重新加载</el-button>
+      </div>
+      <CommodityList
+        v-else-if="freshCommodities.length"
+        :commodityList="freshCommodities"
+      />
+      <div v-else class="fresh-fallback market-panel">
+        <p>暂时没有可展示的商品照片，先去集市逛逛吧。</p>
+        <el-button @click="loadFreshCommodities">重新加载</el-button>
+        <el-button @click="$router.push('/user/commodity')">去逛商品</el-button>
+      </div>
+    </section>
+
     <section class="carousel-note market-panel">
       <div class="section-heading">
         <span class="market-eyebrow">逛摊路线</span>
@@ -79,6 +117,8 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
+import CommodityList from "@/components/CommodityList/index.vue";
+import { listCommodityVoByPageUsingPost } from "@/api/commodityController";
 import { useRouter } from "vue-router";
 import { animateIn, parallaxFloat } from "@/utils/motion";
 import illBuy from "@/assets/illustrations/textbook.svg";
@@ -89,6 +129,110 @@ import illPost from "@/assets/illustrations/notice-pin.svg";
 const $router = useRouter();
 const pageRef = ref<HTMLElement | null>(null);
 let cleanupParallax: (() => void) | undefined;
+
+const freshCommodities = ref<API.CommodityVO[]>([]);
+const freshLoading = ref(true);
+const freshFailed = ref(false);
+const showcaseCommodityIds = new Set([
+  "2060023541910327297", // 登录页：耐克 Air Zoom 跑步鞋
+  "2060034286219800578" // 登录页：索尼 WH-1000XM5 降噪耳机
+]);
+const preferredHomepageCommodityIds = [
+  "2064027734698377223", // 书籍：活着
+  "2064027734698377229", // 数码：小米无线鼠标
+  "2064027734698377235", // 优衣库纯色卫衣
+  "2064027734698377240" // 宿舍生活：收纳箱三件套
+];
+// 首页橱窗只陈列可加载的真实封面；不以场景图替代商品实拍。
+const hasUsableCover = (src: string): Promise<boolean> =>
+  new Promise((resolve) => {
+    const cover = new Image();
+    const finish = (available: boolean) => {
+      window.clearTimeout(timer);
+      cover.onload = null;
+      cover.onerror = null;
+      resolve(available);
+    };
+    const timer = window.setTimeout(() => finish(false), 4000);
+    cover.onload = () => finish(cover.naturalWidth > 0);
+    cover.onerror = () => finish(false);
+    cover.src = src;
+  });
+
+const loadFreshCommodities = async () => {
+  freshLoading.value = true;
+  freshFailed.value = false;
+  try {
+    const available: API.CommodityVO[] = [];
+    // 单独读取所选商品，避免它们不在最新一页时失去优先展示资格。
+    const preferredResults = await Promise.allSettled(
+      preferredHomepageCommodityIds.map(async (id) => {
+        const result = await listCommodityVoByPageUsingPost(
+          { id, current: 1, pageSize: 1, isListed: 1 },
+          { silent: true }
+        );
+        if (result.code !== 200) throw new Error("商品加载失败");
+        const item = result.data?.records?.find(
+          (record) => String(record.id) === id && record.isListed !== 0
+        );
+        if (
+          item?.commodityAvatar?.trim() &&
+          (await hasUsableCover(item.commodityAvatar.trim()))
+        ) {
+          return item;
+        }
+        return undefined;
+      })
+    );
+    for (const result of preferredResults) {
+      if (result.status === "fulfilled" && result.value)
+        available.push(result.value);
+    }
+    // 下架、删除或缺图时，以最新上架的其他真实商品补位。
+    if (available.length < 4) {
+      const result = await listCommodityVoByPageUsingPost(
+        {
+          current: 1,
+          pageSize: 12,
+          isListed: 1,
+          sortField: "createTime",
+          sortOrder: "desc"
+        },
+        { silent: true }
+      ).catch(() => null);
+      if (!result || result.code !== 200) {
+        if (!available.length) throw new Error("商品加载失败");
+      } else {
+        const excludedIds = new Set([
+          ...showcaseCommodityIds,
+          ...preferredHomepageCommodityIds
+        ]);
+        const candidates = (result.data?.records || []).filter(
+          (item) =>
+            item.commodityAvatar?.trim() &&
+            item.isListed !== 0 &&
+            !excludedIds.has(String(item.id))
+        );
+        for (
+          let offset = 0;
+          offset < candidates.length && available.length < 4;
+          offset += 4
+        ) {
+          const batch = candidates.slice(offset, offset + 4);
+          const checks = await Promise.all(
+            batch.map((item) => hasUsableCover(item.commodityAvatar!.trim()))
+          );
+          available.push(...batch.filter((_, index) => checks[index]));
+        }
+      }
+    }
+    freshCommodities.value = available.slice(0, 4);
+  } catch {
+    freshFailed.value = true;
+  } finally {
+    freshLoading.value = false;
+  }
+};
 
 const images = [
   {
@@ -147,6 +291,7 @@ const quickEntries = [
 ];
 
 onMounted(() => {
+  void loadFreshCommodities();
   animateIn(
     pageRef.value?.querySelectorAll(
       ".home-hero, .quick-note, .carousel-note"
@@ -169,6 +314,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+.fresh-section {
+  margin: 8px 0;
+}
+.fresh-fallback {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 32px;
+  color: var(--market-muted);
+}
+
 .home-page {
   display: grid;
   gap: 22px;
@@ -179,7 +335,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 430px);
   gap: 28px;
-  min-height: 360px;
+  min-height: 320px;
   padding: clamp(30px, 4vw, 48px);
   overflow: hidden;
   background: radial-gradient(
@@ -237,7 +393,7 @@ onUnmounted(() => {
     margin: 16px 0;
     color: var(--market-ink);
     font-family: var(--market-font-display);
-    font-size: clamp(34px, 5vw, 56px);
+    font-size: clamp(30px, 3.3vw, 44px);
     font-weight: 900;
     line-height: 1.06;
   }
@@ -288,14 +444,14 @@ onUnmounted(() => {
   padding: 7px 14px;
   color: var(--market-chalk);
   text-align: center;
-  background: #284d3e;
+  background: #17365f;
   box-shadow: 0 6px 12px rgba(62, 45, 24, 0.17);
   transform: translateX(-50%) rotate(-0.6deg);
 
   span {
-    color: rgba(253, 246, 227, 0.58);
+    color: #e8eef7;
     font-family: var(--market-font-mono);
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 1.2px;
   }
 }
@@ -318,9 +474,9 @@ onUnmounted(() => {
   small {
     display: block;
     margin-bottom: 6px;
-    color: var(--market-orange);
+    color: var(--market-orange-text);
     font-family: var(--market-font-mono);
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 1.2px;
   }
 }
@@ -346,13 +502,13 @@ onUnmounted(() => {
 .card-tech {
   right: 34px;
   top: 86px;
-  color: #fff;
-  background: var(--market-blue);
+  color: var(--market-on-primary);
+  background: var(--market-primary);
   transform: rotate(4deg);
 }
 
 .card-tech small {
-  color: #ffe0a3;
+  color: inherit;
 }
 
 .card-life {
@@ -405,7 +561,7 @@ onUnmounted(() => {
   }
 
   span {
-    color: var(--market-orange);
+    color: var(--market-orange-text);
     font-size: 12px;
     font-weight: 900;
     letter-spacing: 2px;

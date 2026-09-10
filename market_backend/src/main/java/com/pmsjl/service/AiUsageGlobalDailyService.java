@@ -11,7 +11,7 @@ public interface AiUsageGlobalDailyService extends IService<AiUsageGlobalDaily> 
 
     boolean updateRequestCount(LocalDate usageDate, int limit, Date requestTime);
 
-    boolean recordSuccess(LocalDate usageDate, long inputTokens, long outputTokens);
+    boolean updateUsageSuccess(LocalDate usageDate, long inputTokens, long outputTokens);
 
     boolean recordFailure(LocalDate usageDate);
 

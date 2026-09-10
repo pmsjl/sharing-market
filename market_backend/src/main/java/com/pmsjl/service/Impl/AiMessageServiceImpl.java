@@ -137,11 +137,6 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     @Override
     public AiChatVO sendMessage(Long conversationId, AiChatMessageRequest aiChatMessageRequest, HttpServletRequest request) {
         //1.校验数据
-        AiConversation aiConversation = aiConversationService.getById(conversationId);
-        ThrowUtils.throwIf(aiConversation == null ||
-                        aiConversation.getIsDelete() == 1 ||
-                        !StringUtils.equals(aiConversation.getStatus(), AiConversationStatusEnum.ACTIVE.getValue()),
-                ErrorCode.NOT_FOUND_ERROR, "会话不存在，无法继续对话");
         String content = StringUtils.trimToEmpty(aiChatMessageRequest.getContent());
         ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "咨询内容不能为空");
         ThrowUtils.throwIf(content.length() > MAX_MESSAGE_LENGTH, ErrorCode.PARAMS_ERROR,
@@ -149,41 +144,34 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         AiShoppingContext aiShoppingContext = aiChatMessageRequest.getShoppingContext();
         aiChatService.validateShoppingContext(aiShoppingContext);
         User loginUser = userService.getLoginUser();
-        ThrowUtils.throwIf(!ObjectUtil.equals(loginUser.getId(), aiConversation.getUserId()),
-                ErrorCode.NO_AUTH_ERROR, "对话属于其他用户，无法正常发送");
-
 
         String requestId = UUID.randomUUID().toString();
         PendingMessage pendingMessage = transactionTemplate.execute(status -> {
-            AiUsageDate usageReservation = aiAccessService.reserveUsage(loginUser.getId());
-            //这里自定义了一个方法利用FOR UPDATE上了行锁，避免了不必要的并发导致no相同的问题，结束条件是事务提交
-            // 获取的conversation不是重点，主要是上锁
             AiConversation conversation =
-                    aiConversationMapper.selectByIdForUpdate(conversationId);
+                    aiConversationMapper.selectOwnedByIdForUpdate(conversationId, loginUser.getId());
             ThrowUtils.throwIf(
                     conversation == null,
                     ErrorCode.NOT_FOUND_ERROR,
-                    "会话不存在"
+                    "会话不存在，无法继续对话"
             );
             ThrowUtils.throwIf(
-                    !ObjectUtil.equals(loginUser.getId(), conversation.getUserId())
-                            || !StringUtils.equals(
-                            conversation.getStatus(),
-                            AiConversationStatusEnum.ACTIVE.getValue()
-                    ),
+                    !StringUtils.equals(conversation.getStatus(), AiConversationStatusEnum.ACTIVE.getValue()),
                     ErrorCode.NOT_FOUND_ERROR,
                     "会话不存在，无法继续对话"
             );
-            //1.检查pendingMessage，原则上我们当前所发的消息之前不应该有其他pending的消息，否则要做相应处理
+            //1.会话行锁内检查 pending，确保并发发送不会产生多个未完成回复
             // 因为锁释放了，可能还在获取agent消息，这时候其他请求再次涌入可能出现多个pending情况，
             //我们要确保如果已存在pending，并且不超时。新的消息无法发送
             //但如果没有pendingMessage，或者有但是已经超时了，那就可以正常发送了
             checkPendingMessage(conversationId);
 
-            //2.更新数据
+            //2.会话锁已持有，再预占用量；所有既有会话事务都遵循“会话锁 -> 用量锁”
+            AiUsageDate usageReservation = aiAccessService.reserveUsage(loginUser.getId());
+
+            //3.更新消息和会话
             String shoppingContext = serializeObject(aiShoppingContext, "购买条件");
             conversation.setShoppingContext(shoppingContext);
-            //3.为了给agentRequest添加history信息，同时不被锁释放后的其他消息影响，
+            //4.为了给 agentRequest 添加 history 信息，同时不被锁释放后的其他消息影响，
             // 所以我们获得的history最好利用锁获取真实的历史消息
             List<AgentHistoryMessage> agentHistoryMessages = baseMapper
                     .selectRecentSuccessfulHistory(
@@ -206,7 +194,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         });
         ThrowUtils.throwIf(pendingMessage == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
 
-        //3.构建传入python的请求类
+        //5.构建传入Python的请求类
         AgentRunRequest agentRunRequest = buildAgentRunRequest(pendingMessage);
         try {
             AgentRunResponse agentRunResponse = aiAgentClient.runAgent(requestId, agentRunRequest);
@@ -304,10 +292,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         return transactionTemplate.execute(status -> {
             AiConversation conversation = aiConversationMapper.selectByIdForUpdate(
                     pendingMessage.conversation().getId());
-            //这里也加锁，是因为不加锁会导致出现我们这里将assistant的message更新为success或者fail
-            //然后我们下一轮消息的第一波消息校验通过因为不是pending，但是下一轮的第二波消息可能比这里更新更快
-            //导致这里的第二波消息更新又覆盖回退了conversation。
-            //造成这一问题的原因就是我们的这里操作不具备原子性，中间被其他代码插入了，所以这里加锁就可以解决问题
+            // 完成结果必须基于当前会话行和消息状态，不能使用请求开始时缓存的旧会话对象覆盖并发更新。
             ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
                     "Conversation does not exist");
 
@@ -318,18 +303,20 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             assistantMessage.setStatus(AiMessageStatusEnum.FAILED.getValue());
             assistantMessage.setAgentErrorKey(e.getAgentErrorKey());
             assistantMessage.setRetryable(e.isRetryable());
-            ThrowUtils.throwIf(!updateAssistantMessageIfPending(assistantMessage), ErrorCode.CONFLICT_ERROR,
+            ThrowUtils.throwIf(baseMapper.updatePendingAssistantMessage(assistantMessage) != 1,
+                    ErrorCode.CONFLICT_ERROR,
                     "记录 AI 回复失败状态失败");
+
+            aiAccessService.recordFailure(
+                    pendingMessage.loginUser().getId(),
+                    pendingMessage.usageReservation()
+            );
 
             conversation.setLastMessagePreview(FAILED_MESSAGE);
             conversation.setLastMessageTime(now);
             conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
-            aiAccessService.recordFailure(
-                    pendingMessage.loginUser().getId(),
-                    pendingMessage.usageReservation()
-            );
             return buildChatVO(pendingMessage.requestId(), conversation, pendingMessage.shoppingContext(),
                     pendingMessage.userMessage(), assistantMessage);
         });
@@ -356,7 +343,8 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             assistantMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
             assistantMessage.setAgentErrorKey(null);
             assistantMessage.setRetryable(false);
-            ThrowUtils.throwIf(!updateAssistantMessageIfPending(assistantMessage), ErrorCode.CONFLICT_ERROR,
+            ThrowUtils.throwIf(baseMapper.updatePendingAssistantMessage(assistantMessage) != 1,
+                    ErrorCode.CONFLICT_ERROR,
                     "更新 AI 回复失败");
 
             aiAgentTraceService.saveAgentTraces(
@@ -520,27 +508,6 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
     }
 
-
-    /**
-     * Completes one assistant message only if it is still waiting for this request's result.
-     * This prevents a late result from resurrecting a message already marked as failed.
-     */
-    private boolean updateAssistantMessageIfPending(AiMessage assistantMessage) {
-        return this.lambdaUpdate()
-                .eq(AiMessage::getId, assistantMessage.getId())
-                .eq(AiMessage::getStatus, AiMessageStatusEnum.PENDING.getValue())
-                .set(AiMessage::getContent, assistantMessage.getContent())
-                .set(AiMessage::getStructuredContent, assistantMessage.getStructuredContent())
-                .set(AiMessage::getModelName, assistantMessage.getModelName())
-                .set(AiMessage::getStatus, assistantMessage.getStatus())
-                .set(AiMessage::getInputTokens, assistantMessage.getInputTokens())
-                .set(AiMessage::getOutputTokens, assistantMessage.getOutputTokens())
-                .set(AiMessage::getLatencyMs, assistantMessage.getLatencyMs())
-                .set(AiMessage::getAgentErrorKey, assistantMessage.getAgentErrorKey())
-                .set(AiMessage::getRetryable, assistantMessage.getRetryable())
-                .set(AiMessage::getUpdateTime, assistantMessage.getUpdateTime())
-                .update();
-    }
 
     private String serializeObject(Object value, String fieldName) {
         if (value == null) {

@@ -14,47 +14,82 @@
     </div>
 
     <el-card class="market-filter-card">
-      <div class="market-form-grid">
-        <el-form-item label="商品名称">
-          <el-input
-            v-model="queryParams.commodityName"
-            placeholder="例如：高数教材"
-          />
-        </el-form-item>
-        <el-form-item label="商品简介">
-          <el-input
-            v-model="queryParams.commodityDescription"
-            placeholder="关键词、品牌或用途"
-          />
-        </el-form-item>
-        <el-form-item label="新旧程度">
-          <el-input v-model="queryParams.degree" placeholder="例如：九成新" />
-        </el-form-item>
-        <el-form-item label="库存数量">
-          <el-input
-            v-model="queryParams.commodityInventory"
-            placeholder="输入库存数量"
-          />
-        </el-form-item>
-        <el-form-item label="商品分类">
-          <el-select
-            v-model="queryParams.commodityTypeId"
-            placeholder="请选择商品分类"
-            clearable
-          >
-            <el-option
-              v-for="type in commodityTypeList"
-              :key="type.id"
-              :label="type.typeName"
-              :value="type.id"
+      <el-form label-position="top" @submit.prevent="searchCommodities">
+        <div class="commodity-search-row">
+          <el-form-item label="找一件好物">
+            <el-input
+              v-model="queryParams.commodityName"
+              placeholder="搜索商品名称，例如：高数教材"
+              clearable
             />
-          </el-select>
-        </el-form-item>
-        <div class="market-form-actions">
-          <el-button link type="warning" @click="resetQuery">重置</el-button>
-          <el-button type="warning" @click="getCommodityList">查询</el-button>
+          </el-form-item>
+          <el-form-item label="商品分类">
+            <el-select
+              v-model="queryParams.commodityTypeId"
+              placeholder="全部分类"
+              clearable
+            >
+              <el-option
+                v-for="type in commodityTypeList"
+                :key="type.id"
+                :label="type.typeName"
+                :value="type.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="排序">
+            <el-select v-model="sortMode" aria-label="商品排序">
+              <el-option label="最新上架" value="latest" />
+              <el-option label="价格从低到高" value="priceAsc" />
+              <el-option label="价格从高到低" value="priceDesc" />
+            </el-select>
+          </el-form-item>
+          <div class="search-actions">
+            <el-button type="primary" native-type="submit">查找好物</el-button>
+            <el-button @click="resetQuery">重置</el-button>
+          </div>
         </div>
-      </div>
+        <button
+          type="button"
+          class="filter-toggle"
+          :aria-expanded="advancedFiltersOpen"
+          aria-controls="commodity-advanced-filters"
+          @click="advancedFiltersOpen = !advancedFiltersOpen"
+        >
+          {{ advancedFiltersOpen ? "收起更多条件" : "更多筛选条件" }}
+          <span v-if="advancedFilterCount"
+            >（已填 {{ advancedFilterCount }} 项）</span
+          >
+          <span aria-hidden="true">{{ advancedFiltersOpen ? "−" : "＋" }}</span>
+        </button>
+        <div
+          v-show="advancedFiltersOpen"
+          id="commodity-advanced-filters"
+          class="advanced-filters"
+        >
+          <el-form-item label="简介关键词">
+            <el-input
+              v-model="queryParams.commodityDescription"
+              placeholder="品牌、用途或描述"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="新旧程度">
+            <el-input
+              v-model="queryParams.degree"
+              placeholder="例如：九成新"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="库存数量">
+            <el-input
+              v-model="queryParams.commodityInventory"
+              placeholder="按准确数量筛选"
+              clearable
+            />
+          </el-form-item>
+        </div>
+      </el-form>
     </el-card>
 
     <CommodityList :commodityList="commodityList" />
@@ -151,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
   addCommodityUsingPost,
   listCommodityVoByPageUsingPost
@@ -168,6 +203,21 @@ const total = ref(0);
 const pageSize = ref(8);
 const currentPage = ref(1);
 const commodityTypeList = ref([]);
+
+const advancedFiltersOpen = ref(false);
+const sortMode = ref("latest");
+const advancedFilterCount = computed(
+  () =>
+    [
+      queryParams.value.commodityDescription,
+      queryParams.value.degree,
+      queryParams.value.commodityInventory
+    ].filter(Boolean).length
+);
+const searchCommodities = () => {
+  currentPage.value = 1;
+  void getCommodityList();
+};
 
 const queryParams = ref({
   commodityName: "",
@@ -187,6 +237,8 @@ const getCommodityList = async () => {
       degree: queryParams.value.degree,
       commodityInventory: queryParams.value.commodityInventory,
       commodityTypeId: queryParams.value.commodityTypeId,
+      sortField: sortMode.value === "latest" ? "createTime" : "price",
+      sortOrder: sortMode.value === "priceAsc" ? "asc" : "desc",
       isListed: 1
     });
     if (res.code === 200) {
@@ -217,6 +269,8 @@ const getCommodityTypeList = async () => {
 };
 
 const resetQuery = () => {
+  currentPage.value = 1;
+  sortMode.value = "latest";
   queryParams.value = {
     commodityName: "",
     commodityDescription: "",
@@ -234,6 +288,7 @@ const handlePageChange = (page: number) => {
 
 const handleSizeChange = (size: number) => {
   pageSize.value = size;
+  currentPage.value = 1;
   getCommodityList();
 };
 
@@ -306,6 +361,68 @@ const resetAddForm = () => {
 </script>
 
 <style scoped lang="scss">
+.commodity-search-row {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 2fr) minmax(140px, 1fr) minmax(150px, 1fr)
+    auto;
+  align-items: end;
+  gap: 16px;
+  .el-form-item {
+    margin-bottom: 0;
+  }
+}
+.search-actions {
+  display: flex;
+  gap: 8px;
+  .el-button + .el-button {
+    margin-left: 0;
+  }
+}
+.filter-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 6px 0;
+  border: 0;
+  color: var(--market-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  &:hover {
+    color: var(--market-primary);
+  }
+}
+.advanced-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 18px;
+  margin-top: 8px;
+  border-top: 1px dashed var(--market-line);
+  .el-form-item {
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 1180px) {
+  .commodity-search-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .commodity-search-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    > .el-form-item:first-child,
+    .search-actions {
+      grid-column: 1 / -1;
+    }
+  }
+  .advanced-filters {
+    grid-template-columns: 1fr;
+  }
+}
 .commodity-page {
   display: block;
 }

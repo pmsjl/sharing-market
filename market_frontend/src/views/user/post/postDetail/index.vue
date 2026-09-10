@@ -445,7 +445,7 @@ onMounted(async () => {
       :deep(.md-editor-preview > p:first-of-type::first-letter) {
         float: left;
         margin: 8px 8px 0 0;
-        color: var(--market-orange);
+        color: var(--market-orange-text);
         font-family: var(--market-font-display);
         font-size: 3.2em;
         font-weight: 900;
@@ -514,7 +514,7 @@ onMounted(async () => {
       transition: color 0.3s;
 
       &:hover {
-        color: var(--market-orange);
+        color: var(--market-orange-text);
       }
 
       span {

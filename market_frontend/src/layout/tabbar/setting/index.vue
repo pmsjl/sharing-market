@@ -342,7 +342,7 @@ export default { name: "Setting" };
   }
 }
 .theme-kicker {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-family: var(--market-font-mono);
   font-size: 10px;
   font-weight: 800;

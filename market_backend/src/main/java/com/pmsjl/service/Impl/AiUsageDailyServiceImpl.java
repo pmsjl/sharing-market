@@ -24,7 +24,7 @@ public class AiUsageDailyServiceImpl extends ServiceImpl<AiUsageDailyMapper, AiU
     }
 
     @Override
-    public boolean recordSuccess(Long userId, LocalDate usageDate, long inputTokens, long outputTokens) {
+    public boolean updateUsageSuccess(Long userId, LocalDate usageDate, long inputTokens, long outputTokens) {
         return baseMapper.recordSuccess(userId, usageDate, inputTokens, outputTokens) == 1;
     }
 

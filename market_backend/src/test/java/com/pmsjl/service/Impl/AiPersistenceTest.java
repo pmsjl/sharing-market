@@ -3,6 +3,8 @@ package com.pmsjl.service.Impl;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.MybatisSqlSessionFactoryBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pmsjl.common.ErrorCode;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.entity.AiConversation;
@@ -31,6 +33,7 @@ import static org.mockito.ArgumentMatchers.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.sql.Connection;
+import java.time.LocalDate;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -130,16 +133,69 @@ class AiPersistenceTest {
         assistant.setStatus("SUCCESS");
         assistant.setUpdateTime(updated);
         recorder.sql.clear();
-        assertEquals(Boolean.TRUE, ReflectionTestUtils.invokeMethod(continuation,
-                "updateAssistantMessageIfPending", assistant));
+        assertEquals(1, messages.updatePendingAssistantMessage(assistant));
         assertEquals(1, recorder.sql.size());
         AiMessage stored = messages.selectById(assistant.getId());
         assertEquals(created, stored.getCreateTime());
         assertEquals(updated, stored.getUpdateTime());
         assistant.setContent("late reply");
-        assertEquals(Boolean.FALSE, ReflectionTestUtils.invokeMethod(continuation,
-                "updateAssistantMessageIfPending", assistant));
+        assertEquals(0, messages.updatePendingAssistantMessage(assistant));
         assertEquals("answer", messages.selectById(assistant.getId()).getContent());
+    }
+
+    @Test
+    void lateInitialSuccessCannotResurrectFailedAssistantOrUpdateConversation() throws Exception {
+        User user = new User();
+        user.setId(1L);
+        AiConversation conversation = ReflectionTestUtils.invokeMethod(chat, "getAiConversation",
+                user, "hello", null, PersistenceTime.now());
+        AiMessage userMessage = ReflectionTestUtils.invokeMethod(chat, "getUserMessage",
+                conversation, user, "hello", "request-late");
+        AiMessage assistant = ReflectionTestUtils.invokeMethod(chat, "getAssistantMessage",
+                conversation, user, "request-late");
+        assistant.setStatus("FAILED");
+        assistant.setContent("已超时");
+        assistant.setAgentErrorKey("PENDING_TIMEOUT");
+        assistant.setRetryable(true);
+        assistant.setUpdateTime(PersistenceTime.now());
+        assertEquals(1, messages.updateById(assistant));
+        AiConversation before = conversations.selectById(conversation.getId());
+
+        var access = mock(AiAccessService.class);
+        var traces = mock(AiAgentTraceService.class);
+        var assembler = mock(AiStructuredContentAssembler.class);
+        when(assembler.assemble(any())).thenReturn(new AiStructuredContentVO());
+        var transactions = mock(TransactionTemplate.class);
+        when(transactions.execute(any())).thenAnswer(invocation ->
+                ((TransactionCallback<?>) invocation.getArgument(0))
+                        .doInTransaction(mock(TransactionStatus.class)));
+        ReflectionTestUtils.setField(chat, "aiAccessService", access);
+        ReflectionTestUtils.setField(chat, "aiAgentTraceService", traces);
+        ReflectionTestUtils.setField(chat, "aiStructuredContentAssembler", assembler);
+        ReflectionTestUtils.setField(chat, "transactionTemplate", transactions);
+
+        AgentRunResponse response = new AgentRunResponse();
+        response.setAnswer("late answer");
+        response.setOutput(new AgentOutput());
+
+        Class<?> pendingType = Class.forName(
+                "com.pmsjl.service.Impl.AiChatServiceImpl$PendingChat");
+        var constructor = pendingType.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        Object pendingChat = constructor.newInstance(
+                "request-late", user, null, conversation, userMessage, assistant,
+                new AiUsageDate(LocalDate.now()));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> ReflectionTestUtils.invokeMethod(chat, "persistAgentSuccess",
+                        pendingChat, response));
+        assertEquals(ErrorCode.CONFLICT_ERROR.getCode(), exception.getCode());
+        assertEquals("已超时", messages.selectById(assistant.getId()).getContent());
+        assertEquals("FAILED", messages.selectById(assistant.getId()).getStatus());
+        AiConversation after = conversations.selectById(conversation.getId());
+        assertEquals(before.getLastMessagePreview(), after.getLastMessagePreview());
+        assertEquals(before.getLastMessageTime(), after.getLastMessageTime());
+        verifyNoInteractions(access, traces);
     }
 
     @Test
@@ -214,7 +270,7 @@ class AiPersistenceTest {
             recorder.sql.clear();
             result = chat.createConversation(request, null);
         }
-        assertEquals(existingConversation ? 6 : 1,
+        assertEquals(existingConversation ? 5 : 1,
                 recorder.sql.stream().filter(sql -> sql.startsWith("SELECT")).count());
         assertEquals(existingConversation ? 3 : 2,
                 recorder.sql.stream().filter(sql -> sql.startsWith("UPDATE")).count());

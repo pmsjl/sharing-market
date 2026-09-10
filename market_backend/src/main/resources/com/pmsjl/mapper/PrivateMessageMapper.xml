@@ -40,6 +40,6 @@
     -- 这里的获取的是对应的对方用户的用户信息
         ORDER BY latest.createTime DESC, latest.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
-    --这里的用户信息和用户间对话的最新消息用于前端画面显示，而对方发来的最新的消息id是用来判断后续新消息的显示情况的
+    -- 这里的用户信息和用户间对话的最新消息用于前端画面显示，而对方发来的最新的消息id是用来判断后续新消息的显示情况的
     </select>
 </mapper>

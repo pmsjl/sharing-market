@@ -10,14 +10,18 @@ import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
+import com.pmsjl.model.dto.ai.AiChatMessageRequest;
 import com.pmsjl.model.dto.ai.AiMessageQueryRequest;
 import com.pmsjl.model.entity.AiConversation;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.User;
+import com.pmsjl.model.enums.AiConversationStatusEnum;
 import com.pmsjl.model.enums.AiMessageRoleEnum;
 import com.pmsjl.model.enums.AiMessageStatusEnum;
 import com.pmsjl.model.vo.AiMessageVO;
 import com.pmsjl.model.vo.AiPageVO;
+import com.pmsjl.service.AiAccessService;
+import com.pmsjl.service.AiChatService;
 import com.pmsjl.service.AiConversationService;
 import com.pmsjl.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +38,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.pmsjl.constant.AiChatConstant.PENDING_TIMEOUT_ERROR_KEY;
@@ -50,6 +55,12 @@ class AiMessageServiceImplTest {
 
     @Mock
     private AiConversationService conversationService;
+
+    @Mock
+    private AiChatService chatService;
+
+    @Mock
+    private AiAccessService accessService;
 
     @Mock
     private AiConversationMapper conversationMapper;
@@ -74,11 +85,72 @@ class AiMessageServiceImplTest {
                 AiMessage.class);
         messageService = new AiMessageServiceImpl();
         ReflectionTestUtils.setField(messageService, "baseMapper", messageMapper);
+        ReflectionTestUtils.setField(messageService, "mapperClass", AiMessageMapper.class);
         ReflectionTestUtils.setField(messageService, "aiConversationService", conversationService);
+        ReflectionTestUtils.setField(messageService, "aiChatService", chatService);
         ReflectionTestUtils.setField(messageService, "aiConversationMapper", conversationMapper);
         ReflectionTestUtils.setField(messageService, "transactionTemplate", transactionTemplate);
         ReflectionTestUtils.setField(messageService, "userService", userService);
+        ReflectionTestUtils.setField(messageService, "aiAccessService", accessService);
         ReflectionTestUtils.setField(messageService, "objectMapper", new ObjectMapper());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sendMessageLocksConversationBeforeReservingUsage() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser()).thenReturn(loginUser);
+        doNothing().when(chatService).validateShoppingContext(any());
+
+        AiConversation conversation = new AiConversation();
+        conversation.setId(500L);
+        conversation.setUserId(101L);
+        conversation.setStatus(AiConversationStatusEnum.ACTIVE.getValue());
+
+        List<String> order = new ArrayList<>();
+        doAnswer(invocation -> {
+            order.add("conversation");
+            return conversation;
+        }).when(conversationMapper).selectOwnedByIdForUpdate(500L, 101L);
+        when(accessService.reserveUsage(101L)).thenAnswer(invocation -> {
+            order.add("usage");
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "quota reached");
+        });
+        when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(TransactionStatus.class));
+        });
+
+        AiChatMessageRequest requestBody = new AiChatMessageRequest();
+        requestBody.setContent("继续咨询");
+
+        assertThrows(BusinessException.class,
+                () -> messageService.sendMessage(500L, requestBody, request));
+        assertEquals(List.of("conversation", "usage"), order);
+        verify(messageMapper, never()).insert(any(AiMessage.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sendMessageDoesNotReserveUsageWhenConversationIsMissingOrNotOwned() {
+        User loginUser = new User();
+        loginUser.setId(101L);
+        when(userService.getLoginUser()).thenReturn(loginUser);
+        doNothing().when(chatService).validateShoppingContext(any());
+        when(conversationMapper.selectOwnedByIdForUpdate(500L, 101L)).thenReturn(null);
+        when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(TransactionStatus.class));
+        });
+
+        AiChatMessageRequest requestBody = new AiChatMessageRequest();
+        requestBody.setContent("继续咨询");
+
+        assertThrows(BusinessException.class,
+                () -> messageService.sendMessage(500L, requestBody, request));
+        verify(accessService, never()).reserveUsage(anyLong());
+        verify(messageMapper, never()).insert(any(AiMessage.class));
     }
 
     @Test

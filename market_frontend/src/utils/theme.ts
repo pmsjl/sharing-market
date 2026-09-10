@@ -72,8 +72,8 @@ export const THEME_ACCENTS: Record<ThemeAccentPreset, AccentDefinition> = {
   "lake-blue": {
     label: "湖面蓝",
     light: {
-      primary: "#0284c7",
-      hover: "#0369a1",
+      primary: "#0369a1",
+      hover: "#075985",
       soft: "#e3f5fd",
       light3: "#42a3d5",
       light5: "#81c2e3",

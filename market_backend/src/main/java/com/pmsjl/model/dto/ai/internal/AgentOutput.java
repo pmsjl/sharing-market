@@ -30,7 +30,7 @@ public class AgentOutput implements Serializable {
     /** 可用于继续检索平台商品的关键词。 */
     private List<String> searchKeywords = new ArrayList<>();
 
-    /** RAG 检索命中的来源候选，返回用户前仍需 Java 校验。 */
+    /** Python 已组装和校验的 RAG 来源，Java 仅复核帖子的实时可用性与版本。 */
     private List<AgentSource> sources = new ArrayList<>();
 
     /** Python 按检索分数生成，展示字段仍由 Java 查询数据库。 */

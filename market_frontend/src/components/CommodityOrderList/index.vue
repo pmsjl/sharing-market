@@ -237,7 +237,7 @@ watch(
 }
 
 .order-kicker {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-family: var(--market-font-mono);
   font-size: 12px;
   font-weight: 900;
@@ -270,7 +270,7 @@ watch(
 
 .price,
 .countdown {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-family: var(--market-font-mono);
 }
 

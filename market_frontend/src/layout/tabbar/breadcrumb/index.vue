@@ -48,7 +48,7 @@ export default {
   :deep(.el-breadcrumb__separator) {
     width: 18px;
     margin: 0 6px;
-    color: var(--market-orange);
+    color: var(--market-orange-text);
     font-size: 0;
   }
   :deep(.el-breadcrumb__separator)::after {

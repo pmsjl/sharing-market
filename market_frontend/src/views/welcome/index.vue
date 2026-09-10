@@ -200,7 +200,7 @@ onMounted(() => {
 
   span {
     display: block;
-    color: var(--market-orange);
+    color: var(--market-orange-text);
     font-size: 12px;
     font-weight: 900;
     letter-spacing: 2px;

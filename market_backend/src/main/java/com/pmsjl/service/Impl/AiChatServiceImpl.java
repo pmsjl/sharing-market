@@ -131,9 +131,17 @@ public class AiChatServiceImpl implements AiChatService {
         return agentRunRequest;
     }
 
-    /** 第二段数据库事务：成功后只更新先前创建的那一条助手消息。 */
+    /**
+     * 第二段数据库事务：会话行锁、PENDING 条件更新、用量记录和会话摘要更新保持在同一事务中。
+     * Python 结果可能迟到，因此以数据库中的当前消息状态决定是否继续写入。
+     */
     private AiChatVO persistAgentSuccess(PendingChat pendingChat, AgentRunResponse agentRunResponse) {
         return transactionTemplate.execute(status -> {
+            AiConversation conversation = aiConversationMapper.selectByIdForUpdate(
+                    pendingChat.conversation().getId());
+            ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
+                    "Conversation does not exist");
+
             Date now = PersistenceTime.now();
             AiStructuredContentVO structuredContent = aiStructuredContentAssembler.assemble(
                     agentRunResponse.getOutput());
@@ -148,12 +156,12 @@ public class AiChatServiceImpl implements AiChatService {
             assistantMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
             assistantMessage.setAgentErrorKey(null);
             assistantMessage.setRetryable(false);
-            ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
-                    "更新 AI 回复失败");
+            ThrowUtils.throwIf(aiMessageMapper.updatePendingAssistantMessage(assistantMessage) != 1,
+                    ErrorCode.CONFLICT_ERROR, "更新 AI 回复失败");
 
             aiAgentTraceService.saveAgentTraces(
                     pendingChat.requestId(),
-                    pendingChat.conversation().getId(),
+                    conversation.getId(),
                     assistantMessage.getId(),
                     agentRunResponse.getTraces()
             );
@@ -164,23 +172,25 @@ public class AiChatServiceImpl implements AiChatService {
                     agentRunResponse.getUsage()
             );
 
-            AiConversation conversation = pendingChat.conversation();
             conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
             conversation.setLastMessageTime(now);
             conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
-            conversation = aiConversationMapper.selectById(conversation.getId());
-            ThrowUtils.throwIf(conversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
             return buildChatVO(pendingChat.requestId(), conversation, pendingChat.shoppingContext(),
                     pendingChat.userMessage(), assistantMessage);
         });
     }
 
-    /** 第二段数据库事务：Python 或模型失败时将 PENDING 消息落为可展示、可重试的 FAILED。 */
+    /** 第二段数据库事务：按与成功路径相同的锁顺序将 PENDING 消息落为 FAILED。 */
     private AiChatVO persistAgentFailure(PendingChat pendingChat, AiAgentClientException exception) {
         return transactionTemplate.execute(status -> {
+            AiConversation conversation = aiConversationMapper.selectByIdForUpdate(
+                    pendingChat.conversation().getId());
+            ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
+                    "Conversation does not exist");
+
             Date now = PersistenceTime.now();
             AiMessage assistantMessage = pendingChat.assistantMessage();
             assistantMessage.setUpdateTime(now);
@@ -188,21 +198,19 @@ public class AiChatServiceImpl implements AiChatService {
             assistantMessage.setStatus(AiMessageStatusEnum.FAILED.getValue());
             assistantMessage.setAgentErrorKey(exception.getAgentErrorKey());
             assistantMessage.setRetryable(exception.isRetryable());
-            ThrowUtils.throwIf(aiMessageMapper.updateById(assistantMessage) != 1, ErrorCode.OPERATION_ERROR,
-                    "记录 AI 回复失败状态失败");
+            ThrowUtils.throwIf(aiMessageMapper.updatePendingAssistantMessage(assistantMessage) != 1,
+                    ErrorCode.CONFLICT_ERROR, "记录 AI 回复失败状态失败");
 
-            AiConversation conversation = pendingChat.conversation();
+            aiAccessService.recordFailure(
+                    pendingChat.loginUser().getId(),
+                    pendingChat.aiUsageDate()
+            );
+
             conversation.setLastMessagePreview(FAILED_MESSAGE);
             conversation.setLastMessageTime(now);
             conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
-            conversation = aiConversationMapper.selectById(conversation.getId());
-            ThrowUtils.throwIf(conversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
-            aiAccessService.recordFailure(
-                    pendingChat.loginUser().getId(),
-                    pendingChat.aiUsageDate()
-            );
             return buildChatVO(pendingChat.requestId(), conversation, pendingChat.shoppingContext(),
                     pendingChat.userMessage(), assistantMessage);
         });

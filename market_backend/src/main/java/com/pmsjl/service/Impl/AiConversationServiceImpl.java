@@ -122,11 +122,13 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
         AiConversationStatusEnum status = queryRequest.getStatus() == null
                 ? AiConversationStatusEnum.ACTIVE
                 : queryRequest.getStatus();
+        AiConversationSceneEnum scene = queryRequest.getScene();
         LambdaQueryWrapper<AiConversation> queryWrapper = new LambdaQueryWrapper<AiConversation>()
                 .eq(AiConversation::getUserId, loginUser.getId())
-                .eq(queryRequest.getScene() != null, AiConversation::getScene,
-                        queryRequest.getScene() == null ? null : queryRequest.getScene().getValue())
                 .eq(AiConversation::getStatus, status.getValue());
+        if (scene != null) {
+            queryWrapper.eq(AiConversation::getScene, scene.getValue());
+        }
         Page<AiConversation> entityPage = baseMapper.selectPage(page, queryWrapper);
 
 

@@ -145,7 +145,7 @@ onMounted(getNoticeList);
   place-items: center;
   border: 1px solid rgba(37, 99, 235, 0.2);
   border-radius: 12px 20px 12px 20px;
-  color: #fff;
+  color: var(--market-on-primary);
   background: var(--market-primary);
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
   transform: rotate(-3deg);
@@ -162,9 +162,9 @@ onMounted(getNoticeList);
 .newsflash-copy {
   min-width: 0;
   > span {
-    color: var(--market-orange);
+    color: var(--market-orange-text);
     font-family: var(--market-font-mono);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 1.5px;
   }
@@ -201,7 +201,7 @@ onMounted(getNoticeList);
   span {
     margin-top: 4px;
     color: var(--market-muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
   }
 }
@@ -266,7 +266,7 @@ onMounted(getNoticeList);
 .board-route {
   color: var(--market-primary);
   font-family: var(--market-font-mono);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 1.3px;
 }
@@ -338,7 +338,7 @@ onMounted(getNoticeList);
   align-items: center;
   gap: 8px;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .paper-meta time {
   margin-left: auto;
@@ -353,7 +353,7 @@ onMounted(getNoticeList);
   padding: 2px 7px;
   border: 2px solid var(--market-orange);
   border-radius: 5px;
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-family: var(--market-font-display);
   font-weight: 900;
   transform: rotate(-4deg);
@@ -380,7 +380,7 @@ onMounted(getNoticeList);
   }
   small {
     color: var(--market-muted);
-    font-size: 10px;
+    font-size: 12px;
   }
   b {
     font-size: 13px;
@@ -389,7 +389,7 @@ onMounted(getNoticeList);
     margin-left: auto;
     color: var(--market-faint);
     font-family: var(--market-font-display);
-    font-size: 11px;
+    font-size: 12px;
     font-style: normal;
   }
 }

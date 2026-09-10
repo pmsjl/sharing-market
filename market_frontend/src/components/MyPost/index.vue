@@ -387,7 +387,7 @@ onMounted(() => {
 
   b {
     margin-right: 1px;
-    color: var(--market-orange);
+    color: var(--market-orange-text);
   }
 }
 
@@ -414,7 +414,7 @@ onMounted(() => {
 }
 
 .post-stats .stat-active {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
 }
 
 .post-actions {

@@ -34,7 +34,7 @@ public class AiAgentTraceServiceImpl
         }
 
         List<AiAgentTrace> traceEntities = traces.stream()
-                .map(trace -> toEntity(
+                .map(trace -> toAgentTrace(
                         requestId,
                         conversationId,
                         messageId,
@@ -49,27 +49,27 @@ public class AiAgentTraceServiceImpl
         );
     }
 
-    private AiAgentTrace toEntity(String requestId,
-                                  Long conversationId,
-                                  Long messageId,
-                                  AgentToolTrace trace) {
+    private AiAgentTrace toAgentTrace(String requestId,
+                                      Long conversationId,
+                                      Long messageId,
+                                      AgentToolTrace trace) {
         ThrowUtils.throwIf(
                 trace == null || trace.getStatus() == null,
                 ErrorCode.SYSTEM_ERROR,
                 "AI 工具调用轨迹结构异常"
         );
 
-        AiAgentTrace entity = new AiAgentTrace();
-        entity.setRequestId(requestId);
-        entity.setConversationId(conversationId);
-        entity.setMessageId(messageId);
-        entity.setToolName(trace.getToolName());
-        entity.setToolArguments(toJson(trace.getToolArguments()));
-        entity.setToolResultSummary(toJson(trace.getToolResultSummary()));
-        entity.setStatus(trace.getStatus().getValue());
-        entity.setLatencyMs(trace.getLatencyMs());
-        entity.setErrorMessage(trace.getErrorMessage());
-        return entity;
+        AiAgentTrace aiAgentTrace = new AiAgentTrace();
+        aiAgentTrace.setRequestId(requestId);
+        aiAgentTrace.setConversationId(conversationId);
+        aiAgentTrace.setMessageId(messageId);
+        aiAgentTrace.setToolName(trace.getToolName());
+        aiAgentTrace.setToolArguments(toJson(trace.getToolArguments()));
+        aiAgentTrace.setToolResultSummary(toJson(trace.getToolResultSummary()));
+        aiAgentTrace.setStatus(trace.getStatus().getValue());
+        aiAgentTrace.setLatencyMs(trace.getLatencyMs());
+        aiAgentTrace.setErrorMessage(trace.getErrorMessage());
+        return aiAgentTrace;
     }
 
     private String toJson(Object value) {

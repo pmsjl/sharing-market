@@ -1736,7 +1736,7 @@ button {
   gap: 8px;
   margin-top: 9px;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .ticket-actions {
   display: inline-flex;
@@ -1793,7 +1793,7 @@ button {
 }
 .rail-history-error > button {
   border: 0;
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-weight: 800;
   background: transparent;
   cursor: pointer;
@@ -1887,7 +1887,7 @@ button {
   border-bottom: 1px solid transparent;
   color: var(--market-muted);
   font-family: var(--market-font-display);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   background: transparent;
   cursor: pointer;
@@ -1986,7 +1986,7 @@ button {
 }
 .context-trigger.active {
   border-color: rgba(217, 108, 44, 0.42);
-  color: var(--market-orange);
+  color: var(--market-orange-text);
 }
 .context-trigger b {
   display: grid;
@@ -1994,9 +1994,9 @@ button {
   height: 20px;
   place-items: center;
   border-radius: 50%;
-  color: #fff;
-  font-size: 11px;
-  background: var(--market-orange);
+  color: var(--market-on-accent);
+  font-size: 12px;
+  background: var(--market-accent-solid);
 }
 
 .message-stage {
@@ -2081,8 +2081,8 @@ button {
   transform: translateY(-2px);
 }
 .starter-grid span {
-  color: var(--market-orange);
-  font-size: 11px;
+  color: var(--market-orange-text);
+  font-size: 12px;
   font-weight: 900;
 }
 .starter-grid strong {
@@ -2122,7 +2122,7 @@ button {
   gap: 10px;
   margin: 0 5px 6px;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .message-meta strong {
   color: var(--market-ink);
@@ -2494,7 +2494,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-size: 10px;
 }
 
@@ -2536,12 +2536,12 @@ button {
 .source-link p {
   margin: 3px 0 0;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .source-link b {
-  color: var(--market-orange);
-  font-size: 11px;
+  color: var(--market-orange-text);
+  font-size: 12px;
   white-space: nowrap;
 }
 .source-detail-heading {
@@ -2570,7 +2570,7 @@ button {
   border-radius: 999px;
   color: var(--market-green);
   background: var(--market-note-green-bg);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
 }
 .source-detail-body {
@@ -2584,7 +2584,7 @@ button {
 }
 .source-detail-label {
   margin-bottom: 10px;
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-size: 12px;
   font-weight: 900;
 }
@@ -2627,7 +2627,7 @@ button {
   color: var(--market-ink);
 }
 .recommendation-heading span {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -2679,7 +2679,7 @@ button {
 .commodity-copy small {
   margin: 0;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .commodity-copy div {
   display: flex;
@@ -2687,11 +2687,11 @@ button {
   justify-content: space-between;
 }
 .commodity-copy b {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
 }
 .commodity-copy em {
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
 }
 .match-score {
@@ -2788,7 +2788,7 @@ button {
 }
 .composer-actions > span {
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .active-context {
   display: flex;
@@ -2797,11 +2797,11 @@ button {
   max-width: 960px;
   margin: 0 auto 7px;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .active-context button {
   border: 0;
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   background: transparent;
   cursor: pointer;
 }
@@ -2866,7 +2866,7 @@ button {
 :global(.typing-speed-menu > span) {
   padding: 3px 7px 7px;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -2900,7 +2900,7 @@ button {
 
 :global(.typing-speed-menu small) {
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 @keyframes bounce {
@@ -3162,7 +3162,7 @@ button {
 <style scoped lang="scss">
 /* 海盐蓝 · 校园市集智能导购台 */
 .agent-desk {
-  border-radius: 14px 22px 14px 22px;
+  border-radius: var(--market-radius-board);
   background: var(--market-surface);
 }
 .conversation-rail {
@@ -3194,7 +3194,7 @@ button {
 }
 .conversation-ticket {
   border-color: transparent;
-  border-radius: 7px 13px 7px 13px;
+  border-radius: var(--market-radius-note);
   background: transparent;
 }
 .conversation-ticket:hover,
@@ -3205,8 +3205,8 @@ button {
   transform: translateX(3px);
 }
 .new-chat-button {
-  border-radius: 7px 13px 7px 13px;
-  color: #fff;
+  border-radius: var(--market-radius-note);
+  color: var(--market-on-primary);
   background: var(--market-primary);
   box-shadow: 0 9px 18px rgba(37, 99, 235, 0.18);
 }
@@ -3236,7 +3236,7 @@ button {
 }
 .desk-mark {
   border-color: rgba(249, 115, 22, 0.32);
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   background: var(--market-orange-soft);
 }
 .status-dot {
@@ -3272,7 +3272,7 @@ button {
 }
 .welcome-stamp {
   border-color: var(--market-orange);
-  color: var(--market-orange);
+  color: var(--market-orange-text);
   background: var(--market-orange-soft);
 }
 .starter-card {
@@ -3416,7 +3416,7 @@ button {
 .source-link,
 .related-post-card {
   border-color: var(--market-line);
-  border-radius: 7px 13px 7px 13px;
+  border-radius: var(--market-radius-note);
   color: var(--market-ink);
   background: var(--market-surface);
   box-shadow: 0 5px 14px rgba(30, 64, 109, 0.06);
@@ -3436,7 +3436,7 @@ button {
   background: var(--market-primary-soft);
 }
 .commodity-copy b {
-  color: var(--market-orange);
+  color: var(--market-orange-text);
 }
 .source-link b {
   color: var(--market-primary);
@@ -3458,7 +3458,7 @@ button {
 }
 .stamp-send {
   border-radius: 8px 13px 8px 13px;
-  color: #fff;
+  color: var(--market-on-primary);
   background: var(--market-primary);
 }
 @keyframes message-arrive {
@@ -3632,7 +3632,7 @@ html.dark .markdown-answer :deep(.github-theme table th) {
   }
 
   .quota-ticket__heading strong {
-    color: var(--market-orange);
+    color: var(--market-orange-text);
   }
 }
 

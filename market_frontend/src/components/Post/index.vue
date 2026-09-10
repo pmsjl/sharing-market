@@ -358,7 +358,7 @@ const truncateContent = (text: string, length: number) => {
   }
 
   .post-list .post-item .post-footer .post-actions .action-item--active {
-    color: var(--market-orange);
+    color: var(--market-orange-text);
   }
 
   .post-tags {
@@ -374,7 +374,7 @@ const truncateContent = (text: string, length: number) => {
     font-weight: 800;
 
     b {
-      color: var(--market-orange);
+      color: var(--market-orange-text);
     }
   }
 }

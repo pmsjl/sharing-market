@@ -33,6 +33,24 @@
 
     </update>
 
+    <update id="updatePendingAssistantMessage">
+        UPDATE ai_message
+        SET content = #{content},
+            structuredContent = #{structuredContent},
+            modelName = #{modelName},
+            status = #{status},
+            inputTokens = #{inputTokens},
+            outputTokens = #{outputTokens},
+            latencyMs = #{latencyMs},
+            agentErrorKey = #{agentErrorKey},
+            retryable = #{retryable},
+            updateTime = #{updateTime}
+        WHERE id = #{id}
+          AND role = 'ASSISTANT'
+          AND status = 'PENDING'
+          AND isDelete = 0
+    </update>
+
 
     <select id="selectRecentSuccessfulHistory"
             resultType="com.pmsjl.model.entity.AiMessage">

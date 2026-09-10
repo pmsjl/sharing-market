@@ -6,10 +6,10 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-/** RAG source candidate returned by Python; Java must verify it. */
+/** Python 已组装和校验的 RAG 来源；Java 复核 POST 的实时可用性与版本。 */
 @Data
 public class AgentSource implements Serializable {
-    /** 来源业务类型，例如商品、帖子或平台规则文档。 */
+    /** 来源业务类型：POST 或 GUIDE。 */
     private String sourceType;
 
     /** 原始业务来源 ID，不包含 sourceType 前缀。 */

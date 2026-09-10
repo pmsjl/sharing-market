@@ -57,10 +57,10 @@ public class AiAccessServiceImpl implements AiAccessService {
         validateReservation(userId, aiUsageDate);
         long inputTokens = usage == null || usage.getInputTokens() == null ? 0L : usage.getInputTokens();
         long outputTokens = usage == null || usage.getOutputTokens() == null ? 0L : usage.getOutputTokens();
-        ThrowUtils.throwIf(!usageDailyService.recordSuccess(
+        ThrowUtils.throwIf(!usageDailyService.updateUsageSuccess(
                         userId, aiUsageDate.usageDate(), inputTokens, outputTokens),
                 ErrorCode.OPERATION_ERROR, "更新用户 AI 用量失败");
-        ThrowUtils.throwIf(!globalDailyService.recordSuccess(
+        ThrowUtils.throwIf(!globalDailyService.updateUsageSuccess(
                         aiUsageDate.usageDate(), inputTokens, outputTokens),
                 ErrorCode.OPERATION_ERROR, "更新平台 AI 用量失败");
     }

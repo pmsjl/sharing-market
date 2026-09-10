@@ -24,7 +24,7 @@ public class AiUsageGlobalDailyServiceImpl
     }
 
     @Override
-    public boolean recordSuccess(LocalDate usageDate, long inputTokens, long outputTokens) {
+    public boolean updateUsageSuccess(LocalDate usageDate, long inputTokens, long outputTokens) {
         return baseMapper.recordSuccess(usageDate, inputTokens, outputTokens) == 1;
     }
 
