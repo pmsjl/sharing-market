@@ -3,6 +3,7 @@ package com.pmsjl.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.DeleteRequest;
 import com.pmsjl.model.dto.post.PostAddRequest;
+import com.pmsjl.model.dto.post.PostAdminQueryRequest;
 import com.pmsjl.model.dto.post.PostEditRequest;
 import com.pmsjl.model.dto.post.PostQueryRequest;
 import com.pmsjl.model.dto.post.PostUpdateRequest;
@@ -35,7 +36,7 @@ public interface PostService extends IService<Post> {
 
     PostVO getPostVOById(long id, HttpServletRequest request);
 
-    Page<Post> listPostByPage(PostQueryRequest postQueryRequest);
+    Page<Post> listPostByPage(PostAdminQueryRequest postQueryRequest);
 
     Page<PostVO> listPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request);
 

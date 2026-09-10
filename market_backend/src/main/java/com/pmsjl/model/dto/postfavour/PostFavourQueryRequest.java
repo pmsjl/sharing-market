@@ -1,4 +1,4 @@
-package com.pmsjl.model.dto.post;
+package com.pmsjl.model.dto.postfavour;
 
 import com.pmsjl.common.PageRequest;
 import lombok.Data;
@@ -7,20 +7,13 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 import java.util.List;
 
-/**
- * 普通帖子列表、搜索和我的帖子查询请求
- *
- * @author 
- * @from <a href=""> 
- */
-@EqualsAndHashCode(callSuper = true)
+/** 我的收藏查询请求，收藏者由服务端根据登录状态确定。 */
 @Data
-public class PostQueryRequest extends PageRequest implements Serializable {
+@EqualsAndHashCode(callSuper = true)
+public class PostFavourQueryRequest extends PageRequest implements Serializable {
 
-    /**
-     * 搜索词
-     */
-    private String searchText;
+    /** 标题关键词。 */
+    private String title;
 
     /** 必须同时包含的标签；不传或为空时不限制标签。 */
     private List<String> tags;

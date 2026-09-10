@@ -98,12 +98,12 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
         }
         LambdaQueryWrapper<PrivateMessage> queryWrapper = new LambdaQueryWrapper<>();
         LambdaQueryWrapper<PrivateMessage> privateMessageWrapper = queryWrapper.
-                and(wrapper ->wrapper.
+                and(wrapper -> wrapper.
                         and(
-                                w->w.eq(PrivateMessage::getSenderId,contactUserId).
-                                        eq(PrivateMessage::getRecipientId,userId)).
-                        or(w->w.eq(PrivateMessage::getRecipientId,contactUserId).
-                                        eq(PrivateMessage::getSenderId,userId)));
+                                w -> w.eq(PrivateMessage::getSenderId, contactUserId).
+                                        eq(PrivateMessage::getRecipientId, userId)).
+                        or(w -> w.eq(PrivateMessage::getRecipientId, contactUserId).
+                                eq(PrivateMessage::getSenderId, userId)));
 
         Page<PrivateMessage> privateMessagePage = this.page(page, privateMessageWrapper);
         List<PrivateMessage> records = privateMessagePage.getRecords();

@@ -5,7 +5,7 @@ import com.pmsjl.model.dto.ai.internal.AgentUsage;
 import com.pmsjl.model.vo.AiQuotaVO;
 
 public interface AiAccessService {
-    AiUsageDate reserveRequest(Long userId);
+    AiUsageDate reserveUsage(Long userId);
 
     void recordSuccess(Long userId, AiUsageDate reservation, AgentUsage usage);
 

@@ -15,9 +15,20 @@
       <el-button class="toolbar-button" @click="loadMyPosts">刷新</el-button>
     </div>
 
+    <PostTagFilter
+      v-model="filterTags"
+      v-model:mode="tagMatchMode"
+      input-id="my-post-tags"
+      @change="handleSearch"
+    />
+
     <el-empty
       v-if="!loading && postList.length === 0"
-      description="还没有发布攻略"
+      :description="
+        searchText || filterTags.length
+          ? '没有符合筛选条件的攻略'
+          : '还没有发布攻略'
+      "
     />
 
     <div v-else class="post-list" v-loading="loading">
@@ -39,7 +50,9 @@
               </span>
             </div>
             <div class="post-stats">
-              <span>点赞 {{ post.thumbNum || 0 }}</span>
+              <span :class="{ 'stat-active': post.hasThumb }">
+                {{ post.hasThumb ? "已点赞" : "点赞" }} {{ post.thumbNum || 0 }}
+              </span>
               <span>收藏 {{ post.favourNum || 0 }}</span>
             </div>
           </div>
@@ -127,6 +140,7 @@
 import "md-editor-v3/lib/style.css";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import PostTagFilter from "@/components/PostTagFilter/index.vue";
 import { Search } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { MdEditor } from "md-editor-v3";
@@ -141,6 +155,9 @@ const loading = ref(false);
 const postList = ref<API.PostVO[]>([]);
 const total = ref(0);
 const searchText = ref("");
+const filterTags = ref<string[]>([]);
+const tagMatchMode = ref<"all" | "any">("all");
+let querySequence = 0;
 const editDialogVisible = ref(false);
 
 const queryParams = ref({
@@ -156,13 +173,17 @@ const editForm = ref<API.PostEditRequest>({
 });
 
 const loadMyPosts = async () => {
+  const sequence = ++querySequence;
   loading.value = true;
   try {
     const res = await listMyPostVoByPageUsingPost({
       searchText: searchText.value,
+      tags: tagMatchMode.value === "all" ? filterTags.value : [],
+      orTags: tagMatchMode.value === "any" ? filterTags.value : [],
       current: queryParams.value.current,
       pageSize: queryParams.value.pageSize
     });
+    if (sequence !== querySequence) return;
     if (res.code === 200 && res.data) {
       postList.value = res.data.records || [];
       total.value = Number(res.data.total || 0);
@@ -172,9 +193,9 @@ const loadMyPosts = async () => {
     total.value = 0;
     ElMessage.error("获取我的攻略失败");
   } catch (error) {
-    ElMessage.error("获取我的攻略失败");
+    if (sequence === querySequence) ElMessage.error("获取我的攻略失败");
   } finally {
-    loading.value = false;
+    if (sequence === querySequence) loading.value = false;
   }
 };
 
@@ -390,6 +411,10 @@ onMounted(() => {
   color: var(--market-muted);
   font-size: 13px;
   font-weight: 800;
+}
+
+.post-stats .stat-active {
+  color: var(--market-orange);
 }
 
 .post-actions {

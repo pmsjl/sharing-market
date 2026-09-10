@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
-import com.pmsjl.model.dto.post.PostQueryRequest;
+import com.pmsjl.model.dto.postfavour.PostFavourQueryRequest;
 import com.pmsjl.model.dto.postfavour.PostFavourAddRequest;
 import com.pmsjl.model.entity.Post;
+import com.pmsjl.model.entity.PostThumb;
+import com.pmsjl.mapper.PostThumbMapper;
 import com.pmsjl.model.entity.PostFavour;
 import com.pmsjl.mapper.PostFavourMapper;
 import com.pmsjl.model.entity.User;
@@ -51,6 +53,8 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
     RedissonClient redissonClient;
     @Autowired
     UserService userService;
+    @Autowired
+    private PostThumbMapper postThumbMapper;
 
     @Override
     public int doPostFavour(PostFavourAddRequest postFavourAddRequest, HttpServletRequest request) {
@@ -83,11 +87,10 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
     }
 
     @Override
-    public Page<PostVO> listMyFavourPostByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
+    public Page<PostVO> listMyFavourPostByPage(PostFavourQueryRequest favourQueryRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser();
-        postQueryRequest.setFavourUserId(loginUser.getId());
-        int current = postQueryRequest.getCurrent();
-        int pageSize = postQueryRequest.getPageSize();
+        int current = favourQueryRequest.getCurrent();
+        int pageSize = favourQueryRequest.getPageSize();
         if (current <= 0) {
             current = 1;
         }
@@ -95,7 +98,7 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
             pageSize = 10;
         }
         Page<Post> postPage = new Page<>(current, pageSize);
-        Page<Post> favourPostPage = baseMapper.selectMyFavourPostPage(postPage, postQueryRequest);
+        Page<Post> favourPostPage = baseMapper.selectMyFavourPostPage(postPage, loginUser.getId(), favourQueryRequest);
         //mybatisplus中的这里继承的serviceImpl继承的类CrudRepository中有个baseMapper，而mybatisplus
         //会自动将这里的PostFavourMapper赋给baseMapper，所以这里本质就是在调用postFavourMapper的方法
         //还有一点这里传入的postPage不是给sql语句用的，是因为我们注册了mybatisplus的分页插件
@@ -108,6 +111,7 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
         }
 
         // 直接联表分页，避免先查收藏关系再过滤帖子时 records 和 total 对不上的问题。
+        // objToVo 已将 Post.tags 的 JSON 文本转换为 PostVO.tagList。
         List<PostVO> postVOList = records.stream().map(PostVO::objToVo).toList();
         Set<Long> userIdSet = postVOList.stream()
                 .map(PostVO::getUserId)
@@ -125,9 +129,17 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
                 }
             });
         }
+        // 一次查出当前用户对本页帖子的点赞，避免逐条查询。
+        Set<Long> postIds = records.stream().map(Post::getId).collect(Collectors.toSet());
+        LambdaQueryWrapper<PostThumb> thumbQuery = new LambdaQueryWrapper<>();
+        thumbQuery.eq(PostThumb::getUserId, loginUser.getId())
+                .in(PostThumb::getPostId, postIds);
+        Set<Long> thumbPostIds = postThumbMapper.selectList(thumbQuery).stream()
+                .map(PostThumb::getPostId)
+                .collect(Collectors.toSet());
         postVOList.forEach(postVO -> {
             postVO.setHasFavour(true);
-            postVO.setHasThumb(false);
+            postVO.setHasThumb(thumbPostIds.contains(postVO.getId()));
         });
         page.setRecords(postVOList);
         return page;

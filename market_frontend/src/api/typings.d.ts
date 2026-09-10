@@ -873,19 +873,35 @@ declare namespace API {
   };
 
   type PostQueryRequest = {
-    content?: string;
-    current?: number;
-    favourUserId?: string;
-    id?: string;
-    notId?: string;
     orTags?: string[];
+    current?: number;
     pageSize?: number;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     tags?: string[];
+  };
+
+  type PostAdminQueryRequest = {
+    orTags?: string[];
+    content?: string;
+    current?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    tags?: string[];
     title?: string;
     userId?: string;
+  };
+
+  type PostFavourQueryRequest = {
+    orTags?: string[];
+    current?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    title?: string;
+    tags?: string[];
   };
 
   type PostThumbAddRequest = {

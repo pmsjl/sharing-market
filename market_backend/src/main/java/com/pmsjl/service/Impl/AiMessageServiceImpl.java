@@ -1,6 +1,5 @@
 package com.pmsjl.service.Impl;
 
-import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
@@ -42,6 +41,7 @@ import com.pmsjl.service.AiConversationService;
 import com.pmsjl.service.AiMessageService;
 import com.pmsjl.service.UserService;
 import com.pmsjl.utils.ThrowUtils;
+import com.pmsjl.utils.PersistenceTime;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -155,7 +155,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
         String requestId = UUID.randomUUID().toString();
         PendingMessage pendingMessage = transactionTemplate.execute(status -> {
-            AiUsageDate usageReservation = aiAccessService.reserveRequest(loginUser.getId());
+            AiUsageDate usageReservation = aiAccessService.reserveUsage(loginUser.getId());
             //这里自定义了一个方法利用FOR UPDATE上了行锁，避免了不必要的并发导致no相同的问题，结束条件是事务提交
             // 获取的conversation不是重点，主要是上锁
             AiConversation conversation =
@@ -183,11 +183,6 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             //2.更新数据
             String shoppingContext = serializeObject(aiShoppingContext, "购买条件");
             conversation.setShoppingContext(shoppingContext);
-            boolean result = aiConversationService.lambdaUpdate().
-                    eq(AiConversation::getId, conversationId).
-                    set(AiConversation::getShoppingContext, shoppingContext).
-                    update();
-            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
             //3.为了给agentRequest添加history信息，同时不被锁释放后的其他消息影响，
             // 所以我们获得的history最好利用锁获取真实的历史消息
             List<AgentHistoryMessage> agentHistoryMessages = baseMapper
@@ -286,7 +281,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             return false;
         }
 
-        Date now = new Date();
+        Date now = PersistenceTime.now();
         int changed = baseMapper.markPendingMessageTimedOut(
                 candidate.getId(),
                 expireBefore,
@@ -299,6 +294,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
         conversation.setLastMessagePreview(PENDING_TIMEOUT_MESSAGE);
         conversation.setLastMessageTime(now);
+        conversation.setUpdateTime(now);
         ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1,
                 ErrorCode.OPERATION_ERROR, "更新超时 AI 会话失败");
         return true;
@@ -315,23 +311,21 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
                     "Conversation does not exist");
 
-            Date now = new Date();
+            Date now = PersistenceTime.now();
             AiMessage assistantMessage = pendingMessage.assistantMessage();
+            assistantMessage.setUpdateTime(now);
             assistantMessage.setContent(FAILED_MESSAGE);
             assistantMessage.setStatus(AiMessageStatusEnum.FAILED.getValue());
             assistantMessage.setAgentErrorKey(e.getAgentErrorKey());
             assistantMessage.setRetryable(e.isRetryable());
             ThrowUtils.throwIf(!updateAssistantMessageIfPending(assistantMessage), ErrorCode.CONFLICT_ERROR,
                     "记录 AI 回复失败状态失败");
-            assistantMessage = baseMapper.selectById(assistantMessage.getId());
-            ThrowUtils.throwIf(assistantMessage == null, ErrorCode.OPERATION_ERROR, "读取 AI 回复失败");
 
             conversation.setLastMessagePreview(FAILED_MESSAGE);
             conversation.setLastMessageTime(now);
+            conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
-            conversation = aiConversationMapper.selectById(conversation.getId());
-            ThrowUtils.throwIf(conversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
             aiAccessService.recordFailure(
                     pendingMessage.loginUser().getId(),
                     pendingMessage.usageReservation()
@@ -348,10 +342,11 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             ThrowUtils.throwIf(conversation == null, ErrorCode.NOT_FOUND_ERROR,
                     "Conversation does not exist");
 
-            Date now = new Date();
+            Date now = PersistenceTime.now();
             AiStructuredContentVO structuredContent = aiStructuredContentAssembler.assemble(
                     agentRunResponse.getOutput());
             AiMessage assistantMessage = pendingMessage.assistantMessage();
+            assistantMessage.setUpdateTime(now);
             assistantMessage.setContent(agentRunResponse.getAnswer().trim());
             assistantMessage.setStructuredContent(serializeObject(structuredContent, "AI 结构化结果"));
             assistantMessage.setModelName(agentRunResponse.getModel() == null ? null : agentRunResponse.getModel().getName());
@@ -363,8 +358,6 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             assistantMessage.setRetryable(false);
             ThrowUtils.throwIf(!updateAssistantMessageIfPending(assistantMessage), ErrorCode.CONFLICT_ERROR,
                     "更新 AI 回复失败");
-            assistantMessage = baseMapper.selectById(assistantMessage.getId());
-            ThrowUtils.throwIf(assistantMessage == null, ErrorCode.OPERATION_ERROR, "读取 AI 回复失败");
 
             aiAgentTraceService.saveAgentTraces(
                     pendingMessage.requestId(),
@@ -382,10 +375,9 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             conversation.setMemorySummary(agentRunResponse.getOutput().getMemorySummary());
             conversation.setLastMessagePreview(buildPreview(assistantMessage.getContent()));
             conversation.setLastMessageTime(now);
+            conversation.setUpdateTime(now);
             ThrowUtils.throwIf(aiConversationMapper.updateById(conversation) != 1, ErrorCode.OPERATION_ERROR,
                     "更新 AI 会话失败");
-            conversation = aiConversationMapper.selectById(conversation.getId());
-            ThrowUtils.throwIf(conversation == null, ErrorCode.OPERATION_ERROR, "读取 AI 会话失败");
             return buildChatVO(pendingMessage.requestId(), conversation, pendingMessage.shoppingContext(),
                     pendingMessage.userMessage(), assistantMessage);
         });
@@ -459,7 +451,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                                              List<AgentHistoryMessage> agentHistoryMessages,
                                              AiUsageDate usageReservation) {
         Long userId = loginUser.getId();
-        DateTime now = DateTime.now();
+        Date now = PersistenceTime.now();
 
         //插入第一阶段数据，并存储
         AiMessage userMessage = getUserMessage(conversationId, userId, content, shoppingContext, requestId);
@@ -469,15 +461,20 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                 userMessage, assistantMessage, agentHistoryMessages, usageReservation);
     }
 
-    private void updateAiConversation(AiConversation conversation, DateTime now) {
+    private void updateAiConversation(AiConversation conversation, Date now) {
         conversation.setLastMessagePreview(PENDING_MESSAGE);
         conversation.setLastMessageTime(now);
+        conversation.setUpdateTime(now);
 // 若本轮提供了新条件，conversation.shoppingContext 此时也已是新值
-        ThrowUtils.throwIf(
-                aiConversationMapper.updateById(conversation) != 1,
-                ErrorCode.OPERATION_ERROR,
-                "更新会话待回复状态失败"
-        );
+        // Explicitly set shoppingContext so a null value still clears previous conditions.
+        boolean updated = aiConversationService.lambdaUpdate()
+                .eq(AiConversation::getId, conversation.getId())
+                .set(AiConversation::getShoppingContext, conversation.getShoppingContext())
+                .set(AiConversation::getLastMessagePreview, conversation.getLastMessagePreview())
+                .set(AiConversation::getLastMessageTime, now)
+                .set(AiConversation::getUpdateTime, now)
+                .update();
+        ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "更新会话待回复状态失败");
     }
 
     private AiMessage getAssistantMessage(Long conversationId, Long userId, String content, AiShoppingContext shoppingContext, String requestId, Integer sequenceNo) {
@@ -489,12 +486,13 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         assistantMessage.setStatus(AiMessageStatusEnum.PENDING.getValue());
         assistantMessage.setRequestId(requestId);
         assistantMessage.setIsDelete(0);
+        Date now = PersistenceTime.now();
+        assistantMessage.setCreateTime(now);
+        assistantMessage.setUpdateTime(now);
         assistantMessage.setSequenceNo(sequenceNo + 1);
         ThrowUtils.throwIf(!this.save(assistantMessage), ErrorCode.OPERATION_ERROR,
                 "创建助手消息失败");
-        AiMessage persistedMessage = this.getById(assistantMessage.getId());
-        ThrowUtils.throwIf(persistedMessage == null, ErrorCode.OPERATION_ERROR, "读取助手消息失败");
-        return persistedMessage;
+        return assistantMessage;
     }
 
     private AiMessage getUserMessage(Long conversationId, Long userId, String content, AiShoppingContext shoppingContext, String requestId) {
@@ -504,6 +502,9 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         userMessage.setConversationId(conversationId);
         userMessage.setRequestId(requestId);
         userMessage.setIsDelete(0);
+        Date now = PersistenceTime.now();
+        userMessage.setCreateTime(now);
+        userMessage.setUpdateTime(now);
         userMessage.setRole(AiMessageRoleEnum.USER.getValue());
         userMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
         AiMessage message = this.lambdaQuery().select(AiMessage::getSequenceNo).
@@ -515,9 +516,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         userMessage.setSequenceNo(sequenceNo + 1);
         ThrowUtils.throwIf(!this.save(userMessage), ErrorCode.OPERATION_ERROR,
                 "创建用户消息失败");
-        AiMessage persistedMessage = this.getById(userMessage.getId());
-        ThrowUtils.throwIf(persistedMessage == null, ErrorCode.OPERATION_ERROR, "读取用户消息失败");
-        return persistedMessage;
+        return userMessage;
 
     }
 
@@ -539,6 +538,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                 .set(AiMessage::getLatencyMs, assistantMessage.getLatencyMs())
                 .set(AiMessage::getAgentErrorKey, assistantMessage.getAgentErrorKey())
                 .set(AiMessage::getRetryable, assistantMessage.getRetryable())
+                .set(AiMessage::getUpdateTime, assistantMessage.getUpdateTime())
                 .update();
     }
 

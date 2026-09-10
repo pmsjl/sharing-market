@@ -64,7 +64,7 @@ export async function getPostVoByIdUsingGet(
 
 /** listPostByPage POST /api/post/list/page */
 export async function listPostByPageUsingPost(
-  body: API.PostQueryRequest,
+  body: API.PostAdminQueryRequest,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponsePagePost_>("/api/post/list/page", {

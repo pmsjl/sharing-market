@@ -3,7 +3,7 @@ package com.pmsjl.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
-import com.pmsjl.model.dto.post.PostQueryRequest;
+import com.pmsjl.model.dto.postfavour.PostFavourQueryRequest;
 import com.pmsjl.model.dto.postfavour.PostFavourAddRequest;
 import com.pmsjl.model.vo.PostVO;
 import com.pmsjl.service.PostFavourService;
@@ -41,10 +41,10 @@ public class PostFavourController {
     }
 
     @PostMapping("/my/list/page")
-    public Result<Page<PostVO>> listMyFavourPostByPage(@RequestBody PostQueryRequest postQueryRequest,
+    public Result<Page<PostVO>> listMyFavourPostByPage(@RequestBody PostFavourQueryRequest favourQueryRequest,
                                                            HttpServletRequest request) {
-        ThrowUtils.throwIf(postQueryRequest==null,ErrorCode.PARAMS_ERROR);
-        Page<PostVO>page=postFavourService.listMyFavourPostByPage(postQueryRequest,request);
+        ThrowUtils.throwIf(favourQueryRequest==null,ErrorCode.PARAMS_ERROR);
+        Page<PostVO>page=postFavourService.listMyFavourPostByPage(favourQueryRequest,request);
         return ResultUtils.success(page);
 
     }

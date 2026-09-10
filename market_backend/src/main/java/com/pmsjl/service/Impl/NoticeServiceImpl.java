@@ -78,7 +78,7 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
         String noticeTitle = notice.getNoticeTitle();
         String noticeContent = notice.getNoticeContent();
         Long noticeAdminId = notice.getNoticeAdminId();
-        // 修改数据时，有参数则校验
+        // 新增和修改公告时，标题、内容均不能为空
         ThrowUtils.throwIf(StringUtils.isBlank(noticeTitle), ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(StringUtils.isBlank(noticeContent), ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(noticeAdminId == null || noticeAdminId <= 0, ErrorCode.PARAMS_ERROR);

@@ -47,7 +47,7 @@ class AiAccessServiceImplTest {
         when(globalDailyService.updateRequestCount(any(LocalDate.class), eq(100), any(Date.class)))
                 .thenReturn(true);
 
-        AiUsageDate reservation = service.reserveRequest(7L);
+        AiUsageDate reservation = service.reserveUsage(7L);
 
         assertNotNull(reservation.usageDate());
         verify(usageDailyService).insertUsageUserDaily(7L, reservation.usageDate());
@@ -87,7 +87,7 @@ class AiAccessServiceImplTest {
                 .thenReturn(false);
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.reserveRequest(7L));
+                () -> service.reserveUsage(7L));
 
         assertEquals(ErrorCode.AI_USER_DAILY_QUOTA_EXCEEDED.getCode(), exception.getCode());
         verifyNoInteractions(globalDailyService);
@@ -101,7 +101,7 @@ class AiAccessServiceImplTest {
                 .thenReturn(false);
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.reserveRequest(7L));
+                () -> service.reserveUsage(7L));
 
         assertEquals(ErrorCode.AI_GLOBAL_DAILY_QUOTA_EXCEEDED.getCode(), exception.getCode());
     }

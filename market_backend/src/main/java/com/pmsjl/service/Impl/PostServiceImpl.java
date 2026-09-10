@@ -13,6 +13,7 @@ import com.pmsjl.mapper.PostFavourMapper;
 import com.pmsjl.mapper.PostMapper;
 import com.pmsjl.mapper.PostThumbMapper;
 import com.pmsjl.model.dto.post.PostAddRequest;
+import com.pmsjl.model.dto.post.PostAdminQueryRequest;
 import com.pmsjl.model.dto.post.PostEditRequest;
 import com.pmsjl.model.dto.post.PostQueryRequest;
 import com.pmsjl.model.dto.post.PostUpdateRequest;
@@ -163,12 +164,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     }
 
     @Override
-    public Page<Post> listPostByPage(PostQueryRequest postQueryRequest) {
+    public Page<Post> listPostByPage(PostAdminQueryRequest postQueryRequest) {
         int current = postQueryRequest.getCurrent();
         int pageSize = postQueryRequest.getPageSize();
-        Long id = postQueryRequest.getId();
-        Long notId = postQueryRequest.getNotId();
-        String searchText = postQueryRequest.getSearchText();
         String title = postQueryRequest.getTitle();
         String content = postQueryRequest.getContent();
         List<String> tags = postQueryRequest.getTags();
@@ -191,11 +189,64 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }
 
         LambdaQueryChainWrapper<Post> query = lambdaQuery()
-                .eq(ObjectUtils.isNotEmpty(id), Post::getId, id)
-                .ne(ObjectUtils.isNotEmpty(notId), Post::getId, notId)
                 .like(StringUtils.isNotBlank(title), Post::getTitle, title)
                 .like(StringUtils.isNotBlank(content), Post::getContent, content)
                 .eq(ObjectUtils.isNotEmpty(userId), Post::getUserId, userId);
+        // tags 在 post 表中是 JSON 字符串，按带引号的标签片段匹配，避免 tag 子串误命中。
+        if (tags != null && !tags.isEmpty()) {
+            tags.stream()
+                    .filter(StringUtils::isNotBlank)
+                    .forEach(tag -> query.like(Post::getTags, "\"" + tag + "\""));
+        }
+        if (orTags != null && !orTags.isEmpty()) {
+            List<String> validOrTags = orTags.stream().filter(StringUtils::isNotBlank).toList();
+            if (!validOrTags.isEmpty()) {
+                query.and(wrapper -> {
+                    for (int i = 0; i < validOrTags.size(); i++) {
+                        if (i == 0) {
+                            wrapper.like(Post::getTags, "\"" + validOrTags.get(i) + "\"");
+                        } else {
+                            wrapper.or().like(Post::getTags, "\"" + validOrTags.get(i) + "\"");
+                        }
+                    }
+                });
+            }
+        }
+        return query.page(page);
+    }
+
+    @Override
+    public Page<PostVO> listPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
+        return queryPostVOPage(postQueryRequest, null);
+    }
+
+    // authorId 只由服务端提供，用于限制“我的帖子”的作者。
+    private Page<PostVO> queryPostVOPage(PostQueryRequest postQueryRequest, Long authorId) {
+        // 用户侧列表保持原项目的防爬限制，避免一次拉取过多帖子 VO。
+        ThrowUtils.throwIf(postQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
+        int current = postQueryRequest.getCurrent();
+        int pageSize = postQueryRequest.getPageSize();
+        String searchText = postQueryRequest.getSearchText();
+        List<String> tags = postQueryRequest.getTags();
+        List<String> orTags = postQueryRequest.getOrTags();
+        String sortField = postQueryRequest.getSortField();
+        String sortOrder = postQueryRequest.getSortOrder();
+
+        if (current <= 0) current = 1;
+        if (pageSize <= 0) pageSize = 10;
+        Page<Post> postPage = new Page<>(current, pageSize);
+        if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
+            if ("asc".equalsIgnoreCase(sortOrder)) {
+                postPage.addOrder(OrderItem.asc(sortField));
+            } else {
+                postPage.addOrder(OrderItem.desc(sortField));
+            }
+        } else {
+            postPage.addOrder(OrderItem.desc("createTime"));
+        }
+
+        LambdaQueryChainWrapper<Post> query = lambdaQuery()
+                .eq(ObjectUtils.isNotEmpty(authorId), Post::getUserId, authorId);
         if (StringUtils.isNotBlank(searchText)) {
             query.and(wrapper -> wrapper.like(Post::getTitle, searchText).or().like(Post::getContent, searchText));
         }
@@ -219,15 +270,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
                 });
             }
         }
-
-        return query.page(page);
-    }
-
-    @Override
-    public Page<PostVO> listPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        // 用户侧列表保持原项目的防爬限制，避免一次拉取过多帖子 VO。
-        ThrowUtils.throwIf(postQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
-        Page<Post> postPage = listPostByPage(postQueryRequest);
+        postPage = query.page(postPage);
         List<Post> records = postPage.getRecords();
         Page<PostVO> page = new Page<>(postPage.getCurrent(), postPage.getSize(), postPage.getTotal());
         if (records == null || records.isEmpty()) {
@@ -280,8 +323,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     @Override
     public Page<PostVO> listMyPostVOByPage(PostQueryRequest postQueryRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser();
-        postQueryRequest.setUserId(loginUser.getId());
-        return listPostVOByPage(postQueryRequest, request);
+        return queryPostVOPage(postQueryRequest, loginUser.getId());
     }
 
     @Override

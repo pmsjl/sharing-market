@@ -7,6 +7,7 @@ import com.pmsjl.common.ErrorCode;
 import com.pmsjl.common.Result;
 import com.pmsjl.constant.UserConstant;
 import com.pmsjl.model.dto.post.PostAddRequest;
+import com.pmsjl.model.dto.post.PostAdminQueryRequest;
 import com.pmsjl.model.dto.post.PostEditRequest;
 import com.pmsjl.model.dto.post.PostQueryRequest;
 import com.pmsjl.model.dto.post.PostUpdateRequest;
@@ -65,7 +66,7 @@ public class PostController {
 
     @PostMapping("/list/page")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public Result<Page<Post>> listPostByPage(@RequestBody PostQueryRequest postQueryRequest) {
+    public Result<Page<Post>> listPostByPage(@RequestBody PostAdminQueryRequest postQueryRequest) {
         ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<Post> postPage = postService.listPostByPage(postQueryRequest);
         return ResultUtils.success(postPage);

@@ -21,6 +21,18 @@
               :max="5"
               :validate="validateTag"
             />
+            <el-select
+              v-model="tagMatchMode"
+              aria-label="标签匹配方式"
+              style="width: 100%; margin-top: 8px"
+              @change="
+                paginationConfig.current = 1;
+                getPostList();
+              "
+            >
+              <el-option label="全部匹配" value="all" />
+              <el-option label="任一匹配" value="any" />
+            </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="6">
@@ -220,6 +232,7 @@ import {
 import { MdEditor } from "md-editor-v3";
 
 // 查询参数
+const tagMatchMode = ref<"all" | "any">("all");
 const queryParams = ref({
   title: "",
   content: "",
@@ -274,6 +287,8 @@ const getPostList = async () => {
   try {
     const res = await listPostByPageUsingPost({
       ...queryParams.value,
+      tags: tagMatchMode.value === "all" ? queryParams.value.tags : [],
+      orTags: tagMatchMode.value === "any" ? queryParams.value.tags : [],
       current: paginationConfig.value.current,
       pageSize: paginationConfig.value.pageSize
     });
@@ -298,6 +313,7 @@ const getPostList = async () => {
 
 // 重置查询条件
 const resetQuery = () => {
+  tagMatchMode.value = "all";
   queryParams.value = {
     title: "",
     content: "",

@@ -31,7 +31,7 @@ public class AiAccessServiceImpl implements AiAccessService {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public AiUsageDate reserveRequest(Long userId) {
+    public AiUsageDate reserveUsage(Long userId) {
         ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "用户 ID 非法");
         Date now = new Date();
         LocalDate usageDate = LocalDate.now(accessProperties.getZoneId());

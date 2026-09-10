@@ -16,10 +16,21 @@
           </template>
         </el-input>
       </div>
+      <PostTagFilter
+        v-if="!addPost"
+        v-model="filterTags"
+        v-model:mode="tagMatchMode"
+        input-id="favourite-post-tags"
+        @change="handleSearch"
+      />
     </div>
     <AddPost v-if="addPost"></AddPost>
+    <el-empty
+      v-if="!addPost && !loading && postList.length === 0"
+      description="没有符合筛选条件的帖子"
+    />
     <!-- 帖子列表 -->
-    <div class="post-list" v-if="!addPost">
+    <div class="post-list" v-if="!addPost" v-loading="loading">
       <div
         v-for="post in postList"
         :key="post.id"
@@ -58,9 +69,13 @@
           </div>
           <!-- 点赞和收藏 -->
           <div class="post-actions">
-            <span class="action-item">
+            <span
+              class="action-item"
+              :class="{ 'action-item--active': post.hasThumb }"
+              :title="post.hasThumb ? '已点赞' : '未点赞'"
+            >
               <img src="@/assets/icons/dianzan.svg" width="14" height="14" />
-              {{ post.thumbNum }}
+              {{ post.hasThumb ? "已点赞 " : "" }}{{ post.thumbNum }}
             </span>
             <span class="action-item">
               <el-icon><Star /></el-icon>
@@ -95,10 +110,15 @@ import { ElButton, ElMessage, ElPagination } from "element-plus";
 import AddPost from "@/components/AddPost/index.vue";
 import "@/assets/icons/dianzan.svg";
 import { useRouter } from "vue-router";
+import PostTagFilter from "@/components/PostTagFilter/index.vue";
 import { listMyFavourPostByPageUsingPost } from "@/api/postFavourController";
 
 // 搜索文本
 const searchText = ref("");
+const filterTags = ref<string[]>([]);
+const tagMatchMode = ref<"all" | "any">("all");
+const loading = ref(false);
+let querySequence = 0;
 
 // 帖子列表
 const postList = ref<API.PostVO[]>([]);
@@ -113,12 +133,17 @@ const paginationConfig = ref({
 
 // 获取帖子列表
 const getPostList = async () => {
+  const sequence = ++querySequence;
+  loading.value = true;
   try {
     const res = await listMyFavourPostByPageUsingPost({
       title: searchText.value,
+      tags: tagMatchMode.value === "all" ? filterTags.value : [],
+      orTags: tagMatchMode.value === "any" ? filterTags.value : [],
       current: paginationConfig.value.current,
       pageSize: paginationConfig.value.pageSize
     });
+    if (sequence !== querySequence) return;
     if (res.code === 200) {
       postList.value = res.data.records || [];
       paginationConfig.value.total = parseInt(res.data.total);
@@ -126,7 +151,9 @@ const getPostList = async () => {
       ElMessage.error("获取帖子列表失败");
     }
   } catch (error) {
-    ElMessage.error("获取帖子列表失败");
+    if (sequence === querySequence) ElMessage.error("获取帖子列表失败");
+  } finally {
+    if (sequence === querySequence) loading.value = false;
   }
 };
 // 跳转到帖子详情页
@@ -149,6 +176,7 @@ const handlePageChange = (page: number) => {
 
 const handleSizeChange = (val: number) => {
   paginationConfig.value.pageSize = val;
+  paginationConfig.value.current = 1;
   getPostList();
 };
 
@@ -327,6 +355,10 @@ const truncateContent = (text: string, length: number) => {
     .post-footer .post-actions .action-item {
       color: var(--market-muted);
     }
+  }
+
+  .post-list .post-item .post-footer .post-actions .action-item--active {
+    color: var(--market-orange);
   }
 
   .post-tags {

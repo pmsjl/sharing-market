@@ -19,7 +19,7 @@ export async function doPostFavourUsingPost(
 
 /** listMyFavourPostByPage POST /api/post_favour/my/list/page */
 export async function listMyFavourPostByPageUsingPost(
-  body: API.PostQueryRequest,
+  body: API.PostFavourQueryRequest,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponsePagePostVO_>("/api/post_favour/my/list/page", {

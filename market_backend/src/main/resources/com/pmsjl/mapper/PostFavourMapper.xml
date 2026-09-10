@@ -7,38 +7,26 @@
             p.*
         FROM post_favour f
         INNER JOIN post p ON f.postId = p.id
-        WHERE f.userId = #{queryRequest.favourUserId}
+        WHERE f.userId = #{favourUserId}
           AND p.isDelete = 0
-        <if test="queryRequest.id != null">
-            AND p.id = #{queryRequest.id}
-        </if>
-        <if test="queryRequest.notId != null">
-            AND p.id != #{queryRequest.notId}
-        </if>
-        <if test="queryRequest.userId != null">
-            AND p.userId = #{queryRequest.userId}
-        </if>
-        <if test="queryRequest.searchText != null and queryRequest.searchText != ''">
-            AND (p.title LIKE CONCAT('%', #{queryRequest.searchText}, '%')
-                 OR p.content LIKE CONCAT('%', #{queryRequest.searchText}, '%'))
-        </if>
         <if test="queryRequest.title != null and queryRequest.title != ''">
             AND p.title LIKE CONCAT('%', #{queryRequest.title}, '%')
         </if>
-        <if test="queryRequest.content != null and queryRequest.content != ''">
-            AND p.content LIKE CONCAT('%', #{queryRequest.content}, '%')
-        </if>
         <if test="queryRequest.tags != null and queryRequest.tags.size() > 0">
             <foreach collection="queryRequest.tags" item="tag">
-                AND p.tags LIKE CONCAT('%"', #{tag}, '"%')
+                <if test="tag != null and tag.trim() != ''">
+                    AND p.tags LIKE CONCAT('%"', #{tag}, '"%')
+                </if>
             </foreach>
         </if>
         <if test="queryRequest.orTags != null and queryRequest.orTags.size() > 0">
-            AND (
-            <foreach collection="queryRequest.orTags" item="tag" separator=" OR ">
-                p.tags LIKE CONCAT('%"', #{tag}, '"%')
-            </foreach>
-            )
+            <trim prefix="AND (" suffix=")" prefixOverrides="OR">
+                <foreach collection="queryRequest.orTags" item="tag">
+                    <if test="tag != null and tag.trim() != ''">
+                        OR p.tags LIKE CONCAT('%"', #{tag}, '"%')
+                    </if>
+                </foreach>
+            </trim>
         </if>
         <choose>
             <when test="queryRequest.sortField == 'createTime'">

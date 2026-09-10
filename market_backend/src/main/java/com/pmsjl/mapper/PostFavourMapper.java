@@ -1,7 +1,7 @@
 package com.pmsjl.mapper;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pmsjl.model.dto.post.PostQueryRequest;
+import com.pmsjl.model.dto.postfavour.PostFavourQueryRequest;
 import com.pmsjl.model.entity.Post;
 import com.pmsjl.model.entity.PostFavour;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -17,5 +17,5 @@ import org.apache.ibatis.annotations.Param;
  */
 public interface PostFavourMapper extends BaseMapper<PostFavour> {
 
-    Page<Post> selectMyFavourPostPage(Page<Post> page, @Param("queryRequest") PostQueryRequest queryRequest);
+    Page<Post> selectMyFavourPostPage(Page<Post> page, @Param("favourUserId") Long favourUserId, @Param("queryRequest") PostFavourQueryRequest queryRequest);
 }

@@ -13,6 +13,9 @@
         ) directions
         WHERE contactUserId != #{userId}
         GROUP BY contactUserId
+
+        -- 这里先进行where再group再select，得到的是我们所说的对方id+对方发的最新消息的id的组合
+
     </sql>
     <select id="countMyConversations" resultType="long">
         SELECT COUNT(*) FROM (<include refid="myContacts"/>) contacts
@@ -32,8 +35,11 @@
             )
             ORDER BY m.createTime DESC, m.id DESC LIMIT 1
         )
+    -- 这里获取的是和对方对话中最新消息的表信息，和上面的对方用户id，对方用户发来的最新消息的id的组合
         LEFT JOIN user u ON u.id = contacts.contactUserId AND u.isDelete = 0
+    -- 这里的获取的是对应的对方用户的用户信息
         ORDER BY latest.createTime DESC, latest.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
+    --这里的用户信息和用户间对话的最新消息用于前端画面显示，而对方发来的最新的消息id是用来判断后续新消息的显示情况的
     </select>
 </mapper>
