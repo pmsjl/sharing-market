@@ -150,6 +150,7 @@ python -m app.rag.rebuild_index
 `evaluation/` 是 Golden Test 评测体系：使用固定题目集，按 Router → Retrieval → Generation → Judge → Final 五个阶段进行端到端回归评测，用于检查改动是否影响 AI 导购质量。
 
 - 代码全部在 `evaluation/tools/`；不随仓库发布的完整题目集在 `evaluation/dataset/`；脱敏后的公开评测集在 `evaluation/public/`。
+- 三阶段基线使用同一份 Golden v1.3 数据集、同一套评测脚本和同一冻结索引，对比各阶段代码与提示词；结果见[三阶段报告](../docs/evaluation/three-stage-benchmark.md)。
 - 推荐阅读 [evaluation/README.md](evaluation/README.md) 获取完整评测指南。
 
 ```powershell
