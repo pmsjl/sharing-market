@@ -1,4 +1,4 @@
-"""Merge reviewed-v1.2 generation and single-v2 judgment into final Case rows."""
+"""Merge reviewed-v1.3 generation and single-v2 judgment into final Case rows."""
 from __future__ import annotations
 
 import argparse

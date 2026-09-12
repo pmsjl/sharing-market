@@ -24,7 +24,7 @@ from app.models.agent import AgentRunRequest
 from app.rag.course_relations import CourseRelationIndex
 from app.rag.index_store import KNOWLEDGE_ROOT as DEFAULT_KNOWLEDGE_ROOT
 from app.routing.query_router import HybridQueryRouter
-from golden_v1_1_round2_paths import RUN_ROOT
+from golden_v1_3_round2_paths import RUN_ROOT
 
 DATASET = AGENT_ROOT / "evaluation/dataset/golden_v1_3_reviewed_200.jsonl"
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -165,7 +165,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--split", choices=["dev", "test"])
     parser.add_argument("--concurrency", type=int, default=8)
-    parser.add_argument("--run-id", default="golden_v1_1_hybrid_router")
+    parser.add_argument("--run-id", default="golden_v1_3_hybrid_router")
     parser.add_argument("--dataset", type=Path, default=DATASET)
     parser.add_argument(
         "--local-expectations",

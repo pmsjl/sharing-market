@@ -23,6 +23,8 @@ from golden_current_runtime_expectations import apply_current_runtime_truth
 ROOT = Path(__file__).resolve().parents[3]
 WORKSPACE = ROOT.parent
 EVAL = ROOT / "ai_agent_service/evaluation"
+# 文件名随 v1.3 工具包统一；实际仍为历史 v1.1 → v1.2.1 物化工具，
+# 不生成 v1.3，不得仅替换 DATASET_VERSION 将旧数据伪装成新数据。
 # 一次性历史物化工具：v1.1 数据集已由 golden-v1.2.1-reviewed 取代，
 # evaluation/golden/ 不再保留源文件；如需重跑需自行提供 v1.1 数据集。
 SOURCE = EVAL / "golden/golden_dataset_v1_1.jsonl"

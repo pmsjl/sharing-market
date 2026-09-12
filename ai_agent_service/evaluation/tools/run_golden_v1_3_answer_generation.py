@@ -41,13 +41,13 @@ from app.services.agent_service import (
     AgentServiceError,
     build_reference_maps,
 )
-from golden_v1_1_round2_paths import REPORTS_DIR, RESULTS_DIR
+from golden_v1_3_round2_paths import REPORTS_DIR, RESULTS_DIR
 
 EVAL = AGENT_ROOT / "evaluation"
 DATASET = EVAL / "dataset/golden_v1_3_reviewed_200.jsonl"
 MANIFEST = EVAL / "dataset/golden_v1_3_reviewed_200_manifest.json"
-OUTPUT = RESULTS_DIR / "golden_v1_1_round2_answer_generation.jsonl"
-SUMMARY = REPORTS_DIR / "golden_v1_1_round2_answer_generation_summary.json"
+OUTPUT = RESULTS_DIR / "golden_v1_3_round2_answer_generation.jsonl"
+SUMMARY = REPORTS_DIR / "golden_v1_3_round2_answer_generation_summary.json"
 CONCURRENCY = 12
 EXPECTED_MODEL = "gpt-5.6-terra"
 

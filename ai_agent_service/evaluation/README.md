@@ -87,20 +87,20 @@ evaluation/
 
 | 阶段 | 阶段脚本（`tools/` 下） | 输入 | 输出 | 检查什么 |
 | --- | --- | --- | --- | --- |
-| ① Router | `run_golden_v1_1_router_eval.py` | Case 的 query/history | `pipeline_router.jsonl` | 路由是否命中 `expectedRoute` |
-| ② Retrieval | `run_golden_v1_1_retrieval_eval.py` | query + 指定版本的索引 | `pipeline_retrieval_<build>.jsonl` | Recall@k、MRR、qrel 命中 |
-| ③ Generation | `run_golden_v1_1_answer_generation.py` | Router 结果 + 检索结果 | `pipeline_answer_generation.jsonl` | 答案生成成功、引用完整 |
-| ④ Judge | `run_golden_v1_1_answer_judge.py` | 生成结果 + 期望 | `pipeline_answer_judgments.jsonl` | 答案是否 PASS、知识状态是否正确 |
-| ⑤ Final | `build_golden_v1_2_single_v2_final_results.py` | Generation + Judge | `pipeline_final_results.jsonl` + `_manifest.json` | 汇总 PASS/FAIL、按领域统计 |
+| ① Router | `run_golden_v1_3_router_eval.py` | Case 的 query/history | `pipeline_router.jsonl` | 路由是否命中 `expectedRoute` |
+| ② Retrieval | `run_golden_v1_3_retrieval_eval.py` | query + 指定版本的索引 | `pipeline_retrieval_<build>.jsonl` | Recall@k、MRR、qrel 命中 |
+| ③ Generation | `run_golden_v1_3_answer_generation.py` | Router 结果 + 检索结果 | `pipeline_answer_generation.jsonl` | 答案生成成功、引用完整 |
+| ④ Judge | `run_golden_v1_3_answer_judge.py` | 生成结果 + 期望 | `pipeline_answer_judgments.jsonl` | 答案是否 PASS、知识状态是否正确 |
+| ⑤ Final | `build_golden_v1_3_single_v2_final_results.py` | Generation + Judge | `pipeline_final_results.jsonl` + `_manifest.json` | 汇总 PASS/FAIL、按领域统计 |
 
-阶段脚本保留历史文件名中的 `v1_1`，通用入口与阶段默认数据路径均已切换到 v1.3；历史物化工具不变。
+公开评测脚本名称统一使用 `v1_3`，调用、导入及默认数据和输出名称同步更新。独立阶段脚本使用 `GOLDEN_V1_3_RUN_DIRECTORY` 指定运行目录；统一入口会自动设置它。历史运行记录中的旧命令仍保留原样，不迁移历史产物。Final 文件名中的 `single_v2` 表示单 Case Judge 的评分协议版本，不是数据集版本。
 
 ### 共享库
 
-- `golden_v1_1_round2_paths.py`：统一计算 runs 目录、结果/报告路径。
+- `golden_v1_3_round2_paths.py`：统一计算 runs 目录、结果/报告路径。
 - `course_question_quality.py`：课程题的质量校验与元数据。
 - `golden_current_runtime_expectations.py`：按当前系统行为修正预期结果（如学校固定不追问）。
-- `materialize_golden_v1_2_reviewed.py`：一次性生成工具（v1.1 → v1.2.1，源数据已清理，仅供历史参考）。
+- `materialize_golden_v1_3_reviewed.py`：随 v1.3 工具包统一命名的历史物化工具，仍只处理 v1.1 → v1.2.1；不是 v1.3 数据生成器。旧输入、输出版本和统计约束保留，避免把旧题集误标为 v1.3。
 
 ### 关键约定
 

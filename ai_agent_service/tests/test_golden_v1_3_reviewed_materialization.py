@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "ai_agent_service/evaluation/tools/materialize_golden_v1_2_reviewed.py"
+SCRIPT = ROOT / "ai_agent_service/evaluation/tools/materialize_golden_v1_3_reviewed.py"
 PRODUCT = (
     ROOT
     / "ai_agent_service/evaluation/dataset"

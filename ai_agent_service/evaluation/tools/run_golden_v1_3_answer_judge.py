@@ -1,4 +1,4 @@
-"""Judge Golden v1.1 answers with the human-adjudicated rubric and full evidence."""
+"""Judge Golden v1.3 answers with the human-adjudicated rubric and full evidence."""
 from __future__ import annotations
 
 import argparse
@@ -26,7 +26,7 @@ from app.rag.course_relations import CourseRelationIndex
 from app.rag.index_store import KNOWLEDGE_ROOT as DEFAULT_KNOWLEDGE_ROOT
 from app.routing.query_router import DEFAULT_INSTITUTION
 from app.prompts.shopping_guide import SYSTEM_PROMPT as AGENT_SYSTEM_PROMPT
-from golden_v1_1_round2_paths import REPORTS_DIR, RESULTS_DIR
+from golden_v1_3_round2_paths import REPORTS_DIR, RESULTS_DIR
 from app.services.agent_service import AgentService
 from course_question_quality import course_metadata
 
@@ -34,14 +34,14 @@ EVAL = AGENT_ROOT / "evaluation"
 DATASET = EVAL / "dataset/golden_v1_3_reviewed_200.jsonl"
 ADJUDICATION = EVAL / "golden/golden_v1_to_v1_1_adjudication.jsonl"
 ROUND1 = EVAL / "runs/golden_v1_round1_20260820/results/golden_v1_answer_generation.jsonl"
-ROUND2 = RESULTS_DIR / "golden_v1_1_round2_answer_generation.jsonl"
+ROUND2 = RESULTS_DIR / "golden_v1_3_round2_answer_generation.jsonl"
 EXPECTED_MODEL = "gpt-5.6-terra"
 # 多 Case Judge 已实测发生跨 Case 答案串读：Case ID 顺序正确，但理由和
 # 分数描述的是相邻 Case 的答案。单 Case 调用牺牲吞吐量，换取评分绑定可靠性。
 BATCH_SIZE = 1
 JUDGE_CONCURRENCY = 12
 RUBRIC_VERSION = "v2_current_runtime"
-BADCASES = REPORTS_DIR / f"golden_v1_1_round2_answer_evaluation_badcases_{RUBRIC_VERSION}.json"
+BADCASES = REPORTS_DIR / f"golden_v1_3_round2_answer_evaluation_badcases_{RUBRIC_VERSION}.json"
 FORMAT = {
     "type": "json_schema",
     "name": "golden_answer_judgment_single",
@@ -360,7 +360,7 @@ def summary(generated: list[dict[str, Any]], judged: list[dict[str, Any]], truth
     def metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         return {"caseCount": len(rows), "passRate": round(sum(row["judgment"]["overallPass"] for row in rows) / len(rows), 6) if rows else None, "knowledgeStateAccuracy": round(sum(row["judgment"]["knowledgeStateCorrect"] for row in rows) / len(rows), 6) if rows else None, **{key: mean([row["judgment"] for row in rows], key) for key in keys}, "meanCitationPrecision": mean(rows, "citationPrecision"), "meanRequiredCitationRecall": mean(rows, "requiredCitationRecall"), "toolSelectionAccuracy": mean([{"value": float(row["toolSelectionCorrect"])} for row in rows if row.get("searchToolExpected") or row.get("searchToolForbidden")], "value")}
     result = {
-        "status": "COMPLETE", "datasetVersion": generated[0].get("datasetVersion", "golden-v1.1") if generated else "golden-v1.1", "rubricVersion": RUBRIC_VERSION, "judgeModel": EXPECTED_MODEL, "judgeReasoningEffort": settings.openai_reasoning_effort if settings else "medium", "judgeTextVerbosity": settings.openai_text_verbosity if settings else "low", "judgeUsesFullChunks": True, "judgeUsesRuntimeSystemPrompt": True, "judgeUsesTrustedInstitution": True, "sameModelAsGeneration": True,
+        "status": "COMPLETE", "datasetVersion": generated[0].get("datasetVersion", "golden-v1.3") if generated else "golden-v1.3", "rubricVersion": RUBRIC_VERSION, "judgeModel": EXPECTED_MODEL, "judgeReasoningEffort": settings.openai_reasoning_effort if settings else "medium", "judgeTextVerbosity": settings.openai_text_verbosity if settings else "low", "judgeUsesFullChunks": True, "judgeUsesRuntimeSystemPrompt": True, "judgeUsesTrustedInstitution": True, "sameModelAsGeneration": True,
         "overall": metrics(merged), "byDomain": {key: metrics(value) for key, value in grouped(merged, "domain").items()}, "byRoute": {key: metrics(value) for key, value in grouped([dict(row, expectedRoute=effective_expectations(row, row["truth"])["expectedRoute"]) for row in merged], "expectedRoute").items()}, "byKnowledgeState": {key: metrics(value) for key, value in grouped([dict(row, expectedKnowledgeState=effective_expectations(row, row["truth"])["expectedKnowledgeState"]) for row in merged], "expectedKnowledgeState").items()},
         "generation": {"caseCount": len(generated), "successCount": sum(row["status"] == "SUCCESS" for row in generated), "inputTokens": sum((row.get("response", {}).get("usage", {}).get("inputTokens") or 0) for row in generated), "outputTokens": sum((row.get("response", {}).get("usage", {}).get("outputTokens") or 0) for row in generated)},
         "judge": {"inputTokens": round(sum(row.get("judgeInputTokens", 0) for row in judged)), "outputTokens": round(sum(row.get("judgeOutputTokens", 0) for row in judged))},
@@ -430,8 +430,8 @@ async def main() -> None:
     generation_path = args.generation.resolve() if args.generation else (ROUND1 if args.round == "round1" else ROUND2)
     results_dir = EVAL / "runs/golden_v1_1_round1_rejudge_20260821/results" if args.round == "round1" else RESULTS_DIR
     reports_dir = EVAL / "runs/golden_v1_1_round1_rejudge_20260821/reports" if args.round == "round1" else REPORTS_DIR
-    output = args.output.resolve() if args.output else results_dir / f"golden_v1_1_{args.round}_answer_judgments_{RUBRIC_VERSION}.jsonl"
-    report = args.report.resolve() if args.report else reports_dir / f"golden_v1_1_{args.round}_answer_evaluation_summary_{RUBRIC_VERSION}.json"
+    output = args.output.resolve() if args.output else results_dir / f"golden_v1_3_{args.round}_answer_judgments_{RUBRIC_VERSION}.jsonl"
+    report = args.report.resolve() if args.report else reports_dir / f"golden_v1_3_{args.round}_answer_evaluation_summary_{RUBRIC_VERSION}.json"
     badcases_path = args.badcases.resolve() if args.badcases else BADCASES
     truths = {row["caseId"]: row for row in read_jsonl(args.dataset.resolve())}
     generated_all = read_jsonl(generation_path)

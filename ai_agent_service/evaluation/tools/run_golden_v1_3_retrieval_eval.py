@@ -1,4 +1,4 @@
-"""Run the Golden v1.1 P0 routed retrieval evaluation on the frozen index."""
+"""Run the Golden v1.3 P0 routed retrieval evaluation on the frozen index."""
 from __future__ import annotations
 
 import asyncio
@@ -28,7 +28,7 @@ from app.rag.embedding_client import EmbeddingClient, l2_normalize
 from app.rag.index_store import KNOWLEDGE_ROOT as DEFAULT_KNOWLEDGE_ROOT, IndexStore
 from app.rag.query_planner import plan_query, resolve_course_match
 from app.rag.service import resolve_course_evidence_state
-from golden_v1_1_round2_paths import REPORTS_DIR, RESULTS_DIR
+from golden_v1_3_round2_paths import REPORTS_DIR, RESULTS_DIR
 from app.rag.retriever import Retriever
 from app.routing.query_router import (
     HybridQueryRouter,
@@ -42,7 +42,7 @@ DATASET = EVAL / "dataset/golden_v1_3_reviewed_200.jsonl"
 MANIFEST = EVAL / "dataset/golden_v1_3_reviewed_200_manifest.json"
 RESULTS = RESULTS_DIR
 REPORTS = REPORTS_DIR
-RUN_ID = "golden_v1_1_p0_routed"
+RUN_ID = "golden_v1_3_p0_routed"
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -258,7 +258,7 @@ async def run(
             "courseEvidenceState": course_state,
             "courseEvidenceStateEligible": course_state_eligible,
             "courseEvidenceStateCorrect": None if not course_state_eligible else course_state == case["expectedKnowledgeState"],
-            # Golden v1.1 尚无 clue_only；它是 unknown_after_search 的更细粒度子状态。
+            # Golden v1.3 尚无 clue_only；它是 unknown_after_search 的更细粒度子状态。
             "courseEvidenceStateCompatible": None if not course_state_eligible else course_state_compatible,
             "courseLanes": {"aChunkIds": a_hits, "bChunkIds": b_hits, "cChunkIds": c_hits},
             "retrieved": [{"rank": rank, "chunkId": item.chunk_id, "documentId": item.document_id, "sourceType": item.source_type, "title": item.title, "section": item.section, "score": round(float(item.score), 8)} for rank, item in enumerate(retrieved, 1)],
@@ -304,7 +304,7 @@ def aggregate(rows: list[dict[str, Any]], meta: dict[str, Any]) -> dict[str, Any
     retrieved_expected = [row for row in rows if row["expectedRoute"] == "retrieve"]
     exposure_diagnostics = candidate_exposure_diagnostics(rows)
     report = {
-        "status": "PASS", "evaluationType": "golden_v1_1_p0_routed_retrieval", "rankingUnit": "document", "runMeta": meta,
+        "status": "PASS", "evaluationType": "golden_v1_3_p0_routed_retrieval", "rankingUnit": "document", "runMeta": meta,
         "overall": {**metrics(retrieved_expected), "allCaseCount": len(rows), "ragRouteAccuracy": mean([float(row["ragRouteCorrect"]) for row in rows]), "ragRouteCorrectCount": sum(row["ragRouteCorrect"] for row in rows)},
         "candidateExposureDiagnostics": exposure_diagnostics,
         "byDomain": {key: metrics(value) for key, value in group(rows, "domain").items()},

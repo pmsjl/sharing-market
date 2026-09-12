@@ -1,8 +1,7 @@
-"""Canonical paths and version metadata for Golden v1.1 round two.
+"""Canonical paths and version metadata for Golden v1.3 round two.
 
-The finalized 2026-08-21 run is immutable.  Evaluators may direct a later,
-comparable rerun to a fresh directory with ``GOLDEN_V1_1_RUN_DIRECTORY``.
-The default remains the historical location for backwards compatibility.
+Evaluators may select a fresh directory with ``GOLDEN_V1_3_RUN_DIRECTORY``.
+Defaults belong to v1.3 and do not write into historical run directories.
 """
 import os
 from pathlib import Path
@@ -11,11 +10,11 @@ ROOT = Path(__file__).resolve().parents[3]
 AGENT_ROOT = ROOT / "ai_agent_service"
 EVAL_ROOT = AGENT_ROOT / "evaluation"
 
-VERSION_ID = "golden-v1.1-round2"
-VERSION_DATE = "2026-08-21"
+VERSION_ID = "golden-v1.3-round2"
+VERSION_DATE = "2026-09-12"
 DIRECTORY_NAME = os.getenv(
-    "GOLDEN_V1_1_RUN_DIRECTORY",
-    "golden_v1_1_round2_20260821",
+    "GOLDEN_V1_3_RUN_DIRECTORY",
+    "golden_v1_3_round2_20260912",
 )
 INDEX_BUILD_ID = "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71"
 

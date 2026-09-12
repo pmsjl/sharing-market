@@ -26,11 +26,11 @@ EVAL_TOOLS = EVALUATION_ROOT / "tools"
 DEFAULT_DATASET = EVALUATION_ROOT / "dataset" / "golden_v1_3_reviewed_200.jsonl"
 DEFAULT_MANIFEST = EVALUATION_ROOT / "dataset" / "golden_v1_3_reviewed_200_manifest.json"
 
-ROUTER_SCRIPT = EVAL_TOOLS / "run_golden_v1_1_router_eval.py"
-RETRIEVAL_SCRIPT = EVAL_TOOLS / "run_golden_v1_1_retrieval_eval.py"
-GENERATION_SCRIPT = EVAL_TOOLS / "run_golden_v1_1_answer_generation.py"
-JUDGE_SCRIPT = EVAL_TOOLS / "run_golden_v1_1_answer_judge.py"
-FINAL_SCRIPT = EVAL_TOOLS / "build_golden_v1_2_single_v2_final_results.py"
+ROUTER_SCRIPT = EVAL_TOOLS / "run_golden_v1_3_router_eval.py"
+RETRIEVAL_SCRIPT = EVAL_TOOLS / "run_golden_v1_3_retrieval_eval.py"
+GENERATION_SCRIPT = EVAL_TOOLS / "run_golden_v1_3_answer_generation.py"
+JUDGE_SCRIPT = EVAL_TOOLS / "run_golden_v1_3_answer_judge.py"
+FINAL_SCRIPT = EVAL_TOOLS / "build_golden_v1_3_single_v2_final_results.py"
 
 SCRIPT_PATHS = {
     "router": ROUTER_SCRIPT,
@@ -325,7 +325,7 @@ def main() -> None:
         return
 
     env = os.environ.copy()
-    env["GOLDEN_V1_1_RUN_DIRECTORY"] = args.run_name
+    env["GOLDEN_V1_3_RUN_DIRECTORY"] = args.run_name
     target_index = STAGE_ORDER.index(args.through)
     for stage in STAGE_ORDER[1 : target_index + 1]:
         run_stage(commands[stage], env, AGENT_ROOT)

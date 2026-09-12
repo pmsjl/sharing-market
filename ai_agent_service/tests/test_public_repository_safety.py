@@ -13,17 +13,18 @@ PUBLIC_EVALUATION_PREFIXES = (
 )
 PUBLIC_EVALUATION_FILES = {f"{EVALUATION_PREFIX}README.md"}
 PUBLIC_EVALUATION_FILES.update({
-    f"{EVALUATION_PREFIX}tools/build_golden_v1_2_single_v2_final_results.py",
+    f"{EVALUATION_PREFIX}tools/merge_golden_router_attempts.py",
+    f"{EVALUATION_PREFIX}tools/build_golden_v1_3_single_v2_final_results.py",
     f"{EVALUATION_PREFIX}tools/compare_golden_runs.py",
     f"{EVALUATION_PREFIX}tools/course_question_quality.py",
     f"{EVALUATION_PREFIX}tools/golden_current_runtime_expectations.py",
-    f"{EVALUATION_PREFIX}tools/golden_v1_1_round2_paths.py",
-    f"{EVALUATION_PREFIX}tools/materialize_golden_v1_2_reviewed.py",
+    f"{EVALUATION_PREFIX}tools/golden_v1_3_round2_paths.py",
+    f"{EVALUATION_PREFIX}tools/materialize_golden_v1_3_reviewed.py",
     f"{EVALUATION_PREFIX}tools/run_golden_pipeline.py",
-    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_answer_generation.py",
-    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_answer_judge.py",
-    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_retrieval_eval.py",
-    f"{EVALUATION_PREFIX}tools/run_golden_v1_1_router_eval.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_3_answer_generation.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_3_answer_judge.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_3_retrieval_eval.py",
+    f"{EVALUATION_PREFIX}tools/run_golden_v1_3_router_eval.py",
     f"{EVALUATION_PREFIX}tools/validate_public_evaluation.py",
 })
 
@@ -96,7 +97,10 @@ def _candidate_files() -> list[str]:
             "-z",
         ]
     )
-    return sorted(path for path in output.decode("utf-8").split("\0") if path)
+    # Inspect the publishable working tree, including untracked renamed files;
+    # cached paths already deleted from the working tree are not file contents.
+    return sorted(path for path in output.decode("utf-8").split("\0")
+                  if path and (ROOT / path).is_file())
 
 
 def _read_text(path: Path) -> str | None:
