@@ -25,12 +25,13 @@ class Retriever:
         self,
         settings: Settings,
         embedding_client: QueryEmbeddingProtocol,
-        index_store: IndexStore | None,
+        index_store: IndexStore,
     ) -> None:
+        if index_store is None:
+            raise ValueError("Retriever requires a loaded IndexStore")
         self.settings = settings
         self.embedding_client = embedding_client
         self.index_store = index_store
-        self.ready = index_store is not None
 
     @classmethod
     def load(
@@ -38,36 +39,40 @@ class Retriever:
         settings: Settings,
         build_name: str | None = None,
     ) -> "Retriever":
-        return cls(settings, EmbeddingClient(settings),
-                   IndexStore.load(settings, build_name=build_name))
+        """读取指定版本（未指定时读取 CURRENT），再组装检索器。"""
+        index_store = IndexStore.load(settings, build_name=build_name)
+        embedding_client = EmbeddingClient(settings)
+        return cls(settings, embedding_client, index_store)
 
     @property
     def build_name(self) -> str | None:
-        return self.index_store.build_name if self.index_store else None
+        return self.index_store.build_name
+
+    @property
+    def ready(self) -> bool:
+        """兼容旧调用方；能构造出的 Retriever 一定持有有效索引。"""
+        return self.index_store is not None
 
     #加了property就是相当于原本是retriever.chunks()
     #现在少加个括号，变成retriever.chunks
 
     @property
     def chunks(self):
-        return self.index_store.chunks  # type: ignore
+        return self.index_store.chunks
 
     @property
     def vectors(self) -> np.ndarray:
-        return self.index_store.vectors  # type: ignore
+        return self.index_store.vectors
 
     @property
     def index(self):
-        return self.index_store.index  # type: ignore
+        return self.index_store.index
 
     async def retrieve(
         self,
         query: str,
         plan: RagQueryPlan,
     ) -> list[RetrievedChunk]:
-        if not self.ready:
-            return []
-
         query_vector = l2_normalize(await
                                     self.embedding_client.embed_one(query))
         return self.retrieve_with_vector(query_vector, plan)
@@ -78,15 +83,12 @@ class Retriever:
         plan: RagQueryPlan,
     ) -> list[RetrievedChunk]:
         """供冻结评测复用已批量生成的向量，检索策略与线上完全一致。"""
-        if not self.ready:
-            return []
         guide_results = self._retrieve_guides(query_vector, plan)
-        post_limit = 0
-        if plan.post_retrieval_mode == "primary":
-            post_limit = self.settings.rag_post_top_k
-        elif plan.post_retrieval_mode == "course_auxiliary":
-            # 课程场景中的经验帖使用独立配额，不与C类通用GUIDE争抢位置。
-            post_limit = self.settings.rag_course_auxiliary_post_top_k
+        post_limit = {
+            "primary": self.settings.rag_post_top_k,
+            # 课程场景中的经验帖使用独立配额，不与 C 类 GUIDE 争抢位置。
+            "course_auxiliary": self.settings.rag_course_auxiliary_post_top_k,
+        }.get(plan.post_retrieval_mode, 0)
         post_results = (self._retrieve_posts(
             query_vector, max_results=post_limit) if post_limit else [])
 
@@ -98,8 +100,7 @@ class Retriever:
         plan: RagQueryPlan,
     ) -> list[RetrievedChunk]:
 
-        is_specific_course = bool(plan.include_course_purchase_policy)
-        if is_specific_course:
+        if plan.include_course_purchase_policy:
             return self._retrieve_course_guides(query_vector, plan)
 
         has_scopes = bool(plan.primary_guide_categories
@@ -108,17 +109,17 @@ class Retriever:
             return []
 
         primary_categories = set(plan.primary_guide_categories)
-        fallback_categories = set(plan.fallback_guide_categories)
+        fallback_categories = (set(plan.fallback_guide_categories) -
+                               primary_categories)
 
         primary_rows = [
             row for row, chunk in enumerate(self.chunks)
             if chunk.source_type == "GUIDE"
             and chunk.category in primary_categories
         ]
-        primary_row_set = set(primary_rows)
         fallback_rows = [
             row for row, chunk in enumerate(self.chunks)
-            if row not in primary_row_set and chunk.source_type == "GUIDE"
+            if chunk.source_type == "GUIDE"
             and chunk.category in fallback_categories
         ]
 
@@ -165,15 +166,14 @@ class Retriever:
             results,
             per_document,
             seen_chunk_ids,
-            max_results=min(total_limit,
-                            len(results) + a_quota),
+            max_results=a_quota,
             # A由精确课程关系选定，不再让通用相似度阈值把它清空。
             score_threshold=-1.0,
             max_chunks_per_document=(
                 self.settings.rag_guide_max_chunks_per_document),
         )
 
-        if plan.include_course_purchase_policy and len(results) < total_limit:
+        if len(results) < total_limit:
             b_rows = [
                 row for row, chunk in enumerate(self.chunks)
                 if chunk.source_type == "GUIDE"
@@ -185,21 +185,17 @@ class Retriever:
                 results,
                 per_document,
                 seen_chunk_ids,
-                max_results=min(total_limit,
-                                len(results) + 1),
+                max_results=len(results) + 1,
                 score_threshold=-1.0,
                 max_chunks_per_document=1,
             )
 
         auxiliary_categories = set(plan.course_auxiliary_categories)
         if auxiliary_categories and len(results) < total_limit:
-            used_documents = set(plan.course_document_ids) | {
-                COURSE_PURCHASE_POLICY_DOCUMENT_ID,
-            }
             c_rows = [
                 row for row, chunk in enumerate(self.chunks)
-                if chunk.source_type == "GUIDE" and chunk.document_id not in
-                used_documents and chunk.category in auxiliary_categories
+                if chunk.source_type == "GUIDE"
+                and chunk.category in auxiliary_categories
             ]
             self._append_lane(
                 c_rows,

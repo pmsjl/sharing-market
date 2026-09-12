@@ -31,7 +31,7 @@ from app.services.agent_service import AgentService
 from course_question_quality import course_metadata
 
 EVAL = AGENT_ROOT / "evaluation"
-DATASET = EVAL / "dataset/golden_v1_2_1_reviewed_200.jsonl"
+DATASET = EVAL / "dataset/golden_v1_3_reviewed_200.jsonl"
 ADJUDICATION = EVAL / "golden/golden_v1_to_v1_1_adjudication.jsonl"
 ROUND1 = EVAL / "runs/golden_v1_round1_20260820/results/golden_v1_answer_generation.jsonl"
 ROUND2 = RESULTS_DIR / "golden_v1_1_round2_answer_generation.jsonl"

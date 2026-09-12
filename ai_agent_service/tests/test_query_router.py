@@ -45,7 +45,7 @@ def _fallback(message: str, **overrides) -> RetrieveRouteDecision:
 def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
 ) -> None:
     dataset = (Path(__file__).resolve().parents[1] /
-               "evaluation/public/dev_v1_2_1.jsonl")
+               "evaluation/public/dev_v1_3.jsonl")
     cases = [
         json.loads(line)
         for line in dataset.read_text(encoding="utf-8").splitlines()
@@ -58,7 +58,7 @@ def test_deterministic_fallback_never_guesses_golden_clarify_or_scope(
         case for case in cases
         if case["expectedRoute"] in {"clarify", "out_of_scope"}
     ]
-    assert len(semantic_terminal_cases) == 12
+    assert len(semantic_terminal_cases) == 45
     assert all(
         build_fallback_decision(
             _request(case["query"]),
@@ -272,7 +272,7 @@ def test_router_prompt_balances_technical_and_campus_scope_boundaries(
 
 def test_public_scope_corrections_are_frozen_in_dev_dataset() -> None:
     dataset = (Path(__file__).resolve().parents[1] /
-               "evaluation/public/dev_v1_2_1.jsonl")
+               "evaluation/public/dev_v1_3.jsonl")
     cases = {
         row["caseId"]: row
         for row in (

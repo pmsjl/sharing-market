@@ -1,36 +1,184 @@
-# Golden v1.2.1 Human-Adjudicated Baseline Summary
+# Golden v1.3 Public Benchmark Summary
 
-The evaluation contains 200 cases: 140 public Dev cases and a withheld 60-case Test split. These metrics use the 2026-09-05 human-adjudicated truth, frozen index `20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71`, current code `5d6dbfbb444353e4dbf4cd18661035c56624c392`, fresh outputs for the four changed cases, and single-case `v2_current_runtime` judging.
+更新日期：2026-09-12。正式 Router 保持阶段 3；本次仅更新公开数据和聚合结果，不重新评测。
 
-## Retrieval (all 200 cases)
+## 数据与结果来源
 
-- Recall@1: 74.29%
-- Recall@3: 92.00%
-- Recall@5: 92.57%
-- MRR: 0.805
-- nDCG@5: 0.814
+完整定版集 `golden-v1.3-reviewed-20260911` 共 200 题，Dev 140 / Test 60。课程题压缩为 20 道；其余为 boundary 41、campus 30、platform 45、post 64。题面、expected、qrels 与领域契约沿用定版标注。公开包仅包含脱敏 Dev。
 
-Retrieval metrics over the public Dev split only: Recall@5 93.55%, MRR 0.821, nDCG@5 0.830.
+每个阶段均由 **143 条历史记录 + 57 条新增或更新记录**组成，按 v1.3 真值重新聚合；不是全部 200 题在同一时点重跑。阶段 2 新记录使用 `cd868a1` Router 提示词，阶段 3 使用 `6527fda` 提示词（当前正式版本）。
 
-## Routing and end-to-end answers
+**阶段 1 仅供参考**：无 Router，全部进入检索；57 条新记录在当前脚本上以模拟配置运行，并使用期望领域辅助检索。它不是严格的历史实现复现，三列不能视为公平的单变量消融。历史与新增片段的实现来源不同，变化不能全部归因于 Router。
 
-- Router route accuracy: 96.50% (193/200)
-- Successful generations: 200/200
-- Final pass rate: 97.00% (194 pass, 6 fail)
+Test 60 不公开，但已经参与人工查看和分析，不能宣称是从未见过的独立测试集。逐题结果、人工意见、请求记录与第四阶段 R 实验继续仅保存在本地。
 
-## Domain results
+冻结索引：`20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71`；359 文档（99 GUIDE、260 POST）、1611 chunks；`text-embedding-v4` / 1024 维，`guide-post-v2`。模型配置沿用既有运行记录：`gpt-5.6-terra`；Router reasoning/verbosity 为 low/low，Generation 为 medium/high，Judge 为 medium/low，单 Case Judge 使用 `v2_current_runtime`。商品查询使用空库存、偏好使用冷启动 fixture，结果不代表线上实时库存覆盖。
 
-| Domain | Pass rate | Retrieval Recall@5 |
-|---|---:|---:|
-| Boundary | 100.00% | 100.00% |
-| Campus | 100.00% | 88.24% |
-| Course | 95.71% | 94.92% |
-| Platform | 97.50% | 87.50% |
-| Post | 96.00% | 93.88% |
+## 总体结果
 
-## Limitations
+| 指标 | 阶段 1 | 阶段 2 | 阶段 3 |
+|---|---:|---:|---:|
+| Router 正确 | 不适用 | 178/200（89.00%） | 190/200（95.00%） |
+| 生成成功 | 195/200（97.50%） | 200/200（100.00%） | 200/200（100.00%） |
+| 最终通过 | 166/200（83.00%） | 183/200（91.50%） | 194/200（97.00%） |
 
-- Generation and judging used the same model family with different instructions and evidence windows.
-- Commodity search and preference tools used fixed empty-inventory and cold-start fixtures.
-- The full 200-case totals recompose 196 unchanged prior records with four freshly rerun human-adjudicated records for each code version.
-- The public Dev split is not an independent benchmark once used for tuning; hidden Test cases and raw evaluation artifacts are not published.
+## 检索指标
+
+| 指标 | 阶段 1 | 阶段 2 | 阶段 3 |
+|---|---:|---:|---:|
+| 生成错误数 | 5 | 0 | 0 |
+| 排序题数 | 127 | 127 | 127 |
+| 进入检索题数 | 127 | 118 | 125 |
+| 路由漏检题数 | 0 | 9 | 2 |
+| 进入检索比例 | 100.00% | 92.91% | 98.43% |
+| Recall@1 | 61.42% | 76.38% | 81.10% |
+| Recall@3 | 84.25% | 83.46% | 89.76% |
+| Recall@5 | 96.85% | 89.76% | 90.55% |
+| Required qrel hit | 94.49% | 85.83% | 87.40% |
+| 条件 Recall@1 | 61.42% | 82.20% | 82.40% |
+| 条件 Recall@3 | 84.25% | 89.83% | 91.20% |
+| 条件 Recall@5 | 96.85% | 96.61% | 92.00% |
+| MRR | 0.718448 | 0.791470 | 0.843176 |
+| nDCG@5 | 0.769565 | 0.805255 | 0.843393 |
+
+排序分母为 127 条 `expectedRoute=retrieve` 且存在 relevance ≥ 2 qrel 的题（期望 retrieve 共 128 条）。总体排序指标沿用原脚本口径，包含路由漏检；条件 Recall 只统计实际进入检索的题，其分母依次为 127、118、125。Required qrel hit 是逐题指标均值。阶段 1 全部检索，漏检恒为 0，不体现范围判断质量。
+
+## 按期望路由的最终通过
+
+| 指标 | 阶段 1 | 阶段 2 | 阶段 3 |
+|---|---:|---:|---:|
+| clarify Router 正确 | 不适用 | 17/17（100.00%） | 15/17（88.24%） |
+| clarify 生成成功 | 17/17（100.00%） | 17/17（100.00%） | 17/17（100.00%） |
+| clarify 最终通过 | 17/17（100.00%） | 16/17（94.12%） | 17/17（100.00%） |
+| out_of_scope Router 正确 | 不适用 | 35/45（77.78%） | 40/45（88.89%） |
+| out_of_scope 生成成功 | 44/45（97.78%） | 45/45（100.00%） | 45/45（100.00%） |
+| out_of_scope 最终通过 | 25/45（55.56%） | 36/45（80.00%） | 43/45（95.56%） |
+| retrieve Router 正确 | 不适用 | 119/128（92.97%） | 126/128（98.44%） |
+| retrieve 生成成功 | 124/128（96.88%） | 128/128（100.00%） | 128/128（100.00%） |
+| retrieve 最终通过 | 121/128（94.53%） | 121/128（94.53%） | 124/128（96.88%） |
+| skip_rag Router 正确 | 不适用 | 7/10（70.00%） | 9/10（90.00%） |
+| skip_rag 生成成功 | 10/10（100.00%） | 10/10（100.00%） | 10/10（100.00%） |
+| skip_rag 最终通过 | 3/10（30.00%） | 10/10（100.00%） | 10/10（100.00%） |
+
+## 分领域与 Dev/Test 完整聚合
+
+| 指标 | 阶段 1 | 阶段 2 | 阶段 3 |
+|---|---:|---:|---:|
+| boundary Router 正确 | 不适用 | 35/41（85.37%） | 37/41（90.24%） |
+| boundary 生成成功 | 41/41（100.00%） | 41/41（100.00%） | 41/41（100.00%） |
+| boundary 最终通过 | 33/41（80.49%） | 36/41（87.80%） | 40/41（97.56%） |
+| boundary 排序题数 | 12 | 12 | 12 |
+| boundary 进入检索 | 12 | 10 | 12 |
+| boundary 路由漏检 | 0 | 2 | 0 |
+| boundary recallAt1 | 58.33% | 50.00% | 66.67% |
+| boundary recallAt3 | 83.33% | 75.00% | 91.67% |
+| boundary recallAt5 | 91.67% | 75.00% | 91.67% |
+| boundary requiredQrelHit | 75.00% | 50.00% | 66.67% |
+| boundary condRecall1 | 58.33% | 60.00% | 66.67% |
+| boundary condRecall3 | 83.33% | 90.00% | 91.67% |
+| boundary condRecall5 | 91.67% | 90.00% | 91.67% |
+| boundary mrr | 0.711111 | 0.611111 | 0.777778 |
+| boundary ndcgAt5 | 0.678310 | 0.542322 | 0.692596 |
+| campus Router 正确 | 不适用 | 24/30（80.00%） | 29/30（96.67%） |
+| campus 生成成功 | 29/30（96.67%） | 30/30（100.00%） | 30/30（100.00%） |
+| campus 最终通过 | 24/30（80.00%） | 24/30（80.00%） | 30/30（100.00%） |
+| campus 排序题数 | 18 | 18 | 18 |
+| campus 进入检索 | 18 | 17 | 17 |
+| campus 路由漏检 | 0 | 1 | 1 |
+| campus recallAt1 | 88.89% | 94.44% | 77.78% |
+| campus recallAt3 | 100.00% | 94.44% | 83.33% |
+| campus recallAt5 | 100.00% | 94.44% | 83.33% |
+| campus requiredQrelHit | 94.44% | 88.89% | 83.33% |
+| campus condRecall1 | 88.89% | 100.00% | 82.35% |
+| campus condRecall3 | 100.00% | 100.00% | 88.24% |
+| campus condRecall5 | 100.00% | 100.00% | 88.24% |
+| campus mrr | 0.888889 | 0.888889 | 0.805556 |
+| campus ndcgAt5 | 0.929508 | 0.914960 | 0.812829 |
+| course Router 正确 | 不适用 | 16/20（80.00%） | 17/20（85.00%） |
+| course 生成成功 | 19/20（95.00%） | 20/20（100.00%） | 20/20（100.00%） |
+| course 最终通过 | 11/20（55.00%） | 17/20（85.00%） | 18/20（90.00%） |
+| course 排序题数 | 8 | 8 | 8 |
+| course 进入检索 | 8 | 7 | 8 |
+| course 路由漏检 | 0 | 1 | 0 |
+| course recallAt1 | 100.00% | 87.50% | 100.00% |
+| course recallAt3 | 100.00% | 87.50% | 100.00% |
+| course recallAt5 | 100.00% | 87.50% | 100.00% |
+| course requiredQrelHit | 100.00% | 87.50% | 100.00% |
+| course condRecall1 | 100.00% | 100.00% | 100.00% |
+| course condRecall3 | 100.00% | 100.00% | 100.00% |
+| course condRecall5 | 100.00% | 100.00% | 100.00% |
+| course mrr | 0.812500 | 0.875000 | 1.000000 |
+| course ndcgAt5 | 0.815176 | 0.789244 | 0.914244 |
+| platform Router 正确 | 不适用 | 41/45（91.11%） | 43/45（95.56%） |
+| platform 生成成功 | 44/45（97.78%） | 45/45（100.00%） | 45/45（100.00%） |
+| platform 最终通过 | 43/45（95.56%） | 43/45（95.56%） | 44/45（97.78%） |
+| platform 排序题数 | 40 | 40 | 40 |
+| platform 进入检索 | 40 | 36 | 39 |
+| platform 路由漏检 | 0 | 4 | 1 |
+| platform recallAt1 | 82.50% | 72.50% | 75.00% |
+| platform recallAt3 | 97.50% | 85.00% | 87.50% |
+| platform recallAt5 | 97.50% | 85.00% | 87.50% |
+| platform requiredQrelHit | 92.50% | 80.00% | 82.50% |
+| platform condRecall1 | 82.50% | 80.56% | 76.92% |
+| platform condRecall3 | 97.50% | 94.44% | 89.74% |
+| platform condRecall5 | 97.50% | 94.44% | 89.74% |
+| platform mrr | 0.870833 | 0.758333 | 0.783333 |
+| platform ndcgAt5 | 0.896996 | 0.781223 | 0.806223 |
+| post Router 正确 | 不适用 | 62/64（96.88%） | 64/64（100.00%） |
+| post 生成成功 | 62/64（96.88%） | 64/64（100.00%） | 64/64（100.00%） |
+| post 最终通过 | 55/64（85.94%） | 63/64（98.44%） | 62/64（96.88%） |
+| post 排序题数 | 49 | 49 | 49 |
+| post 进入检索 | 49 | 48 | 49 |
+| post 路由漏检 | 0 | 1 | 0 |
+| post recallAt1 | 28.57% | 77.55% | 87.76% |
+| post recallAt3 | 65.31% | 79.59% | 91.84% |
+| post recallAt5 | 95.92% | 95.92% | 93.88% |
+| post requiredQrelHit | 100.00% | 97.96% | 95.92% |
+| post condRecall1 | 28.57% | 79.17% | 87.76% |
+| post condRecall3 | 65.31% | 81.25% | 91.84% |
+| post condRecall5 | 95.92% | 97.92% | 93.88% |
+| post mrr | 0.517881 | 0.813265 | 0.896259 |
+| post ndcgAt5 | 0.621687 | 0.851578 | 0.910325 |
+
+## Dev/Test 聚合
+
+| 指标 | 阶段 1 | 阶段 2 | 阶段 3 |
+|---|---:|---:|---:|
+| dev Router 正确 | 不适用 | 123/140（87.86%） | 135/140（96.43%） |
+| dev 生成成功 | 139/140（99.29%） | 140/140（100.00%） | 140/140（100.00%） |
+| dev 最终通过 | 120/140（85.71%） | 124/140（88.57%） | 138/140（98.57%） |
+| dev 排序题数 | 87 | 87 | 87 |
+| dev 进入检索 | 87 | 81 | 86 |
+| dev 路由漏检 | 0 | 6 | 1 |
+| dev recallAt1 | 63.22% | 75.86% | 83.91% |
+| dev recallAt3 | 87.36% | 83.91% | 91.95% |
+| dev recallAt5 | 98.85% | 89.66% | 93.10% |
+| dev requiredQrelHit | 95.40% | 86.21% | 89.66% |
+| dev condRecall1 | 63.22% | 81.48% | 84.88% |
+| dev condRecall3 | 87.36% | 90.12% | 93.02% |
+| dev condRecall5 | 98.85% | 96.30% | 94.19% |
+| dev mrr | 0.738506 | 0.796743 | 0.868774 |
+| dev ndcgAt5 | 0.789518 | 0.804940 | 0.867404 |
+| test Router 正确 | 不适用 | 55/60（91.67%） | 55/60（91.67%） |
+| test 生成成功 | 56/60（93.33%） | 60/60（100.00%） | 60/60（100.00%） |
+| test 最终通过 | 46/60（76.67%） | 59/60（98.33%） | 56/60（93.33%） |
+| test 排序题数 | 40 | 40 | 40 |
+| test 进入检索 | 40 | 37 | 39 |
+| test 路由漏检 | 0 | 3 | 1 |
+| test recallAt1 | 57.50% | 77.50% | 75.00% |
+| test recallAt3 | 77.50% | 82.50% | 85.00% |
+| test recallAt5 | 92.50% | 90.00% | 85.00% |
+| test requiredQrelHit | 92.50% | 85.00% | 82.50% |
+| test condRecall1 | 57.50% | 83.78% | 76.92% |
+| test condRecall3 | 77.50% | 89.19% | 87.18% |
+| test condRecall5 | 92.50% | 97.30% | 87.18% |
+| test mrr | 0.674821 | 0.780000 | 0.787500 |
+| test ndcgAt5 | 0.726169 | 0.805940 | 0.791168 |
+
+## 解释与限制
+
+阶段 3 Router 为 190/200（95%），最终通过为 194/200（97%）。Final 是生成与 Judge 的综合判定，并不要求 Router 逐字段完全命中；因此最终通过数可以高于路由正确数。单次采样及自动评分存在波动，不能把百分点差异直接解释为稳定收益。
+
+本次不重新标注或修补已有领域/来源契约。缺少统一字段真值或跨历史片段完整记录的字段准确率、Token、延迟与降级汇总不据此推算。公开的是聚合结果，不包含 Test 标识符、逐题模型输出或 Judge 理由。
+
+公开数据：[Dev 140](dev_v1_3.jsonl)、[Manifest](manifest.json)、[标注指南](annotation_guideline.md)。完整集聚合包含未公开的 Test 60，不能仅用公开 Dev 复算全量指标。

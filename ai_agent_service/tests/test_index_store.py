@@ -7,7 +7,7 @@ import pytest
 
 from app.core.config import Settings
 from app.rag.document_loader import MANIFEST_FILES
-from app.rag.index_store import IndexStore, build_index
+from app.rag.index_store import IndexStore, IndexStoreLoadError, build_index
 from app.rag.models import GuideDocumentMeta, KnowledgeChunk, PostSnapshot
 
 
@@ -99,7 +99,7 @@ def test_build_publishes_unique_version_and_load_validates_it(tmp_path):
     assert store.vectors.shape == (2, 2)
 
 
-def test_load_degrades_for_manifest_drift_or_corrupt_vectors(tmp_path):
+def test_load_rejects_manifest_drift_or_corrupt_vectors(tmp_path):
     settings = _settings(tmp_path)
     knowledge_root = _knowledge_root(tmp_path)
     build_dir = asyncio.run(
@@ -108,14 +108,16 @@ def test_load_degrades_for_manifest_drift_or_corrupt_vectors(tmp_path):
 
     (knowledge_root / MANIFEST_FILES[0]).write_text("changed",
                                                     encoding="utf-8")
-    assert IndexStore.load(settings, knowledge_root) is None
+    with pytest.raises(IndexStoreLoadError, match="知识清单已变化"):
+        IndexStore.load(settings, knowledge_root)
 
     # 使用新 manifest 重建后，再主动破坏缓存 ndarray 的形状。
     build_dir = asyncio.run(
         build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
                     knowledge_root))
     np.save(build_dir / "vectors.npy", np.array([1.0, 0.0], dtype=np.float32))
-    assert IndexStore.load(settings, knowledge_root) is None
+    with pytest.raises(IndexStoreLoadError, match="vectors 不是二维数组"):
+        IndexStore.load(settings, knowledge_root)
 
 
 def test_mixed_build_records_guide_and_post_snapshot_metadata(tmp_path):
@@ -165,6 +167,23 @@ def test_mixed_build_records_guide_and_post_snapshot_metadata(tmp_path):
     assert metadata["postSnapshotAt"] == "2026-08-17T08:00:00+00:00"
     assert len(metadata["postSnapshotSha256"]) == 64
     assert IndexStore.load(settings, knowledge_root) is not None
+
+
+def test_descriptive_metadata_drift_does_not_disable_retrieval(tmp_path):
+    settings = _settings(tmp_path)
+    knowledge_root = _knowledge_root(tmp_path)
+    build_dir = asyncio.run(
+        build_index(settings, [_meta()], _chunks(), _FakeEmbedder(),
+                    knowledge_root))
+
+    metadata_path = build_dir / "meta.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["guideChunkCount"] = 999
+    metadata["documentCount"] = "legacy-stat"
+    metadata.pop("postSnapshotAt", None)
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    assert IndexStore.load(settings, knowledge_root).build_name == build_dir.name
 
 
 def test_failed_rebuild_does_not_switch_current(tmp_path):

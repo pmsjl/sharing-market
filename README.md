@@ -106,7 +106,7 @@ sharing-market-v1.0/
 Router(意图路由) → Retrieval(向量检索) → Generation(答案生成) → Judge(自动裁判) → Final(合并判定)
 ```
 
-- **题目集**：共 200 题（dev 140 + test 60），按课程/二手/平台/边界/校园五个领域分层。test 中的 60 题是不参与开发调试的独立测试集。完整评测集不随仓库发布（`evaluation/dataset/`，不进 Git）；脱敏后的 140 题公开评测集位于 `evaluation/public/`。
+- **题目集**：Golden v1.3 共 200 题（dev 140 + test 60），按课程/二手/平台/边界/校园五个领域分层，其中课程题 20 道。Test 60 已参与人工查看和分析，继续不公开。完整评测集不随仓库发布（`evaluation/dataset/`，不进 Git）；脱敏后的 140 题公开评测集位于 `evaluation/public/`。
 - **一条命令运行完整评测**：`run_golden_pipeline.py`（选题→指定评测使用的索引版本→依次运行 4 个阶段脚本→汇总结果）。
 - **改动前后对比**：`compare_golden_runs.py` 对比两次评测的关键判定字段（路由/状态/PASS），并校验脚本哈希，确认是否使用了同一版代码。
 
@@ -119,7 +119,7 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
   --dataset <完整评测集.jsonl> --manifest <manifest.json> --run-name <run> --through final
 ```
 
-当前汇总指标见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，三个代码阶段采用相同统计方式的对比见 [`docs/evaluation/three-stage-benchmark.md`](docs/evaluation/three-stage-benchmark.md)。原始评测结果与未参与开发调试的 Test 题目不对外提交。
+当前汇总指标见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，三个代码阶段采用相同统计方式的对比见 [`docs/evaluation/three-stage-benchmark.md`](docs/evaluation/three-stage-benchmark.md)。当前公开数据为 Golden v1.3 Dev 140；原始评测结果与 Test 60 不对外提交。Test 已参与人工查看和分析，并非未见测试集。
 
 完整指南见 [evaluation/README.md](ai_agent_service/evaluation/README.md)。
 
@@ -128,7 +128,7 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
 - `ai_agent_service/knowledge/documents/effective/` 保存当前用于知识检索的 GUIDE 文档。
 - `ai_agent_service/knowledge/runtime/` 保存程序读取的 4 份 JSONL，包括文档信息和课程关系。这些文件是运行和重建索引所必需的，因此继续随仓库发布。
 - 知识采集过程、待审核草稿、来源核对材料、中间文件和检查报告不参与程序运行，已由 `.gitignore` 排除。
-- 评测目录只公开脱敏后的 dev 题目、Schema、汇总指标和运行评测所需的脚本；完整题目集、独立测试集、逐题结果和人工评审记录不随仓库发布。
+- 评测目录只公开脱敏后的 dev 题目、Schema、汇总指标和运行评测所需的脚本；完整题目集、Test、逐题结果和人工评审记录不随仓库发布。
 
 ## 当前边界
 

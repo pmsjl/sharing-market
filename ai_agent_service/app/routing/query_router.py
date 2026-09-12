@@ -91,6 +91,7 @@ QueryRouteDecision = Annotated[
 ]
 
 
+#structured output 的json schema类
 class LLMRouteDecision(BaseModel):
     """LLM只输出语义判断；最终route和工具策略由程序派生。"""
 
@@ -214,7 +215,7 @@ class CourseMatchSummary(BaseModel):
         serialization_alias="hasExactCourseDocuments", )
 
 
-# 这些词表只服务异常降级，不再承担澄清、范围判断或日常意图识别。
+# 这些词表只服务异常降级
 _LIVE_SEARCH_PATTERNS = (
     re.compile(r"帮我(?:找|搜|推荐)"),
     re.compile(r"(?:给我|帮我)?推荐(?:一|几|个|款|台|本|套)"),

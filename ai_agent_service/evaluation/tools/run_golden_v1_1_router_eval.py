@@ -26,7 +26,7 @@ from app.rag.index_store import KNOWLEDGE_ROOT as DEFAULT_KNOWLEDGE_ROOT
 from app.routing.query_router import HybridQueryRouter
 from golden_v1_1_round2_paths import RUN_ROOT
 
-DATASET = AGENT_ROOT / "evaluation/dataset/golden_v1_2_1_reviewed_200.jsonl"
+DATASET = AGENT_ROOT / "evaluation/dataset/golden_v1_3_reviewed_200.jsonl"
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [
         json.loads(line)

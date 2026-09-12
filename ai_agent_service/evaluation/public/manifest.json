@@ -1,32 +1,33 @@
 {
   "datasetName": "sharing-market-rag-public-dev",
-  "datasetVersion": "public-dev-v1.2.1-20260905",
-  "sourceDatasetVersion": "golden-v1.2.1-reviewed-20260829",
-  "publishedAt": "2026-09-05",
+  "datasetVersion": "public-dev-v1.3-20260912",
+  "sourceDatasetVersion": "golden-v1.3-reviewed-20260911",
+  "publishedAt": "2026-09-12",
   "split": "dev",
   "caseCount": 140,
   "domainCounts": {
-    "boundary": 14,
-    "campus": 14,
-    "course": 49,
-    "platform": 28,
-    "post": 35
+    "boundary": 29,
+    "campus": 22,
+    "course": 13,
+    "platform": 32,
+    "post": 44
   },
   "routeCounts": {
-    "clarify": 3,
-    "out_of_scope": 9,
-    "retrieve": 127,
-    "skip_rag": 1
+    "clarify": 13,
+    "out_of_scope": 32,
+    "retrieve": 88,
+    "skip_rag": 7
   },
   "knowledgeStateCounts": {
     "answerable": 80,
-    "not_applicable": 13,
-    "unknown_after_search": 47
+    "not_applicable": 46,
+    "unknown_after_search": 14
   },
-  "qrelCount": 178,
-  "sha256": "19f551fccb74ccbfd9f09086614cf500876668063ffadef86e97dc78ab18c1ff",
+  "qrelCount": 109,
+  "sha256": "89217ee4c07c01b4f0120d790f5ce83a219d981a8a607ee2a9559ce4580ae5e0",
   "schema": "../schemas/golden_case.schema.json",
   "indexBuildId": "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71",
+  "indexBuildIdAtFreeze": "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71",
   "indexSnapshot": {
     "documentCount": 359,
     "chunkCount": 1611,
@@ -36,50 +37,11 @@
     "embeddingDimensions": 1024,
     "chunkingVersion": "guide-post-v2"
   },
-  "supersedesDatasetVersion": "public-dev-v1.1-scope-corrected-20260828",
-  "supersededCorrections": {
-    "scopeCorrection": {
-      "correctedAt": "2026-08-28",
-      "caseIds": [
-        "post-legacy-002",
-        "campus-campus-lifecycle-new-student-01",
-        "campus-campus-lifecycle-new-student-02",
-        "campus-campus-lifecycle-dorm-move-checkout-01"
-      ],
-      "historicalBaselineMetricsRecomputed": false
-    },
-    "truthAlignmentCorrection": {
-      "correctedAt": "2026-08-29",
-      "caseIds": [
-        "post-purchase-183",
-        "post-purchase-188",
-        "post-purchase-191",
-        "post-purchase-194",
-        "post-purchase-211",
-        "post-purchase-212",
-        "post-purchase-219",
-        "post-purchase-220",
-        "post-purchase-224",
-        "post-purchase-230",
-        "post-purchase-240",
-        "post-purchase-246"
-      ],
-      "reason": "Align rewritten Query, expectedFacts and supportingChunkIds; restore scope-flipped or answer-leaking wording where required."
-    },
-    "note": "The v1.1 corrections are incorporated into the v1.2.1-reviewed source dataset.",
-    "humanAdjudicationCorrection": {
-      "correctedAt": "2026-09-05",
-      "caseIds": [
-        "course-material_mention-045",
-        "course-unknown_after_search-020",
-        "course-unknown_after_search-047"
-      ],
-      "reason": "Human review treats course equipment self-preparation questions as having a reasonable acquisition or purchase-decision interpretation."
-    }
-  },
+  "supersedesDatasetVersion": "public-dev-v1.2.1-20260905",
   "limitations": [
-    "The 60-case test split and its qrels are withheld.",
-    "Raw model outputs, traces, request identifiers, usage data, and human-review records are not published.",
-    "This public split supports development and reproducibility; it is not an independent hidden benchmark."
+    "Only the 140 Dev cases are published; Test 60 and its qrels remain private.",
+    "Test has participated in human inspection and analysis; it is not an unseen holdout.",
+    "Raw model outputs, request records, human reviews and internal construction metadata are not published.",
+    "The public Dev split supports development and reproducibility, not independent hidden evaluation."
   ]
 }

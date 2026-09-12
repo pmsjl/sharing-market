@@ -23,8 +23,8 @@ AGENT_ROOT = REPO_ROOT / "ai_agent_service"
 EVALUATION_ROOT = AGENT_ROOT / "evaluation"
 EVAL_TOOLS = EVALUATION_ROOT / "tools"
 
-DEFAULT_DATASET = EVALUATION_ROOT / "dataset" / "golden_v1_2_1_reviewed_200.jsonl"
-DEFAULT_MANIFEST = EVALUATION_ROOT / "dataset" / "golden_v1_2_1_reviewed_200_manifest.json"
+DEFAULT_DATASET = EVALUATION_ROOT / "dataset" / "golden_v1_3_reviewed_200.jsonl"
+DEFAULT_MANIFEST = EVALUATION_ROOT / "dataset" / "golden_v1_3_reviewed_200_manifest.json"
 
 ROUTER_SCRIPT = EVAL_TOOLS / "run_golden_v1_1_router_eval.py"
 RETRIEVAL_SCRIPT = EVAL_TOOLS / "run_golden_v1_1_retrieval_eval.py"

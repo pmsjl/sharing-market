@@ -14,6 +14,8 @@ from app.rag.models import (
     RagContext,
     RagDiagnostics,
     RagResolution,
+    PostValidationStatus,
+    RetrievalStatus,
     RetrievedChunk,
 )
 from app.rag.query_planner import plan_query, resolve_course_match
@@ -32,7 +34,7 @@ class PostVersionValidatorProtocol(Protocol):
 
 
 class RagService:
-    """进程级 RAG 服务；索引与关系表只在构造时加载一次。"""
+    """进程级 RAG 服务；启动时加载关系表和索引，检索前检查索引版本。"""
 
     def __init__(
         self,
@@ -52,7 +54,6 @@ class RagService:
         )
         self.reload_lock = asyncio.Lock()
         self.reload_error: str | None = None
-        self.loaded_build_name = getattr(retriever, "build_name", None)
         self._reload_enabled = retriever is None
 
         if settings.rag_enabled and relations is None:
@@ -65,18 +66,46 @@ class RagService:
         if settings.rag_enabled and retriever is None:
             try:
                 self.retriever = Retriever.load(settings)
-                self.loaded_build_name = self.retriever.build_name
-            except Exception:
+            except Exception as exception:
                 # 缓存或本地 FAISS 环境异常也只能关闭可选 RAG 能力。
                 self.retriever = None
+                self.reload_error = str(exception)
+
+    @property
+    def loaded_build_name(self) -> str | None:
+        """已加载版本直接取自当前检索器，不另外保存和同步版本号。"""
+        return self.retriever.build_name if self.retriever else None
 
     @property
     def ready(self) -> bool:
-        return bool(
-            self.settings.rag_enabled
-            and self.relations_ready
-            and self.retriever is not None
-            and self.retriever.ready
+        return bool(self.settings.rag_enabled and self.relations_ready
+                    and self.retriever is not None)
+
+    def _resolution(
+        self,
+        plan,
+        effective_match: CourseMatch,
+        retrieved: list[RetrievedChunk],
+        *,
+        retrieval_status: RetrievalStatus,
+        post_validation_status: PostValidationStatus = "not_needed",
+        failure_reason: str | None = None,
+        course_evidence_state: CourseEvidenceState | None = None,
+    ) -> RagResolution:
+        """统一组装上下文和诊断，分支只决定数据与状态。"""
+        return RagResolution(
+            context=RagContext(
+                plan=plan,
+                retrieved=retrieved,
+                course_evidence_state=course_evidence_state,
+            ),
+            diagnostics=RagDiagnostics(
+                retrieval_status=retrieval_status,
+                post_validation_status=post_validation_status,
+                failure_reason=failure_reason,
+                course_match_mode=effective_match.mode,
+                constraints_fallback=effective_match.constraints_fallback,
+            ),
         )
 
     async def get_context(
@@ -91,70 +120,55 @@ class RagService:
         plan = plan_query(effective_match, route_decision)
         await self.reload_if_changed()
         if not self.ready:
-            return RagResolution(
-                context=RagContext(plan=plan, retrieved=[]),
-                diagnostics=RagDiagnostics(
-                    retrieval_status="unavailable",
-                    failure_reason="RAG索引或课程关系尚未就绪",
-                    course_match_mode=effective_match.mode,
-                    constraints_fallback=effective_match.constraints_fallback,
-                ),
+            return self._resolution(
+                plan,
+                effective_match,
+                [],
+                retrieval_status="unavailable",
+                failure_reason="RAG索引或课程关系尚未就绪",
             )
         try:
             assert self.retriever is not None
             retrieved = await self.retriever.retrieve(query, plan)
         except Exception as exception:
             # RAG 是可选增强；这里不能阻断既有商品 Tool 和普通回答。
-            return RagResolution(
-                context=RagContext(plan=plan, retrieved=[]),
-                diagnostics=RagDiagnostics(
-                    retrieval_status="failed",
-                    failure_reason=str(exception)[:500],
-                    course_match_mode=effective_match.mode,
-                    constraints_fallback=effective_match.constraints_fallback,
-                ),
+            return self._resolution(
+                plan,
+                effective_match,
+                [],
+                retrieval_status="failed",
+                failure_reason=str(exception)[:500],
             )
 
+        guide_chunks = [
+            item for item in retrieved if item.source_type == "GUIDE"
+        ]
         course_evidence_state = resolve_course_evidence_state(
             "course" in route_decision.knowledge_domains,
             plan,
             retrieved,
         )
-
-        guide_chunks = [
-            item for item in retrieved if item.source_type == "GUIDE"
-        ]
         post_chunks = [
             item for item in retrieved if item.source_type == "POST"
         ]
         if not post_chunks:
-            return RagResolution(
-                context=RagContext(
-                    plan=plan,
-                    retrieved=guide_chunks,
-                    course_evidence_state=course_evidence_state,
-                ),
-                diagnostics=RagDiagnostics(
-                    retrieval_status="success",
-                    course_match_mode=effective_match.mode,
-                    constraints_fallback=effective_match.constraints_fallback,
-                ),
+            return self._resolution(
+                plan,
+                effective_match,
+                guide_chunks,
+                retrieval_status="success",
+                course_evidence_state=course_evidence_state,
             )
 
         candidates = build_post_version_candidates(post_chunks)
         if not candidates:
-            return RagResolution(
-                context=RagContext(
-                    plan=plan,
-                    retrieved=guide_chunks,
-                    course_evidence_state=course_evidence_state,
-                ),
-                diagnostics=RagDiagnostics(
-                    retrieval_status="success",
-                    post_validation_status="no_valid_candidates",
-                    course_match_mode=effective_match.mode,
-                    constraints_fallback=effective_match.constraints_fallback,
-                ),
+            return self._resolution(
+                plan,
+                effective_match,
+                guide_chunks,
+                retrieval_status="success",
+                course_evidence_state=course_evidence_state,
+                post_validation_status="no_valid_candidates",
             )
         try:
             valid_versions = await self.java_backend_client.validate_post_versions(
@@ -162,38 +176,27 @@ class RagService:
                 candidates,
             )
         except Exception as exception:
-            return RagResolution(
-                context=RagContext(
-                    plan=plan,
-                    retrieved=guide_chunks,
-                    course_evidence_state=course_evidence_state,
-                ),
-                diagnostics=RagDiagnostics(
-                    retrieval_status="success",
-                    post_validation_status="failed",
-                    failure_reason=str(exception)[:500],
-                    course_match_mode=effective_match.mode,
-                    constraints_fallback=effective_match.constraints_fallback,
-                ),
+            return self._resolution(
+                plan,
+                effective_match,
+                guide_chunks,
+                retrieval_status="success",
+                course_evidence_state=course_evidence_state,
+                post_validation_status="failed",
+                failure_reason=str(exception)[:500],
             )
 
         valid_posts = [
-            item
-            for item in post_chunks
+            item for item in post_chunks
             if post_identity(item) in valid_versions
         ]
-        return RagResolution(
-            context=RagContext(
-                plan=plan,
-                retrieved=guide_chunks + valid_posts,
-                course_evidence_state=course_evidence_state,
-            ),
-            diagnostics=RagDiagnostics(
-                retrieval_status="success",
-                post_validation_status="success",
-                course_match_mode=effective_match.mode,
-                constraints_fallback=effective_match.constraints_fallback,
-            ),
+        return self._resolution(
+            plan,
+            effective_match,
+            guide_chunks + valid_posts,
+            retrieval_status="success",
+            course_evidence_state=course_evidence_state,
+            post_validation_status="success",
         )
 
     def match_course_query(self, query: str):
@@ -204,21 +207,20 @@ class RagService:
         """CURRENT 切换后加载完整新版本；失败时继续保留旧 Retriever。"""
         if not self.settings.rag_enabled or not self._reload_enabled:
             return
-        selected = current_build_name(self.settings)
-        if not selected or selected == self.loaded_build_name:
-            return
-
         async with self.reload_lock:
-            selected = current_build_name(self.settings)
-            if not selected or selected == self.loaded_build_name:
+            target_build = current_build_name(self.settings)
+            if not target_build or target_build == self.loaded_build_name:
                 return
             try:
-                candidate = Retriever.load(self.settings, build_name=selected)
-                self.retriever = candidate
-                self.loaded_build_name = selected
-                self.reload_error = None
+                candidate = Retriever.load(self.settings,
+                                           build_name=target_build)
             except Exception as exception:
                 self.reload_error = str(exception)
+                return
+
+            # 候选索引可用后才替换；版本号随检索器一起改变。
+            self.retriever = candidate
+            self.reload_error = None
 
 
 def build_post_version_candidates(
@@ -266,9 +268,7 @@ def resolve_course_evidence_state(
     if not course_requested:
         return None
     a_documents = set(plan.course_document_ids)
-    has_a_evidence = any(
-        item.document_id in a_documents for item in retrieved
-    )
+    has_a_evidence = any(item.document_id in a_documents for item in retrieved)
     if has_a_evidence or plan.course_relation_summaries:
         return "clue_only"
     return "unknown_after_search"

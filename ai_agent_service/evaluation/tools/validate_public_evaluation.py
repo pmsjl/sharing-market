@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[3]
 EVALUATION = ROOT / "ai_agent_service" / "evaluation"
-DATASET = EVALUATION / "public" / "dev_v1_2_1.jsonl"
+DATASET = EVALUATION / "public" / "dev_v1_3.jsonl"
 MANIFEST = EVALUATION / "public" / "manifest.json"
 SCHEMA = EVALUATION / "schemas" / "golden_case.schema.json"
 
@@ -54,7 +54,7 @@ def validate() -> dict[str, Any]:
     assert len(rows) == 140, f"expected 140 Dev cases, got {len(rows)}"
     assert len({row["caseId"] for row in rows}) == 140
     assert {row["split"] for row in rows} == {"dev"}
-    assert {row["version"] for row in rows} == {"golden-v1.2.1"}
+    assert {row["version"] for row in rows} == {"golden-v1.3"}
 
     validator = Draft202012Validator(schema)
     errors = sorted(
@@ -73,6 +73,11 @@ def validate() -> dict[str, Any]:
     digest = hashlib.sha256(raw).hexdigest()
     assert manifest["sha256"] == digest
     assert manifest["caseCount"] == 140
+    assert manifest["datasetVersion"] == "public-dev-v1.3-20260912"
+    assert manifest["sourceDatasetVersion"] == "golden-v1.3-reviewed-20260911"
+    assert manifest["indexBuildId"] == (
+        "20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71")
+    assert manifest["indexBuildIdAtFreeze"] == manifest["indexBuildId"]
     assert manifest["split"] == "dev"
     assert sum(manifest["domainCounts"].values()) == 140
     assert Counter(row["domain"] for row in rows) == Counter(

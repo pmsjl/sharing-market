@@ -238,10 +238,8 @@ def test_posts_use_an_independent_quota_threshold_and_document_cap():
 
 def test_unready_retriever_returns_no_context():
     settings = Settings(embedding_dimensions=2)
-    unready = Retriever(settings, _QueryEmbedder(), None)
-
-    assert asyncio.run(
-        unready.retrieve("target", RagQueryPlan())) == []
+    with pytest.raises(ValueError, match="loaded IndexStore"):
+        Retriever(settings, _QueryEmbedder(), None)
 
 
 def test_rag_plan_rejects_removed_compatibility_fields():

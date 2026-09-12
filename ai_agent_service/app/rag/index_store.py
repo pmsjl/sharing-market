@@ -22,6 +22,10 @@ CHUNKING_VERSION = "guide-post-v2"
 KNOWLEDGE_ROOT = Path(__file__).resolve().parents[2] / "knowledge"
 
 
+class IndexStoreLoadError(RuntimeError):
+    """索引版本无法加载或未通过关键兼容性校验。"""
+
+
 class BatchEmbeddingProtocol(Protocol):
     """索引构建阶段批量生成向量所需的最小接口。"""
 
@@ -170,23 +174,32 @@ class IndexStore:
         settings: Settings,
         knowledge_root: Path = KNOWLEDGE_ROOT,
         build_name: str | None = None,
-    ) -> "IndexStore | None":
-        """加载 CURRENT；缓存缺失、过期或损坏时返回 ``None``。
+    ) -> "IndexStore":
+        """加载并校验一个完整索引版本。
 
-        RAG 是可选增强能力。损坏缓存应让调用方降级为空上下文，而不是导致
-        Agent 服务启动失败。
+        加载层只负责判断索引是否能安全检索；调用方决定是否降级。这样失败
+        原因不会在 ``None -> 不可用 Retriever -> unavailable`` 之间丢失。
         """
+        selected_build: str | None = None
+
+        def require(condition: bool, reason: str) -> None:
+            if not condition:
+                raise IndexStoreLoadError(
+                    f"索引版本 {selected_build or '<unknown>'} {reason}"
+                )
+
         try:
             index_dir = Path(settings.rag_index_dir)
             selected_build = build_name or current_build_name(settings)
-            if not selected_build or Path(
-                    selected_build).name != selected_build:
-                return None
+            require(
+                bool(selected_build)
+                and Path(selected_build).name == selected_build,
+                "名称无效或 CURRENT 不存在",
+            )
             build_dir = index_dir / "versions" / selected_build
             metadata = json.loads(
                 (build_dir / "meta.json").read_text(encoding="utf-8"))
-            if not isinstance(metadata, dict):
-                return None
+            require(isinstance(metadata, dict), "元数据不是对象")
             index = faiss.read_index(str(build_dir / "index.faiss"))
             vectors = np.load(build_dir / "vectors.npy")
             chunks = [
@@ -195,57 +208,55 @@ class IndexStore:
                     encoding="utf-8").splitlines() if line.strip()
             ]
 
-            if metadata.get("embeddingModel") != settings.embedding_model:
-                return None
-            if metadata.get(
-                    "embeddingDimensions") != settings.embedding_dimensions:
-                return None
-            if metadata.get("chunkingVersion") != CHUNKING_VERSION:
-                return None
-            if metadata.get("buildId") != selected_build:
-                return None
-            if metadata.get("chunkCount") != len(chunks):
-                return None
-            guide_chunk_count = sum(chunk.source_type == "GUIDE"
-                                    for chunk in chunks)
-            post_chunk_count = sum(chunk.source_type == "POST"
-                                   for chunk in chunks)
-            if metadata.get("guideChunkCount") != guide_chunk_count:
-                return None
-            if metadata.get("postChunkCount") != post_chunk_count:
-                return None
-            guide_document_count = metadata.get("guideDocumentCount")
-            post_document_count = metadata.get("postDocumentCount")
-            if (isinstance(guide_document_count, bool)
-                    or not isinstance(guide_document_count, int)
-                    or guide_document_count < 0
-                    or isinstance(post_document_count, bool)
-                    or not isinstance(post_document_count, int)
-                    or post_document_count < 0 or metadata.get("documentCount")
-                    != guide_document_count + post_document_count):
-                return None
-            if not isinstance(metadata.get("postSnapshotSha256"), str):
-                return None
-            if not isinstance(metadata.get("postSnapshotAt"), str):
-                return None
-            if vectors.ndim != 2 or vectors.shape[
-                    1] != settings.embedding_dimensions:
-                return None
-            if index.d != settings.embedding_dimensions:
-                return None
-            if index.ntotal != len(chunks) or len(chunks) != vectors.shape[0]:
-                return None
-            if metadata.get("manifestSha256") != manifest_sha256(
-                    knowledge_root):
-                return None
+            require(
+                metadata.get("embeddingModel") == settings.embedding_model,
+                "使用了不同的 embedding 模型",
+            )
+            require(
+                metadata.get("embeddingDimensions")
+                == settings.embedding_dimensions,
+                "向量维度与当前配置不一致",
+            )
+            require(
+                metadata.get("chunkingVersion") == CHUNKING_VERSION,
+                "切块版本不兼容",
+            )
+            require(metadata.get("buildId") == selected_build, "构建 ID 不匹配")
+            require(
+                metadata.get("chunkCount") == len(chunks),
+                "chunk 数量与元数据不一致",
+            )
+            if vectors.ndim != 2:
+                raise IndexStoreLoadError(
+                    f"索引版本 {selected_build} 的 vectors 不是二维数组"
+                )
+            require(
+                vectors.shape[1] == settings.embedding_dimensions,
+                "vectors 实际维度不匹配",
+            )
+            require(
+                index.d == settings.embedding_dimensions,
+                "FAISS 索引维度不匹配",
+            )
+            require(
+                index.ntotal == len(chunks) == vectors.shape[0],
+                "FAISS、vectors 和 chunks 数量不一致",
+            )
+            require(
+                metadata.get("manifestSha256") == manifest_sha256(knowledge_root),
+                "对应的知识清单已变化，请重建索引",
+            )
+        except IndexStoreLoadError:
+            raise
         except (
-                OSError,
-                ValueError,
-                TypeError,
-                KeyError,
-                IndexError,
-                json.JSONDecodeError,
-                RuntimeError,
-        ):
-            return None
+            OSError,
+            ValueError,
+            TypeError,
+            KeyError,
+            IndexError,
+            RuntimeError,
+        ) as exception:
+            raise IndexStoreLoadError(
+                f"索引版本 {selected_build or '<unknown>'} 加载失败: {exception}"
+            ) from exception
         return cls(index, vectors, chunks, metadata, selected_build)

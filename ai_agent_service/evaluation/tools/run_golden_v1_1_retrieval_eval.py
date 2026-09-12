@@ -38,8 +38,8 @@ from app.routing.query_router import (
 )
 
 EVAL = AGENT_ROOT / "evaluation"
-DATASET = EVAL / "dataset/golden_v1_2_1_reviewed_200.jsonl"
-MANIFEST = EVAL / "dataset/golden_v1_2_1_reviewed_200_manifest.json"
+DATASET = EVAL / "dataset/golden_v1_3_reviewed_200.jsonl"
+MANIFEST = EVAL / "dataset/golden_v1_3_reviewed_200_manifest.json"
 RESULTS = RESULTS_DIR
 REPORTS = REPORTS_DIR
 RUN_ID = "golden_v1_1_p0_routed"

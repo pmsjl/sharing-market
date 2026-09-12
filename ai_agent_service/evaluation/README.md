@@ -32,27 +32,27 @@ evaluation/
 
 评测数据依次经过"人工编写 → 人工审核 → 生成并定版"三个步骤。最终生成 `dataset/` 下的完整评测集，以及 `public/` 下的脱敏子集。
 
-### 完整评测集（不随仓库发布，`dataset/golden_v1_2_1_reviewed_200.jsonl`）
+### 完整评测集（不随仓库发布，`dataset/golden_v1_3_reviewed_200.jsonl`）
 
-当前定版 **golden-v1.2.1-reviewed-20260829**，共 **200 题**：
+当前定版 **golden-v1.3-reviewed-20260911**，共 **200 题**：
 
 | 领域 | 题数 | 覆盖内容 |
 | --- | ---: | --- |
-| course（课程资料） | 70 | 教材版本、课件获取、课程决策 |
-| post（二手商品） | 50 | 各类商品购买/转卖决策 |
-| platform（平台规则） | 40 | 账号、交易规则、边界 |
-| boundary（合规边界） | 20 | 能否上架、正品、禁售 |
-| campus（校园生活） | 20 | 宿舍电器、生活决策 |
+| course（课程资料） | 20 | 教材版本、课件获取、课程决策 |
+| post（二手商品） | 64 | 各类商品购买/转卖决策 |
+| platform（平台规则） | 45 | 账号、交易规则、边界 |
+| boundary（合规边界） | 41 | 能否上架、正品、禁售 |
+| campus（校园生活） | 30 | 宿舍电器、生活决策 |
 
-- **split**：dev 140（开发调试用）+ test 60（不参与开发调试的独立测试集）。
+- **split**：dev 140（开发调试用）+ test 60（不公开，已参与人工查看和分析）。
 - 每条含 `expectedRoute`（retrieve/clarify/out_of_scope/skip_rag）、`expectedKnowledgeState`、`expectedFacts`、`qrels`（文档级相关性标注）、`provenance`、`review`（评审记录）等字段。
 - **数据集本身不进 Git**：完整评测集包含人工评审记录，不随仓库发布。仓库只提交执行代码，运行完整评测时需由调用方自备 Dataset 和 Manifest。
 
-### 公开评测集（`public/dev_v1_2_1.jsonl`）
+### 公开评测集（`public/dev_v1_3.jsonl`）
 
-从完整评测集的 dev 140 题脱敏后发布：剥离评审记录、内部构造字段和未参与开发调试的 test 60 题。
+从完整评测集的 dev 140 题脱敏后发布：剥离评审记录、内部构造字段和不公开的 test 60 题。
 
-- 140 题、178 条 qrels。
+- 140 题、109 条 qrels。
 - 准确版本、数量、Hash 以 `public/manifest.json` 为准。
 - 用途：开发调试、数据格式验证、公开可复现基线。
 
@@ -92,6 +92,8 @@ evaluation/
 | ③ Generation | `run_golden_v1_1_answer_generation.py` | Router 结果 + 检索结果 | `pipeline_answer_generation.jsonl` | 答案生成成功、引用完整 |
 | ④ Judge | `run_golden_v1_1_answer_judge.py` | 生成结果 + 期望 | `pipeline_answer_judgments.jsonl` | 答案是否 PASS、知识状态是否正确 |
 | ⑤ Final | `build_golden_v1_2_single_v2_final_results.py` | Generation + Judge | `pipeline_final_results.jsonl` + `_manifest.json` | 汇总 PASS/FAIL、按领域统计 |
+
+阶段脚本保留历史文件名中的 `v1_1`，通用入口与阶段默认数据路径均已切换到 v1.3；历史物化工具不变。
 
 ### 共享库
 
@@ -134,8 +136,8 @@ market_backend Post 快照 ┘                          │
 ```powershell
 # 从仓库根目录，使用不随仓库发布的评测集和 Manifest
 <python> ai_agent_service\evaluation\tools\run_golden_pipeline.py `
-  --dataset ai_agent_service\evaluation\dataset\golden_v1_2_1_reviewed_200.jsonl `
-  --manifest ai_agent_service\evaluation\dataset\golden_v1_2_1_reviewed_200_manifest.json `
+  --dataset ai_agent_service\evaluation\dataset\golden_v1_3_reviewed_200.jsonl `
+  --manifest ai_agent_service\evaluation\dataset\golden_v1_3_reviewed_200_manifest.json `
   --run-name <run-name> `
   --through final
 ```
@@ -145,18 +147,18 @@ market_backend Post 快照 ┘                          │
 ```powershell
 <python> ai_agent_service\evaluation\tools\run_golden_pipeline.py `
   --dataset <dataset.jsonl> --manifest <manifest.json> `
-  --run-name smoke_5_20260902 `
-  --case-id boundary-01-official-opened-cosmetics `
-  --case-id campus-campus-dorm-appliance-rules-01 `
-  --case-id course-material_mention-001 `
-  --case-id platform-account-and-identity-01 `
+  --run-name smoke_5_v1_3 `
+  --case-id boundary-02-official-dorm-kettle `
+  --case-id campus-campus-dorm-bed-desk-dimensions-01 `
+  --case-id course-material_mention-002 `
+  --case-id platform-cancellation-refund-and-disputes-01 `
   --case-id post-legacy-001 `
   --through final
 ```
 
 - `--case-id` 可多次传，或 `--limit N` 取前 N 题。
 - `--through prepare` 只选择 Case 并关联 Manifest，**不调用模型**，用于快速检查输入是否合法。
-- 5 问对照通常按五个领域各取 1 题，其中 4 题选自未参与开发调试的 test 60（独立测试集），避免"背题"干扰。
+- 子集调试优先从公开 Dev 各领域选题；Test 已参与人工分析，不作为从未见过的隐藏测试集。
 
 ### 索引不可用时的覆盖
 
@@ -166,7 +168,7 @@ Manifest 中记录的索引不在本地时，必须显式传入可用索引：
 --index-build-id <可用-build-id>
 ```
 
-原索引版本和本次临时指定的版本都会写入运行 Manifest（`pipelineSelection.sourceIndexBuildIdAtFreeze` / `indexBuildOverride`）。
+覆盖索引后的结果不直接等同于冻结基线。原索引版本和本次临时指定的版本都会写入运行 Manifest（`pipelineSelection.sourceIndexBuildIdAtFreeze` / `indexBuildOverride`）。
 
 ## 评测输出（`runs/<run-name>/`）
 
@@ -185,7 +187,7 @@ runs/<run-name>/
 └── reports/                   各阶段 summary / badcases
 ```
 
-`PIPELINE_MANIFEST.json` 记录 `implementationSha256`（各脚本哈希），两次运行据此可确认是否使用了**同一版代码**，从而判断是否修改了核心评测逻辑。
+`PIPELINE_MANIFEST.json` 记录 `implementationSha256`（各脚本哈希），只能据此确认这些阶段脚本是否相同，不能证明整个运行时、提示词与依赖均未变化。
 Router、Answer Generation 和 Judge 的报告还会分别记录实际模型、`reasoningEffort` 与 `textVerbosity`；正式对比不得只记录模型名称而省略推理强度。
 
 ## 对照两次运行
@@ -229,12 +231,14 @@ Router、Answer Generation 和 Judge 的报告还会分别记录实际模型、`
 ### 仓库中包含的评测内容
 
 - 公开：脱敏 Dev 数据、Schema、Manifest、标注规范、聚合基线摘要。
-- 不公开：test 60（独立测试集）、模型原始输出、请求 Trace、标识符、用量记录、人工评审记录和完整 Dataset。
+- 不公开：test 60（固定回归集）、模型原始输出、请求 Trace、标识符、用量记录、人工评审记录和完整 Dataset。
 - 公开题目中的 `provenance.source` 已改为指向 `knowledge/runtime/` 下对应的运行数据，不再引用已移出仓库的 `knowledge/normalized/`。
 
 ### 公开基线
 
-`public/benchmark_summary.md` 给出 2026-09-05 人工复核后的完整聚合指标（Router 96.50%、Recall@5 92.57%、Final 97.00%）。注意：Public Dev 一旦用于实现调整或参数选择，就不能再表述为"未见过的隐藏测试集"。
+`public/benchmark_summary.md` 给出 2026-09-12 更新的 v1.3 三阶段聚合指标（阶段 3 Router 95.00%、Recall@5 90.55%、Final 97.00%）。注意：Public Dev 一旦用于实现调整或参数选择，就不能再表述为"未见过的隐藏测试集"。
+
+三阶段分别复用 143 条历史结果并补充 57 条新增或更新结果。阶段 1 新片段使用模拟配置和期望领域辅助检索，仅供参考，不能视作严格历史复现或公平单变量消融。
 
 三个代码阶段的公开汇总对比见 [`../../docs/evaluation/three-stage-benchmark.md`](../../docs/evaluation/three-stage-benchmark.md)。该文档只披露汇总数据；逐题结果与 Judge 理由仍保存在本地，不随仓库发布。
 
@@ -255,6 +259,6 @@ cd ai_agent_service
 
 ## 常见问题
 
-- **为什么不把 200 题放进 Git？** 完整评测集包含人工评审记录和独立测试集，不随仓库发布；公开仓库只放脱敏后的 dev 子集。
+- **为什么不把 200 题放进 Git？** 完整评测集包含人工评审记录和未公开的 Test 集，不随仓库发布；公开仓库只放脱敏后的 dev 子集。
 - **改动后跑什么？** 先用 `--through prepare` 确认输入合法，再跑代表性子集（如跨五个领域各取 1 题），检查关键判定字段是否一致；重大改动建议运行完整的 200 题。
 - **结果波动怎么判断好坏？** 主要看路由、状态和 PASS/FAIL 等关键结果，不只看回答文本；两次运行若 `implementationSha256` 一致，说明评测脚本代码没有变化。

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.clients.java_backend import JavaBackendClientError
 from app.rag.course_relations import CourseRelationIndex
+from app.rag.index_store import IndexStoreLoadError
 from app.rag.models import RagContext, RagQueryPlan, RetrievedChunk
 from app.rag.service import RagService, resolve_course_evidence_state
 from app.rag import service as rag_service_module
@@ -138,8 +139,9 @@ def test_course_evidence_state_respects_fact_scope() -> None:
 
 
 def test_unready_or_failed_retriever_degrades_without_raising():
-    unready = _get(_service(_Retriever(ready=False)),
-                   "离校前大件物品怎么处理？", "request-1")
+    unavailable_service = _service(_Retriever())
+    unavailable_service.retriever = None
+    unready = _get(unavailable_service, "离校前大件物品怎么处理？", "request-1")
     failed = _get(_service(_Retriever(error=RuntimeError("boom"))),
                   "宿舍使用小家电有什么限制？", "request-1")
 
@@ -243,6 +245,40 @@ def test_broken_new_build_keeps_previous_retriever(monkeypatch):
     assert service.retriever is original
     assert service.loaded_build_name == "build-1"
     assert service.reload_error == "索引文件损坏"
+
+
+def test_unavailable_new_index_keeps_previous_retriever_and_retries(monkeypatch):
+    original = _Retriever(build_name="build-1")
+    service = _service(original)
+    service._reload_enabled = True
+    monkeypatch.setattr(
+        rag_service_module,
+        "current_build_name",
+        lambda settings: "build-2",
+    )
+    def fail_to_load(settings, build_name=None):
+        raise IndexStoreLoadError("索引版本 build-2 的 vectors 文件损坏")
+
+    monkeypatch.setattr(rag_service_module.Retriever, "load", fail_to_load)
+
+    asyncio.run(service.reload_if_changed())
+
+    assert service.retriever is original
+    assert service.loaded_build_name == "build-1"
+    assert service.ready
+    assert service.reload_error == "索引版本 build-2 的 vectors 文件损坏"
+
+    replacement = _Retriever(build_name="build-2")
+    monkeypatch.setattr(
+        rag_service_module.Retriever,
+        "load",
+        lambda settings, build_name=None: replacement,
+    )
+    asyncio.run(service.reload_if_changed())
+
+    assert service.retriever is replacement
+    assert service.loaded_build_name == "build-2"
+    assert service.reload_error is None
 
 
 def test_rag_context_rejects_removed_query_and_degraded_fields():
