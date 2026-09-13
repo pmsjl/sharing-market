@@ -46,9 +46,14 @@ public class CampusCoinServiceImpl implements CampusCoinService {
     @Override
     public Page<CampusCoinTransactionVO> listMyTransactions(Long userId, PageRequest pageRequest) {
         ThrowUtils.throwIf(pageRequest == null, ErrorCode.PARAMS_ERROR);
-        int current = pageRequest.getCurrent() <= 0 ? 1 : pageRequest.getCurrent();
-        int pageSize = pageRequest.getPageSize() <= 0 || pageRequest.getPageSize() > 50
-                ? 10 : pageRequest.getPageSize();
+        int current = pageRequest.getCurrent();
+        int pageSize = pageRequest.getPageSize();
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 50) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 50 之间");
+        }
         Page<CampusCoinTransaction> entityPage = new Page<>(current, pageSize);
         entityPage.addOrder(OrderItem.desc("createTime"), OrderItem.desc("id"));
         entityPage = campusCoinTransactionMapper.selectPage(

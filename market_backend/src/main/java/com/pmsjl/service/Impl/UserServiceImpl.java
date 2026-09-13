@@ -131,8 +131,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         int pageSize = userQueryRequest.getPageSize();
         String sortField = userQueryRequest.getSortField();
         String sortOrder = userQueryRequest.getSortOrder();
-        if (current <= 0) current = 1;
-        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
+        }
         Page<User> page = new Page<>(current, pageSize);
         if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_USER_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {

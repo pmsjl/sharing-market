@@ -254,15 +254,26 @@ const getCommodityList = async () => {
 
 const getCommodityTypeList = async () => {
   try {
-    const res = await listCommodityTypeVoByPageUsingPost({
-      pageSize: 1000,
-      current: 1
-    });
-    if (res.code === 200) {
-      commodityTypeList.value = res.data.records;
-    } else {
-      ElMessage.error("获取商品分类列表失败");
+    const categories = [];
+    let current = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const res = await listCommodityTypeVoByPageUsingPost({
+        pageSize: 100,
+        current,
+        sortField: "id",
+        sortOrder: "asc"
+      });
+      if (res.code !== 200) {
+        ElMessage.error("获取商品分类列表失败");
+        return;
+      }
+      const records = res.data.records;
+      categories.push(...records);
+      hasMore = records.length > 0 && categories.length < res.data.total;
+      current += 1;
     }
+    commodityTypeList.value = categories;
   } catch (error: any) {
     ElMessage.error("获取商品分类列表失败", error);
   }

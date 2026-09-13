@@ -155,8 +155,12 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
         String sortField = noticeQueryRequest.getSortField();
         String sortOrder = noticeQueryRequest.getSortOrder();
 
-        if (current <= 0) current = 1;
-        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
+        }
         Page<Notice> page = new Page<>(current, pageSize);
         if (StringUtils.isNotBlank(sortField) && ALLOWED_NOTICE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {

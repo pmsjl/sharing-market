@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -204,6 +205,65 @@ class AiUserPreferenceServiceImplTest {
         assertNull(response.getFavoriteCurrentPriceProfile());
         verify(commodityService, never()).listByIds(anyCollection());
         verify(typeService, never()).listByIds(anyCollection());
+    }
+
+    @Test
+    void preservesQuotaFillAndTieOrderForRepresentativeInteractions() {
+        List<CommodityOrder> orders = new ArrayList<>();
+        List<Commodity> commodities = new ArrayList<>();
+        for (long id = 1; id <= 9; id++) {
+            orders.add(order(id, "20.00", 1, 1000L));
+            commodities.add(commodity(id, 10L, "商品" + id, "九五新", "99.00"));
+        }
+        commodities.add(commodity(10L, 10L, "收藏商品", "九五新", "30.00"));
+        when(orderMapper.selectList(org.mockito.ArgumentMatchers.<Wrapper<CommodityOrder>>any()))
+                .thenReturn(orders);
+        when(favoritesMapper.selectList(org.mockito.ArgumentMatchers.<Wrapper<UserCommodityFavorites>>any()))
+                .thenReturn(List.of(favorite(10L, 1000L), favorite(1L, 2000L)));
+        when(commodityService.listByIds(anyCollection())).thenReturn(commodities);
+        when(typeService.listByIds(anyCollection())).thenReturn(List.of(type(10L, "教材")));
+
+        UserPreferenceToolResponse response = service().buildPreferenceProfile("ties", 7L);
+
+        assertEquals(List.of(1L, 2L, 3L, 4L, 10L, 5L, 6L, 7L),
+                response.getRepresentativeInteractions().stream()
+                        .map(UserPreferenceToolResponse.RepresentativeInteraction::getCommodityId).toList());
+        assertEquals(List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L),
+                response.getRecentCommodityIds());
+        assertEquals(9, response.getBehaviorStats().getDistinctPurchaseCount());
+        assertEquals(1, response.getBehaviorStats().getDistinctFavoriteCount());
+        assertEquals(9, response.getPreferredCategories().get(0).getEvidence().getPaidCommodityCount());
+        assertEquals(1, response.getPreferredDegrees().get(0).getEvidence().getFavoriteCommodityCount());
+    }
+
+    @Test
+    void usesLatestOrderWithFallbackTimeAndIgnoresInvalidPurchasePrices() {
+        CommodityOrder latest = order(1L, "10.00", 3, 1000L);
+        latest.setUpdateTime(null);
+        latest.setCreateTime(new Date(3000L));
+        CommodityOrder missingAmount = order(4L, "1.00", 1, 1000L);
+        missingAmount.setPaymentAmount(null);
+        when(orderMapper.selectList(org.mockito.ArgumentMatchers.<Wrapper<CommodityOrder>>any()))
+                .thenReturn(List.of(order(1L, "999.00", 1, 2000L), latest,
+                        order(2L, "-1.00", 1, 1000L), order(3L, "30.00", 0, 1000L), missingAmount));
+        when(favoritesMapper.selectList(org.mockito.ArgumentMatchers.<Wrapper<UserCommodityFavorites>>any()))
+                .thenReturn(List.of());
+        when(commodityService.listByIds(anyCollection())).thenReturn(List.of(
+                commodity(1L, 10L, "商品1", "九五新", "99.00"),
+                commodity(2L, 10L, "商品2", "九五新", "99.00"),
+                commodity(3L, 10L, "商品3", "九五新", "99.00"),
+                commodity(4L, 10L, "商品4", "九五新", "99.00")));
+        when(typeService.listByIds(anyCollection())).thenReturn(List.of(type(10L, "教材")));
+
+        UserPreferenceToolResponse response = service().buildPreferenceProfile("prices", 7L);
+
+        assertEquals(4, response.getBehaviorStats().getDistinctPurchaseCount());
+        assertEquals(1, response.getPurchasePriceProfile().getSampleCount());
+        assertEquals(new BigDecimal("3.33"), response.getPurchasePriceProfile().getMedianUnitPrice());
+        assertEquals(List.of(AiPreferenceSignalEnum.PURCHASE),
+                response.getPreferredCategories().get(0).getSignals());
+        assertEquals(List.of(1L, 2L, 3L, 4L), response.getRecentCommodityIds());
+        assertNull(response.getFavoriteCurrentPriceProfile());
     }
 
     private AiUserPreferenceServiceImpl service() {

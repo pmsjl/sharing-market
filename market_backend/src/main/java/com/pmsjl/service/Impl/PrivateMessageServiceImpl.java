@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pmsjl.common.ErrorCode;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.common.PageRequest;
 import com.pmsjl.model.vo.PrivateConversationVO;
 import com.pmsjl.model.dto.privateMessage.PrivateMessageAddRequest;
@@ -44,8 +45,14 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
     public Page<PrivateConversationVO> listMyConversations(PageRequest query) {
         ThrowUtils.throwIf(query == null, ErrorCode.PARAMS_ERROR);
         Long userId = userService.getLoginUser().getId();
-        int current = Math.max(1, query.getCurrent());
-        int size = query.getPageSize() <= 0 ? 20 : Math.min(100, query.getPageSize());
+        int current = query.getCurrent();
+        int size = query.getPageSize();
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (size < 1 || size > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
+        }
         long total = baseMapper.countMyConversations(userId);
         Page<PrivateConversationVO> page = new Page<>(current, size, total);
         long offset = (long) (current - 1) * size;
@@ -84,8 +91,12 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
         User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
 
-        if (current <= 0) current = 1;
-        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
+        }
         Page<PrivateMessage> page = new Page<>(current, pageSize);
         if (!StringUtils.isBlank(sortField) && ALLOWED_PRIVATE_MESSAGE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {

@@ -28,6 +28,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -231,7 +233,7 @@ class AiMessageServiceImplTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void listConversationMessagesNormalizesPaginationAndRejectsUnsafeSortField() {
+    void listConversationMessagesPreservesValidPaginationAndRejectsUnsafeSortField() {
         User loginUser = new User();
         loginUser.setId(101L);
         when(userService.getLoginUser()).thenReturn(loginUser);
@@ -243,8 +245,8 @@ class AiMessageServiceImplTest {
                 invocation.getArgument(0));
 
         AiMessageQueryRequest queryRequest = new AiMessageQueryRequest();
-        queryRequest.setCurrent(0);
-        queryRequest.setPageSize(51);
+        queryRequest.setCurrent(1);
+        queryRequest.setPageSize(20);
         queryRequest.setSortField("modelName");
         queryRequest.setSortOrder("asc");
 
@@ -330,4 +332,18 @@ class AiMessageServiceImplTest {
         message.setCreateTime(createTime);
         return message;
     }
+    @ParameterizedTest
+    @CsvSource({"0, 10", "-1, 10", "1, 0", "1, -1", "1, 51"})
+    void rejectsInvalidPaginationBeforeQuerying(int current, int pageSize) {
+        AiMessageQueryRequest queryRequest = new AiMessageQueryRequest();
+        queryRequest.setCurrent(current);
+        queryRequest.setPageSize(pageSize);
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> messageService.listConversationMessages(500L, queryRequest, request));
+        assertEquals(ErrorCode.PARAMS_ERROR.getCode(), exception.getCode());
+        assertEquals(current < 1 ? "current 必须大于等于 1" : "pageSize 必须在 1 到 50 之间",
+                exception.getMessage());
+        verifyNoInteractions(messageMapper, conversationService, userService);
+    }
+
 }

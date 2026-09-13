@@ -1,7 +1,13 @@
 package com.pmsjl.service.Impl;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.BehaviorStats;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.PreferenceEvidence;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.PreferredCategory;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.RepresentativeInteraction;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.PurchasePriceProfile;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.FavoriteCurrentPriceProfile;
+import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse.PreferredDegree;
 import com.pmsjl.model.entity.Commodity;
 import com.pmsjl.model.entity.CommodityOrder;
 import com.pmsjl.model.entity.CommodityType;
@@ -18,21 +24,19 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-public class AiUserPreferenceServiceImpl
-        implements AiUserPreferenceService {
+public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
 
     private static final int PURCHASE_SCORE = 3;
     private static final int FAVOUR_SCORE = 1;
@@ -59,51 +63,39 @@ public class AiUserPreferenceServiceImpl
             String requestId,
             Long userId
     ) {
-        List<CommodityOrder> paidOrders = loadLatestPaidOrders(userId);
-        List<UserCommodityFavorites> activeFavorites =
-                loadLatestActiveFavorites(userId);
+        List<CommodityOrder> paidOrders = loadPaidOrders(userId);
+        List<UserCommodityFavorites> favorites = loadFavorites(userId);
 
-        Set<Long> purchasedCommodityIds = paidOrders.stream()
+        Set<Long> paidCommodityIds = paidOrders.stream()
                 .map(CommodityOrder::getCommodityId)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        activeFavorites.removeIf(
-                favorite -> purchasedCommodityIds.contains(
-                        favorite.getCommodityId()
-                )
-        );
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        favorites.removeIf(favorite -> paidCommodityIds.contains(favorite.getCommodityId()));
 
-        Set<Long> behaviorCommodityIds = new LinkedHashSet<>();
-        //LinkedHashSet不是乱序！
-        //它相当于是去重的list，插入是保留原有顺序的！hashset是乱序
-        paidOrders.stream()
-                .map(CommodityOrder::getCommodityId)
-                .filter(Objects::nonNull)
-                .forEach(behaviorCommodityIds::add);
-        //这个和上面的purchasedCommodityIds区别就是这个是保留顺序的
-
-        activeFavorites.stream()
+        // 保留购买优先的顺序，再加入未购买的收藏商品。
+        Set<Long> behaviorCommodityIds = new LinkedHashSet<>(paidCommodityIds);
+        favorites.stream()
                 .map(UserCommodityFavorites::getCommodityId)
                 .filter(Objects::nonNull)
                 .forEach(behaviorCommodityIds::add);
 
-        Map<Long, Commodity> commodityMap =
-                loadCommodityMap(behaviorCommodityIds);
-        Map<Long, CommodityType> typeMap =
-                loadCommodityTypeMap(commodityMap.values());
+        Map<Long, Commodity> commodityMap = loadCommodityMap(behaviorCommodityIds);
+        Map<Long, CommodityType> typeMap = loadCommodityTypeMap(commodityMap.values());
 
         List<EffectiveBehavior> behaviors = new ArrayList<>();
         for (CommodityOrder order : paidOrders) {
             addPurchaseBehavior(behaviors, order, commodityMap, typeMap);
         }
-        for (UserCommodityFavorites favorite : activeFavorites) {
+        for (UserCommodityFavorites favorite : favorites) {
             addFavoriteBehavior(behaviors, favorite, commodityMap, typeMap);
         }
 
-        return buildResponse(requestId, behaviors);
+        // 稳定排序：相同时间保留原顺序（购买在收藏之前）。
+        behaviors.sort(this::compareByRecent);
+        return buildResponse(requestId, behaviors, typeMap);
     }
 
-    private List<CommodityOrder> loadLatestPaidOrders(Long userId) {
+    private List<CommodityOrder> loadPaidOrders(Long userId) {
         List<CommodityOrder> orders = new ArrayList<>(
                 commodityOrderService.lambdaQuery()
                         .eq(CommodityOrder::getUserId, userId)
@@ -119,8 +111,7 @@ public class AiUserPreferenceServiceImpl
                 )
         );
 
-        Map<Long, CommodityOrder> latestByCommodity =
-                new LinkedHashMap<>();
+        Map<Long, CommodityOrder> latestByCommodity = new LinkedHashMap<>();
         for (CommodityOrder order : orders) {
             if (order.getCommodityId() != null) {
                 latestByCommodity.putIfAbsent(
@@ -132,20 +123,15 @@ public class AiUserPreferenceServiceImpl
         return new ArrayList<>(latestByCommodity.values());
     }
 
-    private List<UserCommodityFavorites> loadLatestActiveFavorites(
-            Long userId
-    ) {
+    private List<UserCommodityFavorites> loadFavorites(Long userId) {
         List<UserCommodityFavorites> favorites = new ArrayList<>(
                 favoritesService.lambdaQuery()
                         .eq(UserCommodityFavorites::getUserId, userId)
                         .eq(UserCommodityFavorites::getStatus, 1)
-                        .orderByDesc(
-                                UserCommodityFavorites::getUpdateTime
-                        )
+                        .orderByDesc(UserCommodityFavorites::getUpdateTime)
                         .orderByDesc(UserCommodityFavorites::getId)
                         .list()
         );
-
 
         favorites.sort(
                 Comparator.comparing(
@@ -157,9 +143,7 @@ public class AiUserPreferenceServiceImpl
         return favorites;
     }
 
-    private Map<Long, Commodity> loadCommodityMap(
-            Set<Long> commodityIds
-    ) {
+    private Map<Long, Commodity> loadCommodityMap(Set<Long> commodityIds) {
         if (commodityIds.isEmpty()) {
             return Map.of();
         }
@@ -171,9 +155,7 @@ public class AiUserPreferenceServiceImpl
                 ));
     }
 
-    private Map<Long, CommodityType> loadCommodityTypeMap(
-            java.util.Collection<Commodity> commodities
-    ) {
+    private Map<Long, CommodityType> loadCommodityTypeMap(Collection<Commodity> commodities) {
         Set<Long> typeIds = commodities.stream()
                 .map(Commodity::getCommodityTypeId)
                 .filter(Objects::nonNull)
@@ -206,7 +188,7 @@ public class AiUserPreferenceServiceImpl
                 type,
                 AiPreferenceSignalEnum.PURCHASE,
                 eventTime(order),
-                order
+                unitPurchasePrice(order)
         ));
     }
 
@@ -242,10 +224,10 @@ public class AiUserPreferenceServiceImpl
 
     private UserPreferenceToolResponse buildResponse(
             String requestId,
-            List<EffectiveBehavior> behaviors
+            List<EffectiveBehavior> behaviors,
+            Map<Long, CommodityType> typeMap
     ) {
-        UserPreferenceToolResponse response =
-                new UserPreferenceToolResponse();
+        UserPreferenceToolResponse response = new UserPreferenceToolResponse();
         response.setRequestId(requestId);
 
         long purchaseCount = behaviors.stream()
@@ -257,54 +239,37 @@ public class AiUserPreferenceServiceImpl
                 .distinct()
                 .count();
 
-        UserPreferenceToolResponse.BehaviorStats stats =
-                new UserPreferenceToolResponse.BehaviorStats();
+        BehaviorStats stats = new BehaviorStats();
         stats.setDistinctPurchaseCount((int) purchaseCount);
         stats.setDistinctFavoriteCount((int) favoriteCount);
         stats.setDistinctCategoryCount((int) categoryCount);
         response.setBehaviorStats(stats);
 
-        response.setPreferredCategories(buildCategories(behaviors));
-        response.setRepresentativeInteractions(
-                buildRepresentativeInteractions(behaviors)
-        );
-        response.setPurchasePriceProfile(
-                buildPurchasePriceProfile(behaviors)
-        );
-        response.setFavoriteCurrentPriceProfile(
-                buildFavoritePriceProfile(behaviors)
-        );
+        response.setPreferredCategories(buildCategories(behaviors, typeMap));
+        response.setRepresentativeInteractions(buildRepresentativeInteractions(behaviors));
+        response.setPurchasePriceProfile(buildPurchasePriceProfile(behaviors));
+        response.setFavoriteCurrentPriceProfile(buildFavoritePriceProfile(behaviors));
         response.setPreferredDegrees(buildPreferredDegrees(behaviors));
         response.setRecentCommodityIds(
                 behaviors.stream()
-                        .sorted(this::compareByRecent)
                         .map(behavior -> behavior.commodity().getId())
                         .distinct()
                         .limit(20)
                         .toList()
         );
 
-        AiPreferenceConfidenceEnum confidence =
-                confidenceFor(behaviors.size());
+        AiPreferenceConfidenceEnum confidence = confidenceFor(behaviors.size());
         response.setConfidence(confidence);
-        response.setColdStart(
-                confidence == AiPreferenceConfidenceEnum.NONE
-        );
+        response.setColdStart(confidence == AiPreferenceConfidenceEnum.NONE);
         return response;
     }
 
-    private List<UserPreferenceToolResponse.PreferredCategory>
-    buildCategories(List<EffectiveBehavior> behaviors) {
-        Map<Long, PreferenceAccumulator> accumulators =
-                new LinkedHashMap<>();
+    private List<PreferredCategory> buildCategories(
+            List<EffectiveBehavior> behaviors, Map<Long, CommodityType> typeMap) {
+        Map<Long, PreferenceAccumulator> accumulators = new LinkedHashMap<>();
         for (EffectiveBehavior behavior : behaviors) {
-            PreferenceAccumulator accumulator =
-                    accumulators.computeIfAbsent(
-                            behavior.type().getId(),
-                            ignored -> new PreferenceAccumulator(
-                                    behavior.type().getTypeName()
-                            )
-                    );
+            PreferenceAccumulator accumulator = accumulators.computeIfAbsent(
+                    behavior.type().getId(), ignored -> new PreferenceAccumulator());
             accumulator.add(behavior.signal());
         }
 
@@ -314,28 +279,17 @@ public class AiUserPreferenceServiceImpl
                 .orElse(0);
         return accumulators.entrySet().stream()
                 .sorted(
-                        Comparator
-                                .<Map.Entry<Long, PreferenceAccumulator>>
-                                        comparingInt(
-                                        entry -> entry.getValue()
-                                                .score()
-                                )
+                        Comparator.<Map.Entry<Long, PreferenceAccumulator>>comparingInt(
+                                        entry -> entry.getValue().score())
                                 .reversed()
                                 .thenComparing(Map.Entry::getKey)
                 )
                 .limit(10)
                 .map(entry -> {
-                    UserPreferenceToolResponse.PreferredCategory item =
-                            new UserPreferenceToolResponse
-                                    .PreferredCategory();
+                    PreferredCategory item = new PreferredCategory();
                     item.setCategoryId(entry.getKey());
-                    item.setCategoryName(entry.getValue().label());
-                    item.setWeight(
-                            normalizedWeight(
-                                    entry.getValue().score(),
-                                    maximumScore
-                            )
-                    );
+                    item.setCategoryName(typeMap.get(entry.getKey()).getTypeName());
+                    item.setWeight(normalizedWeight(entry.getValue().score(), maximumScore));
                     item.setSignals(entry.getValue().signals());
                     item.setEvidence(entry.getValue().evidence());
                     return item;
@@ -343,38 +297,22 @@ public class AiUserPreferenceServiceImpl
                 .toList();
     }
 
-    private List<UserPreferenceToolResponse.RepresentativeInteraction>
-    buildRepresentativeInteractions(
-            List<EffectiveBehavior> behaviors
-    ) {
-        List<EffectiveBehavior> purchases = behaviors.stream()
-                .filter(this::isPurchase)
-                .sorted(this::compareByRecent)
-                .toList();
-        List<EffectiveBehavior> favorites = behaviors.stream()
-                .filter(behavior -> !isPurchase(behavior))
-                .sorted(this::compareByRecent)
-                .toList();
-
-        List<EffectiveBehavior> selected = new ArrayList<>();
-        purchases.stream().limit(4).forEach(selected::add);
-        favorites.stream().limit(4).forEach(selected::add);
+    private List<RepresentativeInteraction> buildRepresentativeInteractions(List<EffectiveBehavior> behaviors) {
+        List<EffectiveBehavior> selected = new ArrayList<>(8);
+        behaviors.stream().filter(this::isPurchase).limit(4).forEach(selected::add);
+        behaviors.stream().filter(behavior -> !isPurchase(behavior)).limit(4).forEach(selected::add);
 
         if (selected.size() < 8) {
             Set<Long> selectedIds = selected.stream()
                     .map(item -> item.commodity().getId())
                     .collect(Collectors.toSet());
             behaviors.stream()
-                    .sorted(this::compareByRecent)
-                    .filter(
-                            item -> !selectedIds.contains(
-                                    item.commodity().getId()
-                            )
-                    )
+                    .filter(item -> !selectedIds.contains(item.commodity().getId()))
                     .limit(8 - selected.size())
                     .forEach(selected::add);
         }
 
+        // 最多 8 条；保留同时间下“优先名额在补齐条目之前”的原顺序。
         return selected.stream()
                 .sorted(this::compareByRecent)
                 .limit(8)
@@ -382,16 +320,11 @@ public class AiUserPreferenceServiceImpl
                 .toList();
     }
 
-    private UserPreferenceToolResponse.RepresentativeInteraction
-    toRepresentativeInteraction(EffectiveBehavior behavior) {
-        UserPreferenceToolResponse.RepresentativeInteraction item =
-                new UserPreferenceToolResponse
-                        .RepresentativeInteraction();
+    private RepresentativeInteraction toRepresentativeInteraction(EffectiveBehavior behavior) {
+        RepresentativeInteraction item = new RepresentativeInteraction();
         item.setCommodityId(behavior.commodity().getId());
         item.setCommodityName(behavior.commodity().getCommodityName());
-        item.setDescriptionSnippet(
-                snippet(behavior.commodity().getCommodityDescription())
-        );
+        item.setDescriptionSnippet(snippet(behavior.commodity().getCommodityDescription()));
         item.setCategoryId(behavior.type().getId());
         item.setCategoryName(behavior.type().getTypeName());
         item.setDegree(blankToNull(behavior.commodity().getDegree()));
@@ -399,11 +332,10 @@ public class AiUserPreferenceServiceImpl
         return item;
     }
 
-    private UserPreferenceToolResponse.PurchasePriceProfile
-    buildPurchasePriceProfile(List<EffectiveBehavior> behaviors) {
+    private PurchasePriceProfile buildPurchasePriceProfile(List<EffectiveBehavior> behaviors) {
         List<BigDecimal> prices = behaviors.stream()
                 .filter(this::isPurchase)
-                .map(this::unitPurchasePrice)
+                .map(EffectiveBehavior::purchaseUnitPrice)
                 .filter(Objects::nonNull)
                 .sorted()
                 .toList();
@@ -411,8 +343,7 @@ public class AiUserPreferenceServiceImpl
             return null;
         }
 
-        UserPreferenceToolResponse.PurchasePriceProfile profile =
-                new UserPreferenceToolResponse.PurchasePriceProfile();
+        PurchasePriceProfile profile = new PurchasePriceProfile();
         profile.setSampleCount(prices.size());
         profile.setMinUnitPrice(prices.get(0));
         profile.setMedianUnitPrice(median(prices));
@@ -420,8 +351,7 @@ public class AiUserPreferenceServiceImpl
         return profile;
     }
 
-    private UserPreferenceToolResponse.FavoriteCurrentPriceProfile
-    buildFavoritePriceProfile(List<EffectiveBehavior> behaviors) {
+    private FavoriteCurrentPriceProfile buildFavoritePriceProfile(List<EffectiveBehavior> behaviors) {
         List<BigDecimal> prices = behaviors.stream()
                 .filter(behavior -> !isPurchase(behavior))
                 .map(behavior -> behavior.commodity().getPrice())
@@ -436,9 +366,7 @@ public class AiUserPreferenceServiceImpl
             return null;
         }
 
-        UserPreferenceToolResponse.FavoriteCurrentPriceProfile profile =
-                new UserPreferenceToolResponse
-                        .FavoriteCurrentPriceProfile();
+        FavoriteCurrentPriceProfile profile = new FavoriteCurrentPriceProfile();
         profile.setSampleCount(prices.size());
         profile.setMinPrice(prices.get(0));
         profile.setMedianPrice(median(prices));
@@ -446,20 +374,16 @@ public class AiUserPreferenceServiceImpl
         return profile;
     }
 
-    private List<UserPreferenceToolResponse.PreferredDegree>
-    buildPreferredDegrees(List<EffectiveBehavior> behaviors) {
-        Map<String, PreferenceAccumulator> accumulators =
-                new LinkedHashMap<>();
+    private List<PreferredDegree> buildPreferredDegrees(List<EffectiveBehavior> behaviors) {
+        Map<String, PreferenceAccumulator> accumulators = new LinkedHashMap<>();
         for (EffectiveBehavior behavior : behaviors) {
-            String degree = blankToNull(
-                    behavior.commodity().getDegree()
-            );
+            String degree = blankToNull(behavior.commodity().getDegree());
             if (degree == null) {
                 continue;
             }
             accumulators.computeIfAbsent(
                     degree,
-                    PreferenceAccumulator::new
+                    ignored -> new PreferenceAccumulator()
             ).add(behavior.signal());
         }
 
@@ -469,35 +393,23 @@ public class AiUserPreferenceServiceImpl
                 .orElse(0);
         return accumulators.entrySet().stream()
                 .sorted(
-                        Comparator
-                                .<Map.Entry<String, PreferenceAccumulator>>
-                                        comparingInt(
-                                        entry -> entry.getValue()
-                                                .score()
-                                )
+                        Comparator.<Map.Entry<String, PreferenceAccumulator>>comparingInt(
+                                        entry -> entry.getValue().score())
                                 .reversed()
                                 .thenComparing(Map.Entry::getKey)
                 )
                 .limit(5)
                 .map(entry -> {
-                    UserPreferenceToolResponse.PreferredDegree item =
-                            new UserPreferenceToolResponse
-                                    .PreferredDegree();
+                    PreferredDegree item = new PreferredDegree();
                     item.setDegree(entry.getKey());
-                    item.setWeight(
-                            normalizedWeight(
-                                    entry.getValue().score(),
-                                    maximumScore
-                            )
-                    );
+                    item.setWeight(normalizedWeight(entry.getValue().score(), maximumScore));
                     item.setEvidence(entry.getValue().evidence());
                     return item;
                 })
                 .toList();
     }
 
-    private BigDecimal unitPurchasePrice(EffectiveBehavior behavior) {
-        CommodityOrder order = behavior.order();
+    private BigDecimal unitPurchasePrice(CommodityOrder order) {
         if (order == null
                 || order.getPaymentAmount() == null
                 || order.getPaymentAmount().signum() < 0
@@ -595,9 +507,7 @@ public class AiUserPreferenceServiceImpl
         if (maximumScore <= 0) {
             return 0D;
         }
-        return Math.round(
-                (double) score / maximumScore * 10_000D
-        ) / 10_000D;
+        return Math.round((double) score / maximumScore * 10_000D) / 10_000D;
     }
 
     private record EffectiveBehavior(
@@ -605,55 +515,42 @@ public class AiUserPreferenceServiceImpl
             CommodityType type,
             AiPreferenceSignalEnum signal,
             Date eventTime,
-            CommodityOrder order
+            BigDecimal purchaseUnitPrice
     ) {
     }
 
     private static class PreferenceAccumulator {
-        private final String label;
-        private int paidPurchaseCount;
-        private int activeFavoriteCount;
-        private final EnumSet<AiPreferenceSignalEnum> signals =
-                EnumSet.noneOf(AiPreferenceSignalEnum.class);
-
-        private PreferenceAccumulator(String label) {
-            this.label = label;
-        }
+        private int paidCommodityCount;
+        private int favoriteCommodityCount;
 
         private void add(AiPreferenceSignalEnum signal) {
-            signals.add(signal);
             if (signal == AiPreferenceSignalEnum.PURCHASE) {
-                paidPurchaseCount++;
+                paidCommodityCount++;
             } else if (signal == AiPreferenceSignalEnum.FAVOUR) {
-                activeFavoriteCount++;
+                favoriteCommodityCount++;
             }
         }
 
         private int score() {
-            return paidPurchaseCount * PURCHASE_SCORE
-                    + activeFavoriteCount * FAVOUR_SCORE;
-        }
-
-        private String label() {
-            return label;
+            return paidCommodityCount * PURCHASE_SCORE
+                    + favoriteCommodityCount * FAVOUR_SCORE;
         }
 
         private List<AiPreferenceSignalEnum> signals() {
             List<AiPreferenceSignalEnum> result = new ArrayList<>();
-            if (signals.contains(AiPreferenceSignalEnum.PURCHASE)) {
+            if (paidCommodityCount > 0) {
                 result.add(AiPreferenceSignalEnum.PURCHASE);
             }
-            if (signals.contains(AiPreferenceSignalEnum.FAVOUR)) {
+            if (favoriteCommodityCount > 0) {
                 result.add(AiPreferenceSignalEnum.FAVOUR);
             }
             return result;
         }
 
-        private UserPreferenceToolResponse.PreferenceEvidence evidence() {
-            UserPreferenceToolResponse.PreferenceEvidence evidence =
-                    new UserPreferenceToolResponse.PreferenceEvidence();
-            evidence.setPaidPurchaseCount(paidPurchaseCount);
-            evidence.setActiveFavoriteCount(activeFavoriteCount);
+        private PreferenceEvidence evidence() {
+            PreferenceEvidence evidence = new PreferenceEvidence();
+            evidence.setPaidCommodityCount(paidCommodityCount);
+            evidence.setFavoriteCommodityCount(favoriteCommodityCount);
             return evidence;
         }
     }

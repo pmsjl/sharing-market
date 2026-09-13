@@ -1,6 +1,8 @@
 package com.pmsjl.service.Impl;
 
 import com.pmsjl.common.PageRequest;
+import com.pmsjl.common.ErrorCode;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.PrivateMessageMapper;
 import com.pmsjl.model.entity.User;
 import com.pmsjl.service.UserService;
@@ -96,7 +98,7 @@ class PrivateConversationTest {
     }
 
     @Test
-    void serviceUsesAuthenticatedUserAndBoundsPagination() {
+    void serviceUsesAuthenticatedUserAndValidatesPagination() {
         var service = new PrivateMessageServiceImpl();
         var users = mock(UserService.class);
         var user = new User();
@@ -105,8 +107,15 @@ class PrivateConversationTest {
         ReflectionTestUtils.setField(service, "userService", users);
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         var query = new PageRequest();
-        query.setCurrent(-1);
-        query.setPageSize(10000);
+        for (int[] invalid : new int[][]{{-1, 10}, {0, 10}, {1, -1}, {1, 0}, {1, 101}, {1, 10000}}) {
+            query.setCurrent(invalid[0]);
+            query.setPageSize(invalid[1]);
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> service.listMyConversations(query));
+            assertEquals(ErrorCode.PARAMS_ERROR.getCode(), exception.getCode());
+        }
+        query.setCurrent(1);
+        query.setPageSize(100);
         query.setSortField("untrusted SQL");
         var page = service.listMyConversations(query);
         assertEquals(1, page.getCurrent());

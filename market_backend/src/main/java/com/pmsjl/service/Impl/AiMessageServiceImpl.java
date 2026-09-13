@@ -95,11 +95,11 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         int pageSize = queryRequest.getPageSize();
         String sortField = queryRequest.getSortField();
         String sortOrder = queryRequest.getSortOrder();
-        if (current <= 0) {
-            current = 1;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
         }
-        if (pageSize <= 0 || pageSize > MAX_MESSAGE_PAGE_SIZE) {
-            pageSize = 20;
+        if (pageSize < 1 || pageSize > MAX_MESSAGE_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 50 之间");
         }
 
         User loginUser = userService.getLoginUser();

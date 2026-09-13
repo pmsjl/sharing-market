@@ -97,8 +97,12 @@ public class CommodityTypeServiceImpl extends ServiceImpl<CommodityTypeMapper, C
         int pageSize = commodityTypeQueryRequest.getPageSize();
         String sortField = commodityTypeQueryRequest.getSortField();
         String sortOrder = commodityTypeQueryRequest.getSortOrder();
-        if (current <= 0) current = 1;
-        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
+        }
         Page<CommodityType> page = new Page<>(current, pageSize);
         if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_TYPE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {

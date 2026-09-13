@@ -35,8 +35,8 @@ public class UserPreferenceToolResponse implements Serializable {
 
     @Data
     public static class PreferenceEvidence implements Serializable {
-        private Integer paidPurchaseCount = 0;
-        private Integer activeFavoriteCount = 0;
+        private Integer paidCommodityCount = 0;
+        private Integer FavoriteCommodityCount = 0;
     }
 
     @Data

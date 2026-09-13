@@ -175,8 +175,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         String sortField = postQueryRequest.getSortField();
         String sortOrder = postQueryRequest.getSortOrder();
 
-        if (current <= 0) current = 1;
-        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
+        }
         Page<Post> page = new Page<>(current, pageSize);
         if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
@@ -223,7 +227,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     // authorId 只由服务端提供，用于限制“我的帖子”的作者。
     private Page<PostVO> queryPostVOPage(PostQueryRequest postQueryRequest, Long authorId) {
         // 用户侧列表保持原项目的防爬限制，避免一次拉取过多帖子 VO。
-        ThrowUtils.throwIf(postQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
         int current = postQueryRequest.getCurrent();
         int pageSize = postQueryRequest.getPageSize();
         String searchText = postQueryRequest.getSearchText();
@@ -232,8 +235,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         String sortField = postQueryRequest.getSortField();
         String sortOrder = postQueryRequest.getSortOrder();
 
-        if (current <= 0) current = 1;
-        if (pageSize <= 0) pageSize = 10;
+        if (current < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "current 必须大于等于 1");
+        }
+        if (pageSize < 1 || pageSize > 20) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 20 之间");
+        }
         Page<Post> postPage = new Page<>(current, pageSize);
         if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
