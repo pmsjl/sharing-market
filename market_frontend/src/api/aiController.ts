@@ -1,8 +1,8 @@
 import request from "@/utils/request";
 
-// Java 最多等待 Python Agent 整轮运行 120 秒，PENDING 清理窗口为 140 秒；
+// Java 连接超时为 5 秒、读取超时为 180 秒，PENDING 清理窗口为 200 秒；
 // 浏览器再保留 20 秒网络与回写余量，避免服务端成功后客户端提前断开。
-const AI_CHAT_TIMEOUT_MS = 160000;
+const AI_CHAT_TIMEOUT_MS = 220000;
 
 /** 与 Python Agent 和 Java 展示白名单保持一致。 */
 export const AI_RAG_MAX_SOURCE_COUNT = 8;
