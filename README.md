@@ -100,7 +100,7 @@ sharing-market-v1.0/
 
 ## 评测（Golden Test）
 
-平台 AI 导购依赖 LLM 意图路由和知识检索，任一环节的改动都可能在不易察觉的情况下影响回答质量。`ai_agent_service/evaluation/` 提供了**经人工审核的固定评测题目 + 五阶段端到端评测**：
+平台 AI 导购依赖 LLM 意图路由和知识检索，任一环节的改动都可能影响回答质量。`ai_agent_service/evaluation/` 提供了**经人工审核的固定评测题目 + 五阶段端到端评测**：
 
 ```
 Router(意图路由) → Retrieval(向量检索) → Generation(答案生成) → Judge(自动裁判) → Final(合并判定)
