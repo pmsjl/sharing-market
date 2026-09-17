@@ -70,6 +70,16 @@ def hit_at_k(rank: int | None, k: int) -> bool | None:
     return None if rank is None else rank <= k
 
 
+def hit_at_k_field(row: dict[str, Any], k: int) -> bool | None:
+    """Read Hit@k from a row, accepting the legacy key in already-frozen JSONL.
+
+    Hit@k asks whether the first relevance ≥ 2 document lands within the top k;
+    it is a per-question hit, not a recall. Results frozen before the rename
+    still carry `recallAtK`.
+    """
+    return row.get(f"hitAt{k}", row.get(f"recallAt{k}"))
+
+
 def dcg(values: list[int]) -> float:
     return sum(value / math.log2(rank + 1) for rank, value in enumerate(values, 1))
 
@@ -264,9 +274,9 @@ async def run(
             "retrieved": [{"rank": rank, "chunkId": item.chunk_id, "documentId": item.document_id, "sourceType": item.source_type, "title": item.title, "section": item.section, "score": round(float(item.score), 8)} for rank, item in enumerate(retrieved, 1)],
             "retrievedDocumentIds": documents, "retrievedUniqueDocumentIds": unique_documents, "retrievedChunkIds": chunks,
             "firstRelevantRank": rank_positive, "firstCoreRank": rank_core,
-            "recallAt1": None if not ranking_eligible else bool(rank_positive and rank_positive <= 1),
-            "recallAt3": None if not ranking_eligible else bool(rank_positive and rank_positive <= 3),
-            "recallAt5": None if not ranking_eligible else bool(rank_positive and rank_positive <= 5),
+            "hitAt1": None if not ranking_eligible else bool(rank_positive and rank_positive <= 1),
+            "hitAt3": None if not ranking_eligible else bool(rank_positive and rank_positive <= 3),
+            "hitAt5": None if not ranking_eligible else bool(rank_positive and rank_positive <= 5),
             "mrr": None if not expected_should_retrieve or not core else (0.0 if rank_core is None else 1.0 / rank_core),
             "ndcgAt5": ndcg(unique_documents, qrels, 5) if expected_should_retrieve else None,
             "requiredQrelHit": None if not expected_should_retrieve or not required_ids else required_ids.issubset(set(unique_documents)),
@@ -289,7 +299,7 @@ def metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     ranking = [row for row in rows if row["rankingEligible"]]
     return {
         "caseCount": len(rows), "rankingCaseCount": len(ranking),
-        "recallAt1": mean([float(row["recallAt1"]) for row in ranking]), "recallAt3": mean([float(row["recallAt3"]) for row in ranking]), "recallAt5": mean([float(row["recallAt5"]) for row in ranking]),
+        "hitAt1": mean([float(hit_at_k_field(row, 1)) for row in ranking]), "hitAt3": mean([float(hit_at_k_field(row, 3)) for row in ranking]), "hitAt5": mean([float(hit_at_k_field(row, 5)) for row in ranking]),
         "mrr": mean([float(row["mrr"]) for row in ranking if row["mrr"] is not None]), "ndcgAt5": mean([float(row["ndcgAt5"]) for row in ranking if row["ndcgAt5"] is not None]),
         "requiredQrelHitRate": mean([float(row["requiredQrelHit"]) for row in rows if row["requiredQrelHit"] is not None]),
         "supportingChunkRecall": mean([float(row["supportingChunkRecall"]) for row in rows if row["supportingChunkRecall"] is not None]),
@@ -313,8 +323,8 @@ def aggregate(rows: list[dict[str, Any]], meta: dict[str, Any]) -> dict[str, Any
         "byKnowledgeState": {key: metrics(value) for key, value in group(rows, "expectedKnowledgeState").items()},
         "retrievalConfig": meta["settings"],
     }
-    r1, r3, r5 = report["overall"]["recallAt1"], report["overall"]["recallAt3"], report["overall"]["recallAt5"]
-    if not (r1 is None or r3 is None or r5 is None or r1 <= r3 <= r5): raise ValueError("Recall@K monotonicity violated")
+    r1, r3, r5 = report["overall"]["hitAt1"], report["overall"]["hitAt3"], report["overall"]["hitAt5"]
+    if not (r1 is None or r3 is None or r5 is None or r1 <= r3 <= r5): raise ValueError("Hit@K monotonicity violated")
     return report
 
 
@@ -398,7 +408,7 @@ async def main() -> None:
     report_path = REPORTS / f"{args.run_id}_{build_id}.json"
     badcase_path = REPORTS / f"{args.run_id}_{build_id}_badcases.json"
     write_jsonl(result_path, rows)
-    misses = [row for row in rows if row["recallAt5"] is False]
+    misses = [row for row in rows if hit_at_k_field(row, 5) is False]
     routes = [row for row in rows if not row["ragRouteCorrect"]]
     write_json(report_path, report)
     write_json(badcase_path, {"missAt5Count": len(misses), "routeErrorCount": len(routes), "missAt5": misses, "routeErrors": routes})

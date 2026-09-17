@@ -13,6 +13,6 @@
 
 正式规则优先使用 GUIDE；经验 POST 不能覆盖正式规则。实时库存、价格、品相和个人账户事实不能由静态知识推断。证据领域按结论依赖选择，不仅凭物品名称或课程背景。
 
-公开 `version` 规范化为 `golden-v1.3`；`review` 只保留 frozen，`provenance` 只保留 source，其中旧知识目录前缀沿用公开包规则映射到 `knowledge/runtime/`。评审意见、内部构造信息、原始输出和 Test 60 不公开。Test 已参与人工查看和分析，不能称为从未见过的独立测试集。
+公开 `version` 规范化为 `golden-v1.3`；`review` 只保留 frozen，`provenance` 只保留 source，其中旧知识目录前缀沿用公开包规则映射到 `knowledge/runtime/`。公开包不含评审意见、内部构造信息、原始输出和 Test 60。Public Dev 一旦用于实现调整或参数选择，就不能再表述为"未见过的隐藏测试集"。
 
 统计与 SHA-256 见 [Manifest](manifest.json)，当前三阶段结果见 [基线摘要](benchmark_summary.md)。

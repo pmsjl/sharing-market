@@ -25,13 +25,13 @@
 | 进入检索题数 | 127 | 118 | 125 |
 | 路由漏检题数 | 0 | 9 | 2 |
 | 进入检索比例 | 100.00% | 92.91% | 98.43% |
-| Recall@1 | 61.42% | 76.38% | 81.10% |
-| Recall@3 | 82.68% | 83.46% | 89.76% |
-| Recall@5 | 96.06% | 89.76% | 90.55% |
+| Hit@1 | 61.42% | 76.38% | 81.10% |
+| Hit@3 | 82.68% | 83.46% | 89.76% |
+| Hit@5 | 96.06% | 89.76% | 90.55% |
 | Required qrel hit | 93.70% | 85.83% | 87.40% |
-| 条件 Recall@1 | 61.42% | 82.20% | 82.40% |
-| 条件 Recall@3 | 82.68% | 89.83% | 91.20% |
-| 条件 Recall@5 | 96.06% | 96.61% | 92.00% |
+| 条件 Hit@1 | 61.42% | 82.20% | 82.40% |
+| 条件 Hit@3 | 82.68% | 89.83% | 91.20% |
+| 条件 Hit@5 | 96.06% | 96.61% | 92.00% |
 | MRR | 0.712148 | 0.791470 | 0.843176 |
 | nDCG@5 | 0.762676 | 0.805255 | 0.843393 |
 
@@ -57,13 +57,13 @@
 | retrieve 排序题数 | 127 | 127 | 127 |
 | retrieve 进入检索 | 127 | 118 | 125 |
 | retrieve 路由漏检 | 0 | 9 | 2 |
-| retrieve recallAt1 | 61.42% | 76.38% | 81.10% |
-| retrieve recallAt3 | 82.68% | 83.46% | 89.76% |
-| retrieve recallAt5 | 96.06% | 89.76% | 90.55% |
+| retrieve hitAt1 | 61.42% | 76.38% | 81.10% |
+| retrieve hitAt3 | 82.68% | 83.46% | 89.76% |
+| retrieve hitAt5 | 96.06% | 89.76% | 90.55% |
 | retrieve requiredQrelHit | 93.70% | 85.83% | 87.40% |
-| retrieve condRecall1 | 61.42% | 82.20% | 82.40% |
-| retrieve condRecall3 | 82.68% | 89.83% | 91.20% |
-| retrieve condRecall5 | 96.06% | 96.61% | 92.00% |
+| retrieve condHit1 | 61.42% | 82.20% | 82.40% |
+| retrieve condHit3 | 82.68% | 89.83% | 91.20% |
+| retrieve condHit5 | 96.06% | 96.61% | 92.00% |
 | retrieve mrr | 0.712148 | 0.791470 | 0.843176 |
 | retrieve ndcgAt5 | 0.762676 | 0.805255 | 0.843393 |
 | skip_rag Router 正确 | 不适用 | 7/10（70.00%） | 9/10（90.00%） |
@@ -83,13 +83,13 @@
 | boundary 排序题数 | 12 | 12 | 12 |
 | boundary 进入检索 | 12 | 10 | 12 |
 | boundary 路由漏检 | 0 | 2 | 0 |
-| boundary recallAt1 | 58.33% | 50.00% | 66.67% |
-| boundary recallAt3 | 75.00% | 75.00% | 91.67% |
-| boundary recallAt5 | 83.33% | 75.00% | 91.67% |
+| boundary hitAt1 | 58.33% | 50.00% | 66.67% |
+| boundary hitAt3 | 75.00% | 75.00% | 91.67% |
+| boundary hitAt5 | 83.33% | 75.00% | 91.67% |
 | boundary requiredQrelHit | 66.67% | 50.00% | 66.67% |
-| boundary condRecall1 | 58.33% | 60.00% | 66.67% |
-| boundary condRecall3 | 75.00% | 90.00% | 91.67% |
-| boundary condRecall5 | 83.33% | 90.00% | 91.67% |
+| boundary condHit1 | 58.33% | 60.00% | 66.67% |
+| boundary condHit3 | 75.00% | 90.00% | 91.67% |
+| boundary condHit5 | 83.33% | 90.00% | 91.67% |
 | boundary mrr | 0.669444 | 0.611111 | 0.777778 |
 | boundary ndcgAt5 | 0.625733 | 0.542322 | 0.692596 |
 | campus Router 正确 | 不适用 | 24/30（80.00%） | 29/30（96.67%） |
@@ -98,13 +98,13 @@
 | campus 排序题数 | 18 | 18 | 18 |
 | campus 进入检索 | 18 | 17 | 17 |
 | campus 路由漏检 | 0 | 1 | 1 |
-| campus recallAt1 | 88.89% | 94.44% | 77.78% |
-| campus recallAt3 | 100.00% | 94.44% | 83.33% |
-| campus recallAt5 | 100.00% | 94.44% | 83.33% |
+| campus hitAt1 | 88.89% | 94.44% | 77.78% |
+| campus hitAt3 | 100.00% | 94.44% | 83.33% |
+| campus hitAt5 | 100.00% | 94.44% | 83.33% |
 | campus requiredQrelHit | 94.44% | 88.89% | 83.33% |
-| campus condRecall1 | 88.89% | 100.00% | 82.35% |
-| campus condRecall3 | 100.00% | 100.00% | 88.24% |
-| campus condRecall5 | 100.00% | 100.00% | 88.24% |
+| campus condHit1 | 88.89% | 100.00% | 82.35% |
+| campus condHit3 | 100.00% | 100.00% | 88.24% |
+| campus condHit5 | 100.00% | 100.00% | 88.24% |
 | campus mrr | 0.888889 | 0.888889 | 0.805556 |
 | campus ndcgAt5 | 0.929508 | 0.914960 | 0.812829 |
 | course Router 正确 | 不适用 | 16/20（80.00%） | 17/20（85.00%） |
@@ -113,13 +113,13 @@
 | course 排序题数 | 8 | 8 | 8 |
 | course 进入检索 | 8 | 7 | 8 |
 | course 路由漏检 | 0 | 1 | 0 |
-| course recallAt1 | 100.00% | 87.50% | 100.00% |
-| course recallAt3 | 100.00% | 87.50% | 100.00% |
-| course recallAt5 | 100.00% | 87.50% | 100.00% |
+| course hitAt1 | 100.00% | 87.50% | 100.00% |
+| course hitAt3 | 100.00% | 87.50% | 100.00% |
+| course hitAt5 | 100.00% | 87.50% | 100.00% |
 | course requiredQrelHit | 100.00% | 87.50% | 100.00% |
-| course condRecall1 | 100.00% | 100.00% | 100.00% |
-| course condRecall3 | 100.00% | 100.00% | 100.00% |
-| course condRecall5 | 100.00% | 100.00% | 100.00% |
+| course condHit1 | 100.00% | 100.00% | 100.00% |
+| course condHit3 | 100.00% | 100.00% | 100.00% |
+| course condHit5 | 100.00% | 100.00% | 100.00% |
 | course mrr | 0.812500 | 0.875000 | 1.000000 |
 | course ndcgAt5 | 0.815176 | 0.789244 | 0.914244 |
 | platform Router 正确 | 不适用 | 41/45（91.11%） | 43/45（95.56%） |
@@ -128,13 +128,13 @@
 | platform 排序题数 | 40 | 40 | 40 |
 | platform 进入检索 | 40 | 36 | 39 |
 | platform 路由漏检 | 0 | 4 | 1 |
-| platform recallAt1 | 82.50% | 72.50% | 75.00% |
-| platform recallAt3 | 97.50% | 85.00% | 87.50% |
-| platform recallAt5 | 97.50% | 85.00% | 87.50% |
+| platform hitAt1 | 82.50% | 72.50% | 75.00% |
+| platform hitAt3 | 97.50% | 85.00% | 87.50% |
+| platform hitAt5 | 97.50% | 85.00% | 87.50% |
 | platform requiredQrelHit | 92.50% | 80.00% | 82.50% |
-| platform condRecall1 | 82.50% | 80.56% | 76.92% |
-| platform condRecall3 | 97.50% | 94.44% | 89.74% |
-| platform condRecall5 | 97.50% | 94.44% | 89.74% |
+| platform condHit1 | 82.50% | 80.56% | 76.92% |
+| platform condHit3 | 97.50% | 94.44% | 89.74% |
+| platform condHit5 | 97.50% | 94.44% | 89.74% |
 | platform mrr | 0.870833 | 0.758333 | 0.783333 |
 | platform ndcgAt5 | 0.896996 | 0.781223 | 0.806223 |
 | post Router 正确 | 不适用 | 62/64（96.88%） | 64/64（100.00%） |
@@ -143,13 +143,13 @@
 | post 排序题数 | 49 | 49 | 49 |
 | post 进入检索 | 49 | 48 | 49 |
 | post 路由漏检 | 0 | 1 | 0 |
-| post recallAt1 | 28.57% | 77.55% | 87.76% |
-| post recallAt3 | 63.27% | 79.59% | 91.84% |
-| post recallAt5 | 95.92% | 95.92% | 93.88% |
+| post hitAt1 | 28.57% | 77.55% | 87.76% |
+| post hitAt3 | 63.27% | 79.59% | 91.84% |
+| post hitAt5 | 95.92% | 95.92% | 93.88% |
 | post requiredQrelHit | 100.00% | 97.96% | 95.92% |
-| post condRecall1 | 28.57% | 79.17% | 87.76% |
-| post condRecall3 | 63.27% | 81.25% | 91.84% |
-| post condRecall5 | 95.92% | 97.92% | 93.88% |
+| post condHit1 | 28.57% | 79.17% | 87.76% |
+| post condHit3 | 63.27% | 81.25% | 91.84% |
+| post condHit5 | 95.92% | 97.92% | 93.88% |
 | post mrr | 0.511759 | 0.813265 | 0.896259 |
 | post ndcgAt5 | 0.616706 | 0.851578 | 0.910325 |
 
@@ -163,13 +163,13 @@
 | dev 排序题数 | 87 | 87 | 87 |
 | dev 进入检索 | 87 | 81 | 86 |
 | dev 路由漏检 | 0 | 6 | 1 |
-| dev recallAt1 | 63.22% | 75.86% | 83.91% |
-| dev recallAt3 | 86.21% | 83.91% | 91.95% |
-| dev recallAt5 | 98.85% | 89.66% | 93.10% |
+| dev hitAt1 | 63.22% | 75.86% | 83.91% |
+| dev hitAt3 | 86.21% | 83.91% | 91.95% |
+| dev hitAt5 | 98.85% | 89.66% | 93.10% |
 | dev requiredQrelHit | 95.40% | 86.21% | 89.66% |
-| dev condRecall1 | 63.22% | 81.48% | 84.88% |
-| dev condRecall3 | 86.21% | 90.12% | 93.02% |
-| dev condRecall5 | 98.85% | 96.30% | 94.19% |
+| dev condHit1 | 63.22% | 81.48% | 84.88% |
+| dev condHit3 | 86.21% | 90.12% | 93.02% |
+| dev condHit5 | 98.85% | 96.30% | 94.19% |
 | dev mrr | 0.735057 | 0.796743 | 0.868774 |
 | dev ndcgAt5 | 0.786712 | 0.804940 | 0.867404 |
 | test Router 正确 | 不适用 | 55/60（91.67%） | 55/60（91.67%） |
@@ -178,13 +178,13 @@
 | test 排序题数 | 40 | 40 | 40 |
 | test 进入检索 | 40 | 37 | 39 |
 | test 路由漏检 | 0 | 3 | 1 |
-| test recallAt1 | 57.50% | 77.50% | 75.00% |
-| test recallAt3 | 75.00% | 82.50% | 85.00% |
-| test recallAt5 | 90.00% | 90.00% | 85.00% |
+| test hitAt1 | 57.50% | 77.50% | 75.00% |
+| test hitAt3 | 75.00% | 82.50% | 85.00% |
+| test hitAt5 | 90.00% | 90.00% | 85.00% |
 | test requiredQrelHit | 90.00% | 85.00% | 82.50% |
-| test condRecall1 | 57.50% | 83.78% | 76.92% |
-| test condRecall3 | 75.00% | 89.19% | 87.18% |
-| test condRecall5 | 90.00% | 97.30% | 87.18% |
+| test condHit1 | 57.50% | 83.78% | 76.92% |
+| test condHit3 | 75.00% | 89.19% | 87.18% |
+| test condHit5 | 90.00% | 97.30% | 87.18% |
 | test mrr | 0.662321 | 0.780000 | 0.787500 |
 | test ndcgAt5 | 0.710396 | 0.805940 | 0.791168 |
 
@@ -194,8 +194,8 @@
 
 三个阶段使用同一份 Golden v1.3 数据集、同一套评测脚本和同一冻结索引，对比各阶段代码与提示词的最终结果。每阶段包含 143 条未改动题的历史结果和 57 条新增或更新题的结果；阶段 1 使用 6e7874e 的检索代码与回答提示词，阶段 2、3 分别使用对应阶段的路由、检索和回答产物。
 
-排序指标统计期望 retrieve 且至少有一个 relevance ≥ 2 qrel 的 127 题。条件 Recall 仅统计实际进入检索的题；阶段 1 无 Router，因此 Router 准确率不适用。Final 沿用生成成功且 Judge overallPass 为真的口径。
+排序指标统计期望 retrieve 且至少有一个 relevance ≥ 2 qrel 的 127 题。Hit@k 判断首个 relevance ≥ 2 的文档是否落在前 k 位，是逐题命中判定而非召回率；真正的召回率指标是 `supportingChunkRecall` 与引用召回。条件 Hit@k 仅统计实际进入检索的题；阶段 1 无 Router，因此 Router 准确率不适用。Final 沿用生成成功且 Judge overallPass 为真的口径。
 
-冻结索引：`20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71`。Test 已参与人工查看和分析，保持不公开；逐题输出、人工意见和第四阶段实验均只保存在本地。
+冻结索引：`20260819T151857Z-b1c54bb0e56f49e89251135abebc4c71`。Test 60 不在公开包中。
 
 三阶段对比反映各阶段整体实现与提示词的效果，不将全部收益归因于单独的 Router 修改。完整集聚合包含 Test，不能只用公开 Dev 复算全量结果。

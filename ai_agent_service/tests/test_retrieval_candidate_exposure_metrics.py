@@ -72,9 +72,9 @@ def test_aggregate_keeps_candidate_exposure_out_of_overall_quality_metrics() -> 
         "expectedRoute": "retrieve",
         "expectedKnowledgeState": "unknown_after_search",
         "rankingEligible": True,
-        "recallAt1": False,
-        "recallAt3": True,
-        "recallAt5": True,
+        "hitAt1": False,
+        "hitAt3": True,
+        "hitAt5": True,
         "mrr": 0.5,
         "ndcgAt5": 0.75,
         "requiredQrelHit": True,
@@ -96,3 +96,36 @@ def test_aggregate_keeps_candidate_exposure_out_of_overall_quality_metrics() -> 
     assert "candidateExposureRate" not in report["overall"]
     assert report["candidateExposureDiagnostics"]["countsAsFailure"] is False
     assert report["candidateExposureDiagnostics"]["allConfiguredPrefixes"]["exposedCaseCount"] == 1
+
+
+def test_aggregate_reports_hit_at_k_and_reads_frozen_recall_at_k_keys() -> None:
+    module = _load_retrieval_eval_module()
+    row = {
+        "domain": "post",
+        "split": "test",
+        "expectedRoute": "retrieve",
+        "expectedKnowledgeState": "unknown_after_search",
+        "rankingEligible": True,
+        # Frozen result compatibility: rows written before the Hit@k rename
+        # still carry recallAt1/3/5 and must keep aggregating.
+        "recallAt1": False,
+        "recallAt3": True,
+        "recallAt5": True,
+        "mrr": 0.5,
+        "ndcgAt5": 0.75,
+        "requiredQrelHit": True,
+        "supportingChunkRecall": 1.0,
+        "preferredSourceTop1": False,
+        "courseEvidenceStateCorrect": True,
+        "courseEvidenceStateCompatible": True,
+        "retrievedDocumentIds": ["GUIDE:course-repo-neighbor"],
+        "retrievalMs": 1.25,
+        "ragRouteCorrect": True,
+    }
+
+    report = module.aggregate([row], {"settings": {}})
+
+    assert report["overall"]["hitAt1"] == 0.0
+    assert report["overall"]["hitAt3"] == 1.0
+    assert report["overall"]["hitAt5"] == 1.0
+    assert "recallAt1" not in report["overall"]

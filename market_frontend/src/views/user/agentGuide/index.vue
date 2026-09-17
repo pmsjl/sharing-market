@@ -31,6 +31,21 @@
 
       <div class="conversation-list" v-loading="conversationLoading">
         <button
+          v-for="draft in pendingDrafts"
+          :key="draft.key"
+          type="button"
+          class="conversation-ticket"
+          :class="{ active: !activeConversationId && draftKey === draft.key }"
+          @click="selectDraft(draft.key)"
+        >
+          <span class="ticket-main">
+            <strong>{{ draft.state.messages[0]?.content || "新咨询" }}</strong>
+            <em>{{
+              draft.state.sending ? "正在回复…" : "发送失败，点击重试"
+            }}</em>
+          </span>
+        </button>
+        <button
           v-for="item in conversations"
           :key="item.id"
           type="button"
@@ -40,7 +55,11 @@
         >
           <span class="ticket-main">
             <strong>{{ item.title || "未命名咨询" }}</strong>
-            <em>{{ item.lastMessagePreview || "还没有消息" }}</em>
+            <em>{{
+              isConversationSending(item.id)
+                ? "正在回复…"
+                : item.lastMessagePreview || "还没有消息"
+            }}</em>
           </span>
           <span class="ticket-foot">
             <time>{{ formatConversationTime(item.lastMessageTime) }}</time>
@@ -48,9 +67,9 @@
               <span
                 class="ticket-archive"
                 role="button"
-                :tabindex="sending && item.id === activeConversationId ? -1 : 0"
+                :tabindex="isConversationSending(item.id) ? -1 : 0"
                 :aria-disabled="
-                  sending && item.id === activeConversationId ? 'true' : 'false'
+                  isConversationSending(item.id) ? 'true' : 'false'
                 "
                 aria-label="归档会话"
                 @click.stop="archiveConversation(item)"
@@ -508,6 +527,7 @@
               :disabled="
                 !composer.trim() ||
                 sending ||
+                messageLoading ||
                 messageLoadFailed ||
                 quotaExhausted
               "
@@ -755,25 +775,76 @@ const layoutSettingStore = useLayOutSettingStore();
 const pageRef = ref<HTMLElement | null>(null);
 const messageListRef = ref<HTMLElement | null>(null);
 const composerRef = ref();
-const composer = ref("");
 const composerFocused = ref(false);
-const sending = ref(false);
 const conversationLoading = ref(false);
-const messageLoading = ref(false);
-const agentUnavailable = ref(false);
 const conversationLoadFailed = ref(false);
-const messageLoadFailed = ref(false);
 const historyDrawerOpen = ref(false);
 const contextDrawerOpen = ref(false);
 const viewportWidth = ref(window.innerWidth);
 const conversations = ref<AiConversationVO[]>([]);
-const messages = ref<AiMessageVO[]>([]);
 const activeConversationId = ref<string | null>(null);
+// A new conversation has no server ID until its first reply arrives.
+let draftSequence = 0;
+const draftKey = ref(`draft-${draftSequence}`);
+const chatStates = reactive<Record<string, ChatState>>({});
+type ChatState = {
+  messages: AiMessageVO[];
+  composer: string;
+  sending: boolean;
+  loading: boolean;
+  unavailable: boolean;
+  loadFailed: boolean;
+  page: number;
+  total: number;
+  revision: number;
+  context?: AiShoppingContext;
+};
+const getChatState = (key: string): ChatState => {
+  if (!chatStates[key]) {
+    chatStates[key] = {
+      messages: [],
+      composer: "",
+      sending: false,
+      loading: false,
+      unavailable: false,
+      loadFailed: false,
+      page: 1,
+      total: 0,
+      revision: 0
+    };
+  }
+  return chatStates[key];
+};
+const activeChat = computed(() =>
+  getChatState(activeConversationId.value || draftKey.value)
+);
+const chatField = <K extends keyof ChatState>(key: K) =>
+  computed({
+    get: () => activeChat.value[key],
+    set: (value: ChatState[K]) => {
+      activeChat.value[key] = value;
+    }
+  });
+const composer = chatField("composer");
+const messages = chatField("messages");
+const sending = chatField("sending");
+const messageLoading = chatField("loading");
+const agentUnavailable = chatField("unavailable");
+const messageLoadFailed = chatField("loadFailed");
+const messagePage = chatField("page");
+const messageTotal = chatField("total");
+const isConversationSending = (id: string) => !!chatStates[id]?.sending;
+const pendingDrafts = computed(() =>
+  Object.entries(chatStates)
+    .filter(
+      ([key, state]) => key.startsWith("draft-") && state.messages.length > 0
+    )
+    .map(([key, state]) => ({ key, state }))
+);
+let disposed = false;
 const conversationPage = ref(1);
 const conversationTotal = ref(0);
 const archivingConversationId = ref<string | null>(null);
-const messagePage = ref(1);
-const messageTotal = ref(0);
 const typingSpeed = ref<TypingSpeed>(getInitialTypingSpeed());
 const typingMessageId = ref<string | null>(null);
 const typingBuffers = reactive<Record<string, string>>({});
@@ -1191,27 +1262,32 @@ const reloadConversations = async () => {
 };
 
 const loadMessages = async (conversationId: string, older = false) => {
+  const state = getChatState(conversationId);
+  if (state.sending) return true;
+  const revision = ++state.revision;
   const previousScrollHeight = older
     ? messageListRef.value?.scrollHeight || 0
     : 0;
-  messageLoading.value = true;
+  state.loading = true;
   try {
     const res = await listAiConversationMessages(
       conversationId,
-      messagePage.value,
+      state.page,
       20
     );
+    if (disposed || state.revision !== revision) return false;
     if (res.code !== 200 || !res.data)
       throw new Error(res.message || "消息加载失败");
     const records = [...res.data.records].sort(
       (a, b) => (a.sequenceNo || 0) - (b.sequenceNo || 0)
     );
-    messages.value = older ? [...records, ...messages.value] : records;
-    messageTotal.value = res.data.total;
-    messageLoadFailed.value = false;
+    state.messages = older ? [...records, ...state.messages] : records;
+    state.total = res.data.total;
+    state.loadFailed = false;
+    if (activeChat.value !== state) return true;
     if (older) {
       await nextTick();
-      if (messageListRef.value) {
+      if (activeChat.value === state && messageListRef.value) {
         messageListRef.value.scrollTop +=
           messageListRef.value.scrollHeight - previousScrollHeight;
       }
@@ -1220,22 +1296,25 @@ const loadMessages = async (conversationId: string, older = false) => {
     }
     return true;
   } catch (_error) {
+    if (disposed || state.revision !== revision) return false;
     if (!older) {
-      messages.value = [];
-      messageLoadFailed.value = true;
+      state.messages = [];
+      state.loadFailed = true;
     }
     return false;
   } finally {
-    messageLoading.value = false;
+    if (state.revision === revision) state.loading = false;
   }
 };
 
 const loadOlderMessages = async () => {
-  if (!activeConversationId.value) return;
-  const previousPage = messagePage.value;
-  messagePage.value += 1;
+  if (!activeConversationId.value || sending.value || messageLoading.value)
+    return;
+  const state = activeChat.value;
+  const previousPage = state.page;
+  state.page += 1;
   const loaded = await loadMessages(activeConversationId.value, true);
-  if (!loaded) messagePage.value = previousPage;
+  if (!loaded) state.page = previousPage;
 };
 
 const reloadMessages = async () => {
@@ -1246,6 +1325,8 @@ const reloadMessages = async () => {
 
 const startNewChat = () => {
   finishActiveTyping();
+  activeChat.value.context = getShoppingContext();
+  draftKey.value = `draft-${++draftSequence}`;
   activeConversationId.value = null;
   messages.value = [];
   messagePage.value = 1;
@@ -1254,6 +1335,16 @@ const startNewChat = () => {
   clearShoppingContext();
   historyDrawerOpen.value = false;
   nextTick(() => composerRef.value?.focus());
+};
+
+const selectDraft = (key: string) => {
+  finishActiveTyping();
+  activeChat.value.context = getShoppingContext();
+  draftKey.value = key;
+  activeConversationId.value = null;
+  normalizeContext(activeChat.value.context);
+  historyDrawerOpen.value = false;
+  void scrollToBottom();
 };
 
 watch(activeConversationId, (conversationId) => {
@@ -1269,22 +1360,21 @@ watch(activeConversationId, (conversationId) => {
 
 const selectConversation = async (item: AiConversationVO) => {
   finishActiveTyping();
+  activeChat.value.context = getShoppingContext();
   activeConversationId.value = item.id;
-  messagePage.value = 1;
-  messageTotal.value = 0;
-  messages.value = [];
-  messageLoadFailed.value = false;
-  normalizeContext(item.shoppingContext);
+  normalizeContext(activeChat.value.context || item.shoppingContext);
+  if (!sending.value) {
+    messagePage.value = 1;
+    messageLoadFailed.value = false;
+  }
   historyDrawerOpen.value = false;
+  if (activeChat.value.unavailable) return;
   await loadMessages(item.id);
 };
 
 const archiveConversation = async (item: AiConversationVO) => {
-  if (
-    archivingConversationId.value ||
-    (sending.value && item.id === activeConversationId.value)
-  ) {
-    if (sending.value && item.id === activeConversationId.value) {
+  if (archivingConversationId.value || isConversationSending(item.id)) {
+    if (isConversationSending(item.id)) {
       ElMessage.warning("当前会话正在回复中，回复完成后再归档");
     }
     return;
@@ -1309,12 +1399,17 @@ const archiveConversation = async (item: AiConversationVO) => {
 };
 
 const confirmDeleteConversation = async (item: AiConversationVO) => {
+  if (isConversationSending(item.id)) {
+    ElMessage.warning("当前会话正在回复中，回复完成后再删除");
+    return;
+  }
   try {
     await ElMessageBox.confirm(
       `删除「${item.title || "未命名咨询"}」后将无法在列表中恢复。`,
       "删除咨询",
       { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" }
     );
+    if (isConversationSending(item.id)) return;
     const res = await deleteAiConversation(item.id);
     if (res.code !== 200 || res.data !== true)
       throw new Error(res.message || "删除失败");
@@ -1343,12 +1438,25 @@ const makeLocalMessage = (
   createTime: new Date().toISOString()
 });
 
-const applyServerResponse = async (data: AiChatVO, localIds: string[]) => {
-  messages.value = messages.value.filter(
-    (message) => !localIds.includes(message.id)
+const applyServerResponse = async (
+  data: AiChatVO,
+  localIds: string[],
+  state: ChatState,
+  key: string
+) => {
+  state.messages = state.messages.filter(
+    (message) =>
+      !localIds.includes(message.id) &&
+      message.id !== data.userMessage.id &&
+      message.id !== data.assistantMessage.id
   );
-  messages.value.push(data.userMessage, data.assistantMessage);
-  activeConversationId.value = data.conversation.id;
+  state.messages.push(data.userMessage, data.assistantMessage);
+  const wasActive = activeChat.value === state;
+  chatStates[data.conversation.id] = state;
+  if (key !== data.conversation.id) {
+    if (wasActive) activeConversationId.value = data.conversation.id;
+    delete chatStates[key];
+  }
   const index = conversations.value.findIndex(
     (item) => item.id === data.conversation.id
   );
@@ -1358,11 +1466,14 @@ const applyServerResponse = async (data: AiChatVO, localIds: string[]) => {
     conversationTotal.value,
     conversations.value.length
   );
-  normalizeContext(data.conversation.shoppingContext || getShoppingContext());
-  agentUnavailable.value = false;
+  state.context = data.conversation.shoppingContext || state.context;
+  state.unavailable = false;
   conversationLoadFailed.value = false;
-  startTypingMessage(data.assistantMessage);
-  await scrollToBottom();
+  if (wasActive) {
+    normalizeContext(state.context);
+    startTypingMessage(data.assistantMessage);
+    await scrollToBottom();
+  }
 };
 
 const submitContent = async (
@@ -1371,29 +1482,50 @@ const submitContent = async (
     appendUser: true
   }
 ) => {
+  const state = activeChat.value;
+  if (
+    state.sending ||
+    state.loading ||
+    state.loadFailed ||
+    quotaExhausted.value
+  )
+    return;
+  const conversationId = activeConversationId.value;
+  const key = conversationId || draftKey.value;
+  const body = { content, shoppingContext: getShoppingContext() };
+  state.context = body.shoppingContext;
+  state.revision += 1;
+  state.loading = false;
   finishActiveTyping();
   const localIds: string[] = [];
+  let retriedUserId: string | undefined;
   if (options.failedMessageId) {
-    messages.value = messages.value.filter(
+    const failedIndex = state.messages.findIndex(
+      (item) => item.id === options.failedMessageId
+    );
+    retriedUserId = [...state.messages.slice(0, failedIndex)]
+      .reverse()
+      .find((item) => item.role === "USER")?.id;
+    state.messages = state.messages.filter(
       (item) => item.id !== options.failedMessageId
     );
   }
   if (options.appendUser) {
     const userMessage = makeLocalMessage("USER", content, "SUCCESS");
-    messages.value.push(userMessage);
+    state.messages.push(userMessage);
     localIds.push(userMessage.id);
   }
   const pendingMessage = makeLocalMessage("ASSISTANT", "", "PENDING");
-  messages.value.push(pendingMessage);
+  state.messages.push(pendingMessage);
   localIds.push(pendingMessage.id);
-  sending.value = true;
-  await scrollToBottom();
+  state.sending = true;
 
   try {
-    const body = { content, shoppingContext: getShoppingContext() };
-    const res = activeConversationId.value
-      ? await sendAiConversationMessage(activeConversationId.value, body)
+    await scrollToBottom();
+    const res = conversationId
+      ? await sendAiConversationMessage(conversationId, body)
       : await createAiConversation(body);
+    if (disposed) return;
     if (res.code !== 200 || !res.data) {
       const businessError = new Error(
         res.message || "Agent 服务暂时不可用"
@@ -1401,25 +1533,31 @@ const submitContent = async (
       businessError.businessCode = res.code;
       throw businessError;
     }
-    await applyServerResponse(res.data, localIds);
+    await applyServerResponse(
+      res.data,
+      retriedUserId ? [...localIds, retriedUserId] : localIds,
+      state,
+      key
+    );
   } catch (error: any) {
+    if (disposed) return;
     const protectedRejection = [40901, 42901, 42902].includes(
       Number(error?.businessCode)
     );
     if (protectedRejection) {
-      messages.value = messages.value.filter(
+      state.messages = state.messages.filter(
         (item) => !localIds.includes(item.id)
       );
-      composer.value = content;
-      ElMessage.warning(error?.message || "当前暂时无法继续咨询");
-      await loadAiQuota();
+      state.composer = content;
+      if (activeChat.value === state)
+        ElMessage.warning(error?.message || "当前暂时无法继续咨询");
       return;
     }
-    agentUnavailable.value = true;
-    messages.value = messages.value.filter(
+    state.unavailable = true;
+    state.messages = state.messages.filter(
       (item) => item.id !== pendingMessage.id
     );
-    messages.value.push({
+    state.messages.push({
       ...makeLocalMessage(
         "ASSISTANT",
         error?.message || "AI 服务暂不可用，请检查服务后重试。",
@@ -1428,27 +1566,36 @@ const submitContent = async (
       retryable: true
     });
     if (
+      activeChat.value === state &&
       error?.message &&
       !error?.requestMessageShown &&
       !String(error.message).includes("404")
     ) {
       ElMessage.error(error.message);
     }
-    await scrollToBottom();
+    if (activeChat.value === state) await scrollToBottom();
   } finally {
-    sending.value = false;
-    await loadAiQuota();
+    state.sending = false;
+    if (!disposed) await loadAiQuota();
   }
 };
 
 const sendMessage = async () => {
   const content = composer.value.trim();
-  if (!content || sending.value) return;
+  if (
+    !content ||
+    sending.value ||
+    messageLoading.value ||
+    messageLoadFailed.value ||
+    quotaExhausted.value
+  )
+    return;
   composer.value = "";
   await submitContent(content);
 };
 
 const retryMessage = async (failedMessageId: string) => {
+  if (sending.value || messageLoading.value) return;
   const failedIndex = messages.value.findIndex(
     (item) => item.id === failedMessageId
   );
@@ -1561,6 +1708,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  disposed = true;
   finishActiveTyping();
   messageResizeObserver?.disconnect();
   messageResizeObserver = null;
