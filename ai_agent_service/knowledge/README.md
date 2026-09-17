@@ -31,8 +31,6 @@ knowledge/
     └── campus_guidance_manifest.jsonl
 ```
 
-公开仓库只保留上面两类内容。知识采集过程、待审核草稿、来源核对材料、中间文件和检查报告不参与程序运行，已由 `.gitignore` 排除。
-
 ## 文档分类
 
 ### Effective（生效）
@@ -48,7 +46,7 @@ title: "宿舍电器使用限制"
 
 ## `runtime/` 中的文件
 
-`runtime/*.jsonl` 是已经整理并审核、可由程序直接读取的数据，不是采集记录或检查报告：
+`runtime/*.jsonl` 是可由程序直接读取的数据：
 
 | 文件 | 内容 |
 | --- | --- |
@@ -74,7 +72,6 @@ title: "宿舍电器使用限制"
 - **实时信息靠工具**：价格、库存、成色、上架状态必须由商品查询提供，不能从静态 GUIDE 推断。
 - **使用范围**：只有 `documents/effective/` 中状态为 `effective` 的文档可以用于生成回答。
 - **更新与复核**：每份文档都会声明需要重新审核的条件；条件变化后应由人工复核并更新。
-- **仓库内容**：草稿、采集记录和来源核对材料不能直接用于生成回答，也不随仓库发布。
 
 ## 重建索引
 
@@ -99,5 +96,5 @@ Post 在用于生成回答前仍需校验当前版本，避免引用已删除或
 | 新增一条平台规则 | 在 `documents/effective/platform/` 增加 Markdown，并在 `runtime/platform_rag_document_manifest.jsonl` 增加对应记录，然后重建索引 |
 | 修改宿舍规则 | 修改 `documents/effective/dorm/` 中的文件，并同步更新 `runtime/campus_guidance_manifest.jsonl` 中的核对日期和来源，然后重建索引 |
 | 修改课程资料 | 修改 `documents/effective/courses/` 中的文件，并同步更新 `runtime/rag_document_manifest.jsonl`；如果课程对应关系也有变化，还需更新 `runtime/course_material_relations.jsonl` |
-| 核对资料来源 | 在仓库外保存采集和核对过程，只将审核后的正文及必要来源信息更新到 `documents/effective/` 和 `runtime/` |
+| 更新来源信息 | 将来源与核对日期更新到 `documents/effective/` 和 `runtime/` 中对应记录 |
 | 确认知识当前状态 | 运行评测：改动后重建索引，并使用 `evaluation/` 中的题目进行回归评测 |

@@ -35,7 +35,7 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 
 ## 鉴权机制
 
-登录凭证是**随机 UUID Token**（不使用 JWT 生成登录令牌），通过 `Authorization: Bearer <token>` 携带。三层校验：
+登录凭证是**随机 UUID Token**，通过 `Authorization: Bearer <token>` 携带。三层校验：
 
 | 层 | 类型 | 作用 |
 | --- | --- | --- |
@@ -107,7 +107,7 @@ com.pmsjl/
 Copy-Item src/main/resources/application.example.yml application-local.yml
 ```
 
-`application-local.yml` 已被 Git 忽略，并位于 Maven 资源目录之外。至少需要检查：
+`application-local.yml` 位于 Maven 资源目录之外。至少需要检查：
 
 | 配置组 | 主要内容 |
 | --- | --- |

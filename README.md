@@ -114,20 +114,19 @@ Router(意图路由) → Retrieval(向量检索) → Generation(答案生成) �
 # 校验公开评测包（不调用模型）
 python ai_agent_service/evaluation/tools/validate_public_evaluation.py
 
-# 跑代表性子集（如从公开 Dev 跨 5 个领域各取 1 题）
+# 运行代表性子集（如从公开 Dev 跨 5 个领域各取 1 题）
 python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
   --dataset <完整评测集.jsonl> --manifest <manifest.json> --run-name <run> --through final
 ```
 
-当前汇总指标与三阶段对比见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，使用同一份 Golden v1.3 数据集、同一套评测脚本和同一冻结索引，对比不同阶段代码与提示词的结果。仓库中的评测数据为 Golden v1.3 Dev 140，Test 60 不在此仓库中。
+当前汇总指标与三阶段对比见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，使用同一份 Golden v1.3 数据集、同一套评测脚本和同一固定索引，对比不同阶段代码与提示词的结果。仓库中的评测数据为 Golden v1.3 Dev 140。
 
 完整指南见 [evaluation/README.md](ai_agent_service/evaluation/README.md)。
 
-## 仓库中保留的知识与评测资料
+## 知识与评测资料
 
 - `ai_agent_service/knowledge/documents/effective/` 保存当前用于知识检索的 GUIDE 文档。
-- `ai_agent_service/knowledge/runtime/` 保存程序读取的 4 份 JSONL，包括文档信息和课程关系。这些文件是运行和重建索引所必需的，因此继续随仓库发布。
-- 知识采集过程、待审核草稿、来源核对材料、中间文件和检查报告不参与程序运行，已由 `.gitignore` 排除。
+- `ai_agent_service/knowledge/runtime/` 保存程序读取的 4 份 JSONL，包括文档信息和课程关系，运行与重建索引都依赖它们。
 - 评测目录包含脱敏后的 dev 题目、Schema、汇总指标和运行评测所需的脚本。
 
 ## 当前边界
@@ -198,7 +197,7 @@ $env:SPRING_CONFIG_ADDITIONAL_LOCATION = "optional:file:./application-local.yml"
 mvn spring-boot:run
 ```
 
-本地 API 默认为 `http://localhost:8102/api`。`application-local.yml` 位于 Maven 资源目录之外并被 Git 忽略。
+本地 API 默认为 `http://localhost:8102/api`。`application-local.yml` 位于 Maven 资源目录之外。
 
 ### 3. 启动 Python Agent
 

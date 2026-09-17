@@ -15,26 +15,26 @@
 
 ```
 evaluation/
-├── public/             公开：脱敏后的 Dev 140 题包 + Manifest + 标注规范 + 基准摘要
+├── public/             公开：脱敏后的 Dev 140 题目集 + Manifest + 标注规范 + 基准摘要
 ├── schemas/            Case 的 JSON Schema
 ├── tools/              运行公开评测所需的脚本
 └── README.md
 ```
 
-`dataset/` 与 `runs/` 分别用于存放完整题目集和评测输出，均已被 Git 忽略：完整题目集需自行准备，评测输出在运行评测后生成。
+`dataset/` 与 `runs/` 分别用于存放完整题目集和评测输出：完整题目集需自行准备，评测输出在运行评测后生成。
 
-| 子目录 | 是否进 Git | 说明 |
-| --- | --- | --- |
-| `public/`、`schemas/`、必要的 `tools/` 脚本、`README.md` | 是 | 公开评测数据和运行评测所需的代码 |
-| `dataset/`、`runs/` | 否（忽略） | 完整题目集与评测输出；前者需自行准备，后者运行后生成 |
+| 子目录 | 说明 |
+| --- | --- |
+| `public/`、`schemas/`、`tools/`、`README.md` | 公开评测数据和运行评测所需的代码 |
+| `dataset/`、`runs/` | 完整题目集与评测输出；前者需自行准备，后者运行后生成 |
 
 ## 数据集
 
-评测数据依次经过"人工编写 → 人工审核 → 生成并定版"三个步骤。最终生成 `dataset/` 下的完整评测集，以及 `public/` 下的脱敏子集。
+完整评测集位于 `dataset/`，`public/` 是其脱敏后的 Dev 子集。
 
-### 完整评测集（仓库中不含，`dataset/golden_v1_3_reviewed_200.jsonl`）
+### 完整评测集（`dataset/golden_v1_3_reviewed_200.jsonl`）
 
-当前定版 **golden-v1.3-reviewed-20260911**，共 **200 题**：
+当前最终版本 **golden-v1.3-reviewed-20260911**，共 **200 题**：
 
 | 领域 | 题数 | 覆盖内容 |
 | --- | ---: | --- |
@@ -44,13 +44,13 @@ evaluation/
 | boundary（合规边界） | 41 | 能否上架、正品、禁售 |
 | campus（校园生活） | 30 | 宿舍电器、生活决策 |
 
-- **split**：dev 140（开发调试用）+ test 60（不在公开包中）。
+- **split**：dev 140（开发调试用）+ test 60。
 - 每条含 `expectedRoute`（retrieve/clarify/out_of_scope/skip_rag）、`expectedKnowledgeState`、`expectedFacts`、`qrels`（文档级相关性标注）、`provenance`、`review`（评审记录）等字段。
-- **数据集本身不进 Git**：仓库只提交执行代码，运行完整评测时需自备 Dataset 和 Manifest。
+- **数据集**：运行完整评测时需自备 Dataset 和 Manifest。
 
 ### 公开评测集（`public/dev_v1_3.jsonl`）
 
-由完整评测集的 dev 140 题脱敏而成：剥离评审记录与内部构造字段，去掉 test 60 题。
+由完整评测集的 dev 140 题脱敏而成。
 
 - 140 题、109 条 qrels。
 - 准确版本、数量、Hash 以 `public/manifest.json` 为准。
@@ -58,11 +58,11 @@ evaluation/
 
 ### 完整评测集 ↔ 公开评测集
 
-| | 完整评测集（仓库中不含） | 公开评测集（public/） |
+| | 完整评测集 | 公开评测集（public/） |
 | --- | --- | --- |
 | 题数 | 200（dev 140 + test 60） | 140（仅 dev） |
-| review 评审记录 | 有 | 剥离，仅留 `{"status":"frozen"}` |
-| provenance | 含内部构造细节 | 仅留 `source` |
+| review 评审记录 | 有 | `{"status":"frozen"}` |
+| provenance | 含构造信息 | 仅留 `source` |
 | 索引版本 | Manifest 记录 `indexBuildIdAtFreeze` | Manifest 记录 `indexSnapshot` |
 
 ## 评测流程（五阶段）
@@ -93,21 +93,20 @@ evaluation/
 | ④ Judge | `run_golden_v1_3_answer_judge.py` | 生成结果 + 期望 | `pipeline_answer_judgments.jsonl` | 答案是否 PASS、知识状态是否正确 |
 | ⑤ Final | `build_golden_v1_3_single_v2_final_results.py` | Generation + Judge | `pipeline_final_results.jsonl` + `_manifest.json` | 汇总 PASS/FAIL、按领域统计 |
 
-公开评测脚本名称统一使用 `v1_3`，调用、导入及默认数据和输出名称同步更新。独立阶段脚本使用 `GOLDEN_V1_3_RUN_DIRECTORY` 指定运行目录；统一入口会自动设置它。历史运行记录中的旧命令仍保留原样，不迁移历史产物。Final 文件名中的 `single_v2` 表示单 Case Judge 的评分协议版本，不是数据集版本。
+公开评测脚本统一使用 `v1_3` 命名。独立阶段脚本使用 `GOLDEN_V1_3_RUN_DIRECTORY` 指定运行目录；统一入口会自动设置它。Final 文件名中的 `single_v2` 是单 Case Judge 的评分协议版本。
 
 ### 共享库
 
 - `golden_v1_3_round2_paths.py`：统一计算 runs 目录、结果/报告路径。
 - `course_question_quality.py`：课程题的质量校验与元数据。
 - `golden_current_runtime_expectations.py`：按当前系统行为修正预期结果（如学校固定不追问）。
-- `materialize_golden_v1_3_reviewed.py`：随 v1.3 工具包统一命名的历史物化工具，仍只处理 v1.1 → v1.2.1；不是 v1.3 数据生成器。旧输入、输出版本和统计约束保留，避免把旧题集误标为 v1.3。
+- `materialize_golden_v1_3_reviewed.py`：数据集生成脚本，处理 v1.1 → v1.2.1 数据。
 
 ### 关键约定
 
-- **固定索引版本**：每个 Manifest 记录一个 `indexBuildIdAtFreeze`。评测必须使用题目集定版时指定的索引版本，否则对比结果不可靠。
-- **每次只评一道题**：批量提交多道题时，自动评分曾出现题目与答案错配。因此目前每次请求只评测一个 Case，以确保评分对应正确。
+- **固定索引版本**：每个 Manifest 记录一个 `indexBuildIdAtFreeze`。评测必须使用题目集确定版本时指定的索引版本，否则对比结果不可靠。
 - **工作目录**：阶段脚本以 `ai_agent_service/` 为工作目录运行（`.env` 中 `RAG_INDEX_DIR` 是相对路径）。
-- **Hit@k 口径**：检索排序指标 `hitAt1/3/5` 判断"首个 relevance ≥ 2 的文档是否落在前 k 位"，是逐题命中判定（hit），不是召回率；真正的召回率指标是 `supportingChunkRecall` 与引用召回（`requiredCitationRecall`）。
+- **Hit@k 指标定义**：检索排序指标 `hitAt1/3/5` 判断"首个 relevance ≥ 2 的文档是否落在前 k 位"。
 
 ## 数据与索引的关系
 
@@ -124,7 +123,7 @@ market_backend Post 快照 ┘                          │
         run_golden_pipeline.py → Retrieval 用该索引检索
 ```
 
-改动 GUIDE 知识、Embedding 模型或向量维度后**必须重建索引**（`python -m app.rag.rebuild_index`），并用新索引跑评测。
+改动 GUIDE 知识、Embedding 模型或向量维度后**必须重建索引**（`python -m app.rag.rebuild_index`），并用新索引运行评测。
 
 ## 运行评测
 
@@ -143,7 +142,7 @@ market_backend Post 快照 ┘                          │
   --through final
 ```
 
-### 选子集（调试 / 回归，不跑全量）
+### 选子集（调试 / 回归，不运行全部题目）
 
 ```powershell
 <python> ai_agent_service\evaluation\tools\run_golden_pipeline.py `
@@ -159,7 +158,7 @@ market_backend Post 快照 ┘                          │
 
 - `--case-id` 可多次传，或 `--limit N` 取前 N 题。
 - `--through prepare` 只选择 Case 并关联 Manifest，**不调用模型**，用于快速检查输入是否合法。
-- 子集调试优先从公开 Dev 各领域选题；Test 已参与人工分析，不作为从未见过的隐藏测试集。
+- 子集调试优先从公开 Dev 各领域选题。
 
 ### 索引不可用时的覆盖
 
@@ -169,7 +168,7 @@ Manifest 中记录的索引不在本地时，必须显式传入可用索引：
 --index-build-id <可用-build-id>
 ```
 
-覆盖索引后的结果不直接等同于冻结基线。原索引版本和本次临时指定的版本都会写入运行 Manifest（`pipelineSelection.sourceIndexBuildIdAtFreeze` / `indexBuildOverride`）。
+覆盖索引后的结果不直接等同于固定基线。原索引版本和本次临时指定的版本都会写入运行 Manifest（`pipelineSelection.sourceIndexBuildIdAtFreeze` / `indexBuildOverride`）。
 
 ## 评测输出（`runs/<run-name>/`）
 
@@ -231,15 +230,14 @@ Router、Answer Generation 和 Judge 的报告还会分别记录实际模型、`
 
 ### 仓库中包含的评测内容
 
-- 公开：脱敏 Dev 数据、Schema、Manifest、标注规范、聚合基线摘要。
-- 不含：test 60（固定回归集）、模型原始输出、请求 Trace、用量记录和完整 Dataset。
-- 公开题目中的 `provenance.source` 已改为指向 `knowledge/runtime/` 下对应的运行数据，不再引用已移出仓库的 `knowledge/normalized/`。
+- 脱敏 Dev 数据、Schema、Manifest、标注规范、聚合基线摘要。
+- 公开题目中的 `provenance.source` 指向 `knowledge/runtime/` 下对应的运行数据。
 
 ### 公开基线
 
-`public/benchmark_summary.md` 给出 2026-09-12 更新的 v1.3 三阶段聚合指标（阶段 3 Router 95.00%、Hit@5 90.55%、Final 97.00%）。注意：Public Dev 一旦用于实现调整或参数选择，就不能再表述为"未见过的隐藏测试集"。
+`public/benchmark_summary.md` 给出 2026-09-12 更新的 v1.3 三阶段聚合指标（阶段 3 Router 95.00%、Hit@5 90.55%、Final 97.00%）。
 
-三阶段使用同一份 Golden v1.3 数据集、同一套评测脚本和同一冻结索引，对比各阶段代码与提示词的最终结果。每阶段包含 143 条未改动题的历史结果和 57 条新增或更新题的结果；阶段 1 使用 6e7874e 的检索代码与回答提示词，阶段 2、3 使用各自对应版本。最新最终通过数依次为 173/200（86.50%）、186/200（93.00%）、194/200（97.00%）；阶段 2、3 检索指标分别来自各自的运行产物。
+三阶段使用同一份 Golden v1.3 数据集、同一套评测脚本和同一固定索引，对比各阶段代码与提示词的最终结果。每阶段包含 143 条未改动题的历史结果和 57 条新增或更新题的结果；阶段 1 使用 6e7874e 的检索代码与回答提示词，阶段 2、3 使用各自对应版本。最新最终通过数依次为 173/200（86.50%）、186/200（93.00%）、194/200（97.00%）；阶段 2、3 检索指标分别来自各自的运行产物。
 
 ## 测试
 

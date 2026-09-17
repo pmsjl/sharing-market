@@ -24,7 +24,7 @@ Java Backend ──POST /agent/v1/runs──→  FastAPI Agent
 | `POST /agent/v1/runs` | 接收 Java 整理好的会话上下文，返回同步导购结果 |
 | `GET /live` | 进程存活检查 |
 | `GET /ready` | 必要配置和可选 RAG 索引的就绪检查 |
-| `GET /health` | 不包含密钥的运行状态摘要 |
+| `GET /health` | 运行状态摘要 |
 
 Java 与 Python 必须配置相同的 `AI_AGENT_INTERNAL_TOKEN`。
 
@@ -141,8 +141,6 @@ python -m app.rag.rebuild_index
 | GUIDE 文档 | 平台和学校的稳定资料，保存在 `knowledge/documents/effective/` 下 |
 | 社区 Post | 动态内容，不直接保存在知识库目录中；构建索引时通过 Java 获取当前数据，生成回答前仍需校验版本 |
 
-公开仓库只保留运行和重建索引所需的 GUIDE 文档与 `runtime/*.jsonl`。知识采集过程、草稿、来源核对材料、中间文件和检查报告由 `.gitignore` 排除。
-
 详细说明见 [knowledge/README.md](knowledge/README.md)。
 
 ## 评测
@@ -150,14 +148,14 @@ python -m app.rag.rebuild_index
 `evaluation/` 是 Golden Test 评测体系：使用固定题目集，按 Router → Retrieval → Generation → Judge → Final 五个阶段进行端到端回归评测，用于检查改动是否影响 AI 导购质量。
 
 - 代码全部在 `evaluation/tools/`；脱敏后的公开评测集在 `evaluation/public/`；完整题目集需自行准备，放在 `evaluation/dataset/`。
-- 三阶段基线使用同一份 Golden v1.3 数据集、同一套评测脚本和同一冻结索引，对比各阶段代码与提示词；结果见[三阶段基线摘要](evaluation/public/benchmark_summary.md)。
+- 三阶段基线使用同一份 Golden v1.3 数据集、同一套评测脚本和同一固定索引，对比各阶段代码与提示词；结果见[三阶段基线摘要](evaluation/public/benchmark_summary.md)。
 - 推荐阅读 [evaluation/README.md](evaluation/README.md) 获取完整评测指南。
 
 ```powershell
 # 校验公开评测包（不调用模型）
 python ai_agent_service/evaluation/tools/validate_public_evaluation.py
 
-# 跑评测（需配置好的 .env；示例为 5 问子集）
+# 运行评测（需配置好的 .env；示例为 5 问子集）
 python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
   --dataset <dataset.jsonl> --manifest <manifest.json> --run-name <run> --through final
 ```

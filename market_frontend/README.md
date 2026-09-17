@@ -11,7 +11,7 @@ Vue (8080) ──axios──→ Java API (8102/api) ──→ MySQL/Redis
 ```
 
 - `VUE_APP_API_BASE_URL` 指向 Java 服务根地址（默认 `http://localhost:8102`）。**接口路径已含 `/api`，不要重复追加**。
-- 登录成功后 Java 返回 **UUID Token**，前端存 localStorage 并在请求头 `Authorization: Bearer <token>` 携带；登录态由 Java + Redis 校验，不是前端生成的 JWT。
+- 登录成功后 Java 返回 **UUID Token**，前端存 localStorage 并在请求头 `Authorization: Bearer <token>` 携带；登录态由 Java + Redis 校验。
 - 路由按 `localStorage.role` 区分用户端 `/user/*` 与管理端 `/admin/*`，越权访问被守卫拦截。
 
 ## 页面能力
@@ -129,7 +129,7 @@ npm run dev
 
 ## 环境变量
 
-可提交模板为 `.env.development.local.example`。本地 `.env.development.local` 已被 Git 忽略。
+环境变量模板为 `.env.development.local.example`，本地配置写入 `.env.development.local`。
 
 | 变量 | 用途 |
 | --- | --- |
@@ -148,15 +148,13 @@ Vue CLI 在构建阶段注入 `VUE_APP_*` 变量。不要在可提交配置或�
 | `npm run lint` | 执行 ESLint |
 | `npm run openapi` | 按 `OPENAPI_SCHEMA_URL` 生成 API 代码到 `src/api/generated` |
 
-前端无单元测试脚本（无 jest/vitest 配置）。验证前端：
+验证前端：
 
 ```powershell
 npm ci
 npm run lint
 npm run build
 ```
-
-当前生产构建可能显示 Sass 弃用和 Bundle 体积警告；这些警告不等同于构建失败。
 
 ## License
 
