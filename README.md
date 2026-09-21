@@ -119,7 +119,7 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
   --dataset <完整评测集.jsonl> --manifest <manifest.json> --run-name <run> --through final
 ```
 
-当前汇总指标与三阶段对比见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，使用同一份 Golden v1.3 数据集、同一套评测脚本和同一固定索引，对比不同阶段代码与提示词的结果。仓库中的评测数据为 Golden v1.3 Dev 140。
+当前汇总指标与五阶段消融对比见 [`ai_agent_service/evaluation/public/benchmark_summary.md`](ai_agent_service/evaluation/public/benchmark_summary.md)，使用同一份 Golden v1.3 数据集、同一套评测脚本和同一固定索引，每个阶段只在前一阶段基础上增加一项能力：阶段 1（无 Router 基线）→ 阶段 2（+ LLM Router）→ 阶段 3（+ ABC 三通道检索）→ 阶段 4（+ 短 chunk ID 映射）→ 阶段 5（+ 最终提示词）。仓库中的评测数据为 Golden v1.3 Dev 140。
 
 完整指南见 [evaluation/README.md](ai_agent_service/evaluation/README.md)。
 

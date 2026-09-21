@@ -15,4 +15,4 @@
 
 公开 `version` 规范化为 `golden-v1.3`；`review` 只保留 frozen，`provenance` 只保留 source，知识目录前缀按公开包规则映射到 `knowledge/runtime/`。
 
-统计与 SHA-256 见 [Manifest](manifest.json)，当前三阶段结果见 [基线摘要](benchmark_summary.md)。
+统计与 SHA-256 见 [Manifest](manifest.json)，当前五阶段消融结果见 [基线摘要](benchmark_summary.md)。
