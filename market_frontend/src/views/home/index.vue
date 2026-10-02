@@ -67,9 +67,7 @@
       <div class="discovery-section-heading">
         <div>
           <span class="section-index">01 / DISCOVER</span>
-          <h2 id="fresh-title">
-            下一件心动好物
-          </h2>
+          <h2 id="fresh-title">下一件心动好物</h2>
         </div>
         <router-link class="text-link" to="/user/commodity"
           >逛全部好物 <el-icon><ArrowRight /></el-icon
