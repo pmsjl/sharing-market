@@ -1,5 +1,5 @@
 <template>
-  <div class="top-actions">
+  <div class="top-actions" :class="{ 'consumer-actions': consumer }">
     <button
       class="paper-tool message-entry"
       type="button"
@@ -10,7 +10,7 @@
       <el-icon><Message /></el-icon><span>消息</span
       ><i v-if="chat.hasUnread" class="message-dot" aria-hidden="true"></i>
     </button>
-    <el-tooltip content="刷新页面" placement="bottom"
+    <el-tooltip v-if="!consumer" content="刷新页面" placement="bottom"
       ><button
         class="paper-tool utility-tool"
         type="button"
@@ -19,7 +19,7 @@
       >
         <el-icon><Refresh /></el-icon></button
     ></el-tooltip>
-    <el-tooltip content="切换全屏" placement="bottom"
+    <el-tooltip v-if="!consumer" content="切换全屏" placement="bottom"
       ><button
         class="paper-tool utility-tool fullscreen-tool"
         type="button"
@@ -115,6 +115,24 @@
             >个人主页</el-dropdown-item
           >
           <el-dropdown-item
+            v-if="consumer"
+            icon="Tickets"
+            @click="$router.push('/user/orders')"
+            >我的订单</el-dropdown-item
+          >
+          <el-dropdown-item
+            v-if="consumer"
+            icon="Plus"
+            @click="$router.push('/user/commodity?publish=1')"
+            >发布闲置</el-dropdown-item
+          >
+          <el-dropdown-item
+            v-if="consumer"
+            icon="Bell"
+            @click="$router.push('/user/notice')"
+            >校园公告</el-dropdown-item
+          >
+          <el-dropdown-item
             divided
             class="account-logout"
             @click="logout"
@@ -147,6 +165,7 @@ import {
 } from "@/utils/theme";
 
 const $router = useRouter();
+defineProps({ consumer: Boolean });
 const layOutSettingStore = useLayOutSettingStore();
 const userStore = userUserStore();
 const chat = usePrivateMessageStore();
@@ -228,6 +247,34 @@ export default { name: "Setting" };
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.consumer-actions {
+  gap: 2px;
+  .paper-tool {
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    padding: 0 11px;
+  }
+  .message-entry > span {
+    display: none;
+  }
+  .user-trigger {
+    min-height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+    padding: 4px;
+    gap: 4px;
+  }
+  .user-avatar {
+    border-radius: 50%;
+  }
+  .user-trigger-copy {
+    display: none;
+  }
 }
 .paper-tool {
   position: relative;

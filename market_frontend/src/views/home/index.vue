@@ -1,135 +1,170 @@
 <template>
-  <div class="market-page home-page" ref="pageRef">
-    <section class="home-hero market-board">
-      <div class="hero-copy">
-        <span class="market-eyebrow">今日校园集市</span>
-        <h1>课间逛一圈，把同校好物带回宿舍</h1>
+  <div class="market-page discover-home">
+    <section class="discovery-hero" aria-labelledby="discovery-title">
+      <div class="discovery-copy">
+        <span class="discovery-kicker"><i></i>课间，来逛逛。</span>
+        <h1 id="discovery-title">
+          好物不毕业，<br /><span>陪你下一程。</span>
+        </h1>
         <p>
-          把教材、数码、运动装备和生活用品重新流转起来。先逛一圈，再决定要不要发布自己的闲置。
+          从翻过的书，到心动的数码。<br
+            class="mobile-break"
+          />让闲置在同学之间，遇见新的日常。
         </p>
-        <div class="hero-actions">
-          <el-button type="primary" @click="$router.push('/user/commodity')">
-            去逛商品
-          </el-button>
-          <el-button @click="$router.push('/user/account')">
-            管理我的摊位
-          </el-button>
-        </div>
-      </div>
-      <div class="hero-board" aria-label="平台亮点">
-        <div class="hero-board-title">
-          <span>AFTER CLASS MARKET</span>
-        </div>
-        <div class="pin-card card-book">
-          <small>TEXTBOOK</small>教材换季<br />价格友好
-        </div>
-        <div class="pin-card card-tech">
-          <small>DIGITAL</small>数码闲置<br />先到先得
-        </div>
-        <div class="pin-card card-life">
-          <small>LIFESTYLE</small>生活小物<br />校内流转
-        </div>
-      </div>
-    </section>
-
-    <section class="quick-grid">
-      <button
-        v-for="item in quickEntries"
-        :key="item.title"
-        class="quick-note"
-        type="button"
-        @click="$router.push(item.path)"
-      >
-        <img class="quick-illustration" :src="item.icon" :alt="item.title" />
-        <span>{{ item.kicker }}</span>
-        <strong>{{ item.title }}</strong>
-        <em>{{ item.desc }}</em>
-      </button>
-    </section>
-
-    <section class="fresh-section" aria-labelledby="fresh-title">
-      <div class="market-page-header">
-        <div>
-          <span class="market-eyebrow">今日好物橱窗</span>
-          <h2 id="fresh-title" class="market-title">市集精选</h2>
-          <p class="market-subtitle">
-            书籍、数码、穿搭与宿舍生活，发现适合自己的校园好物。
-          </p>
-        </div>
-        <el-button @click="$router.push('/user/commodity')"
-          >逛全部商品 →</el-button
+        <form
+          class="discovery-search"
+          role="search"
+          @submit.prevent="searchMarket"
         >
+          <el-icon aria-hidden="true"><Search /></el-icon>
+          <input
+            v-model="searchText"
+            aria-label="搜索校园好物"
+            placeholder="想找什么好物？"
+            type="search"
+          />
+          <button type="submit" aria-label="搜索好物">
+            <el-icon><ArrowRight /></el-icon>
+          </button>
+        </form>
+        <div class="search-suggestions">
+          <span>试试搜</span
+          ><router-link
+            v-for="word in ['教材', '耳机', '台灯']"
+            :key="word"
+            :to="{ path: '/user/commodity', query: { q: word } }"
+            >{{ word }}<el-icon><TopRight /></el-icon
+          ></router-link>
+        </div>
       </div>
-      <el-skeleton
-        v-if="freshLoading"
-        :rows="5"
-        animated
-        aria-label="正在加载精选商品"
-      />
-      <div
-        v-else-if="freshFailed"
-        class="fresh-fallback market-panel"
-        role="status"
+      <router-link
+        to="/user/commodity"
+        class="discovery-scene"
+        aria-label="去发现校园好物"
       >
-        <p>精选商品暂时没有加载出来，再试一次吧。</p>
+        <img
+          v-if="!sceneFailed"
+          src="/generated/carousel-dorm.png"
+          alt="阳光下的校园宿舍，桌上摆着台灯、书籍和生活用品"
+          width="2172"
+          height="724"
+          fetchpriority="high"
+          @error="sceneFailed = true"
+        />
+        <div v-else class="scene-fallback">把喜欢，继续传下去。</div>
+        <span class="scene-caption"
+          >给生活一点新鲜感 <el-icon><TopRight /></el-icon
+        ></span>
+        <span class="scene-sticker"
+          ><small>GOOD THINGS, AGAIN.</small>闲置好物<br /><strong
+            >重新出场！</strong
+          ></span
+        >
+        <span class="scene-spark" aria-hidden="true">✳</span>
+      </router-link>
+    </section>
+
+    <section class="discovery-listings" aria-labelledby="fresh-title">
+      <div class="discovery-section-heading">
+        <div>
+          <span class="section-index">01 / DISCOVER</span>
+          <h2 id="fresh-title">
+            下一件心动好物<span class="heading-dot"></span>
+          </h2>
+        </div>
+        <router-link class="text-link" to="/user/commodity"
+          >逛全部好物 <el-icon><ArrowRight /></el-icon
+        ></router-link>
+      </div>
+      <div
+        v-if="freshLoading"
+        class="discovery-skeleton"
+        role="status"
+        aria-label="正在寻找好物"
+      >
+        <el-skeleton v-for="n in 4" :key="n" animated
+          ><template #template
+            ><el-skeleton-item
+              variant="image"
+              class="skeleton-cover" /><el-skeleton-item
+              variant="h3" /><el-skeleton-item variant="text" /></template
+        ></el-skeleton>
+      </div>
+      <div v-else-if="freshFailed" class="discovery-empty" role="status">
+        <p>好物还在路上，稍后再试试。</p>
         <el-button @click="loadFreshCommodities">重新加载</el-button>
       </div>
       <CommodityList
         v-else-if="freshCommodities.length"
-        :commodityList="freshCommodities"
+        :commodity-list="freshCommodities"
       />
-      <div v-else class="fresh-fallback market-panel">
-        <p>暂时没有可展示的商品照片，先去集市逛逛吧。</p>
-        <el-button @click="loadFreshCommodities">重新加载</el-button>
-        <el-button @click="$router.push('/user/commodity')">去逛商品</el-button>
+      <div v-else class="discovery-empty">
+        <h3>下一件好物，也许就来自你。</h3>
+        <p>暂时没有可展示的精选商品，去集市看看，或分享一件闲置。</p>
+        <router-link class="text-link" to="/user/commodity"
+          >去逛集市 <el-icon><ArrowRight /></el-icon
+        ></router-link>
       </div>
     </section>
 
-    <section class="carousel-note market-panel">
-      <div class="section-heading">
-        <span class="market-eyebrow">逛摊路线</span>
-        <h2>从教材摊、数码摊逛到宿舍生活区</h2>
-      </div>
-      <div class="carousel-frame">
-        <el-carousel height="320px" motion-blur>
-          <el-carousel-item v-for="(item, index) in images" :key="index">
-            <div
-              class="photo-card"
-              :class="{ 'is-missing': failedImages.includes(index) }"
-            >
-              <img
-                v-if="!failedImages.includes(index)"
-                :src="item.src"
-                :alt="item.title"
-                @error="handleImageError(index)"
-              />
-              <div v-else class="photo-placeholder">
-                <span>照片暂未送达</span>
-                <small>仍可继续浏览其他校园场景</small>
-              </div>
-            </div>
-          </el-carousel-item>
-        </el-carousel>
-      </div>
+    <section class="discovery-extras" aria-label="校园好物指南">
+      <router-link class="guide-invitation" to="/user/agentGuide">
+        <div>
+          <span class="invitation-kicker">你的选物搭子 · AI</span>
+          <h2>有点心动，<br />又不知道怎么选？</h2>
+          <p>聊聊预算和用途，一起缩小选择范围。</p>
+          <span class="invitation-action"
+            >帮我挑一挑 <el-icon><ArrowRight /></el-icon
+          ></span>
+        </div>
+        <span class="guide-sticker" aria-hidden="true"
+          ><el-icon><MagicStick /></el-icon
+          ><small>一起<br />选好物</small></span
+        >
+      </router-link>
+      <router-link class="community-invitation" to="/user/post">
+        <div>
+          <span class="invitation-kicker">同学的经验，比参数更有用</span>
+          <h2>先看攻略，<br />少走一点弯路。</h2>
+          <p>验机、教材、交易心得，都可以聊。</p>
+          <span class="invitation-action"
+            >看看大家怎么说 <el-icon><ArrowRight /></el-icon
+          ></span>
+        </div>
+        <span class="community-sticker" aria-hidden="true"
+          ><el-icon><ChatDotRound /></el-icon
+        ></span>
+      </router-link>
     </section>
+    <footer class="discovery-footer">
+      <span>好物循环，校园日常。</span
+      ><router-link to="/user/notice"
+        >校园公告 <el-icon><TopRight /></el-icon
+      ></router-link>
+    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import {
+  Search,
+  ArrowRight,
+  TopRight,
+  MagicStick,
+  ChatDotRound
+} from "@element-plus/icons-vue";
 import CommodityList from "@/components/CommodityList/index.vue";
 import { listCommodityVoByPageUsingPost } from "@/api/commodityController";
-import { useRouter } from "vue-router";
-import { animateIn, parallaxFloat } from "@/utils/motion";
-import illBuy from "@/assets/illustrations/textbook.svg";
-import illAgent from "@/assets/illustrations/ai-lamp.svg";
-import illOrder from "@/assets/illustrations/ticket-stub.svg";
-import illPost from "@/assets/illustrations/notice-pin.svg";
-
-const $router = useRouter();
-const pageRef = ref<HTMLElement | null>(null);
-let cleanupParallax: (() => void) | undefined;
-
+const router = useRouter();
+const searchText = ref("");
+const sceneFailed = ref(false);
+const searchMarket = () =>
+  router.push({
+    path: "/user/commodity",
+    query: searchText.value.trim() ? { q: searchText.value.trim() } : {}
+  });
 const freshCommodities = ref<API.CommodityVO[]>([]);
 const freshLoading = ref(true);
 const freshFailed = ref(false);
@@ -234,501 +269,482 @@ const loadFreshCommodities = async () => {
   }
 };
 
-const images = [
-  {
-    src: "/generated/carousel-textbooks.png",
-    title: "教材与学习用品"
-  },
-  {
-    src: "/generated/carousel-digital.png",
-    title: "数码与桌面装备"
-  },
-  {
-    src: "/generated/carousel-dorm.png",
-    title: "宿舍生活好物"
-  },
-  {
-    src: "/generated/carousel-handoff.png",
-    title: "校内轻松流转"
-  }
-];
-
-const failedImages = ref<number[]>([]);
-
-const handleImageError = (index: number) => {
-  if (!failedImages.value.includes(index)) failedImages.value.push(index);
-};
-
-const quickEntries = [
-  {
-    kicker: "BUY",
-    title: "商品集市",
-    desc: "查找教材、数码和生活用品",
-    path: "/user/commodity",
-    icon: illBuy
-  },
-  {
-    kicker: "AGENT",
-    title: "导购 Agent",
-    desc: "按预算和用途整理购买建议",
-    path: "/user/agentGuide",
-    icon: illAgent
-  },
-  {
-    kicker: "ORDER",
-    title: "我的订单",
-    desc: "查看支付状态和交易记录",
-    path: "/user/orders",
-    icon: illOrder
-  },
-  {
-    kicker: "POST",
-    title: "交易攻略",
-    desc: "看看同学们的交易经验",
-    path: "/user/post",
-    icon: illPost
-  }
-];
-
-onMounted(() => {
-  void loadFreshCommodities();
-  animateIn(
-    pageRef.value?.querySelectorAll(
-      ".home-hero, .quick-note, .carousel-note"
-    ) || []
-  );
-
-  const heroBoard = pageRef.value?.querySelector(".hero-board");
-  if (heroBoard instanceof HTMLElement) {
-    cleanupParallax = parallaxFloat(
-      heroBoard,
-      heroBoard.querySelectorAll(".pin-card"),
-      5
-    );
-  }
-});
-
-onUnmounted(() => {
-  cleanupParallax?.();
-});
+onMounted(() => void loadFreshCommodities());
 </script>
 
 <style scoped lang="scss">
-.fresh-section {
-  margin: 8px 0;
-}
-.fresh-fallback {
+.discover-home {
   display: grid;
-  justify-items: center;
-  gap: 16px;
-  padding: 32px;
-  color: var(--market-muted);
+  gap: 38px;
 }
-
-.home-page {
+.discovery-hero {
   display: grid;
-  gap: 22px;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 44px;
+  align-items: center;
 }
-
-.home-hero {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 430px);
-  gap: 28px;
-  min-height: 320px;
-  padding: clamp(30px, 4vw, 48px);
-  overflow: hidden;
-  background: radial-gradient(
-      circle at 12% 0,
-      rgba(244, 201, 93, 0.18),
-      transparent 30%
-    ),
-    linear-gradient(115deg, rgba(43, 110, 80, 0.06), transparent 45%),
-    var(--market-card-bg);
-
-  &::after {
-    position: absolute;
-    right: -25px;
-    bottom: -31px;
-    width: 150px;
-    height: 70px;
-    border: 2px solid rgba(192, 57, 43, 0.16);
-    border-radius: 50%;
-    content: "";
-    transform: rotate(-12deg);
-  }
+.discovery-copy {
+  padding: 8px 0;
 }
-
-.market-status {
-  display: flex;
-  width: fit-content;
+.discovery-kicker {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 18px;
-  padding: 8px 12px;
-  border: 1px solid rgba(43, 110, 80, 0.18);
-  border-radius: 999px;
-  color: var(--market-muted);
   font-size: 12px;
-  background: var(--market-note-green-bg);
-
+  font-weight: 700;
+  letter-spacing: 2px;
   i {
     width: 8px;
     height: 8px;
+    background: var(--market-primary);
     border-radius: 50%;
-    background: var(--market-green);
-    box-shadow: 0 0 0 4px rgba(43, 110, 80, 0.1);
-  }
-
-  strong {
-    color: var(--market-green);
   }
 }
-
-.hero-copy {
-  align-self: center;
-
-  h1 {
-    max-width: 640px;
-    margin: 16px 0;
-    color: var(--market-ink);
-    font-family: var(--market-font-display);
-    font-size: clamp(30px, 3.3vw, 44px);
-    font-weight: 900;
-    line-height: 1.06;
-  }
-
-  p {
-    max-width: 560px;
-    color: var(--market-muted);
-    font-size: 17px;
-    line-height: 1.8;
-  }
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.hero-board {
-  position: relative;
-  min-height: 292px;
-  border: 10px solid rgba(101, 69, 47, 0.34);
-  border-radius: 12px;
-  background: linear-gradient(
-      var(--market-board-overlay),
-      var(--market-board-overlay)
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 27px,
-      rgba(96, 67, 31, 0.09) 28px
-    ),
-    var(--market-board-overlay);
-  box-shadow: inset 0 0 0 2px rgba(255, 246, 227, 0.18),
-    inset 0 0 24px rgba(62, 45, 24, 0.12);
-}
-
-.hero-board-title {
-  position: absolute;
-  top: 15px;
-  left: 50%;
-  z-index: 2;
-  display: grid;
-  min-width: 142px;
-  gap: 1px;
-  padding: 7px 14px;
-  color: var(--market-chalk);
-  text-align: center;
-  background: #17365f;
-  box-shadow: 0 6px 12px rgba(62, 45, 24, 0.17);
-  transform: translateX(-50%) rotate(-0.6deg);
-
+h1 {
+  margin: 16px 0;
+  font-size: clamp(36px, 3.8vw, 54px);
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -2px;
   span {
-    color: #e8eef7;
-    font-family: var(--market-font-mono);
-    font-size: 12px;
-    letter-spacing: 1.2px;
+    position: relative;
+    z-index: 0;
   }
-}
-
-.pin-card {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 142px;
-  min-height: 112px;
-  padding: 18px;
-  border: 1px solid rgba(35, 49, 63, 0.1);
-  border-radius: 8px;
-  box-shadow: var(--market-shadow-soft);
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1.35;
-  text-align: center;
-
-  small {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--market-orange-text);
-    font-family: var(--market-font-mono);
-    font-size: 12px;
-    letter-spacing: 1.2px;
-  }
-}
-
-.pin-card::before {
-  position: absolute;
-  top: -9px;
-  width: 18px;
-  height: 18px;
-  border: 4px solid var(--market-pin-border);
-  border-radius: 50%;
-  background: var(--market-orange);
-  content: "";
-}
-
-.card-book {
-  top: 66px;
-  left: 28px;
-  background: var(--market-note-yellow-bg);
-  transform: rotate(-5deg);
-}
-
-.card-tech {
-  right: 34px;
-  top: 86px;
-  color: var(--market-on-primary);
-  background: var(--market-primary);
-  transform: rotate(4deg);
-}
-
-.card-tech small {
-  color: inherit;
-}
-
-.card-life {
-  bottom: 28px;
-  left: 108px;
-  background: var(--market-note-green-bg);
-  transform: rotate(2deg);
-}
-
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  align-items: stretch;
-}
-
-.quick-note {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  height: 100%;
-  min-height: 174px;
-  padding: 20px 20px 17px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  color: var(--market-ink);
-  text-align: left;
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  cursor: pointer;
-  transform: rotate(-1.2deg);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease,
-    transform var(--market-dur-fast) var(--market-ease-spring);
-
-  &:nth-child(2n) {
-    transform: rotate(1deg);
-  }
-
-  &:hover {
-    border-color: rgba(224, 101, 31, 0.45);
-    box-shadow: var(--market-shadow-lift);
-    transform: rotate(0deg);
-  }
-
-  .quick-illustration {
-    width: 40px;
-    height: 40px;
-    color: var(--market-green);
-  }
-
-  span {
-    color: var(--market-orange-text);
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: 2px;
-  }
-
-  strong {
-    font-family: var(--market-font-display);
-    font-size: 22px;
-    font-weight: 900;
-  }
-
-  em {
-    color: var(--market-muted);
-    font-style: normal;
-    line-height: 1.6;
-  }
-
-  b {
-    align-self: end;
-    margin-top: 7px;
-    color: var(--market-green);
-    font-size: 11px;
-    font-weight: 800;
-  }
-}
-
-.carousel-note {
-  padding: 24px;
-}
-
-.section-heading {
-  margin-bottom: 16px;
-
-  h2 {
-    margin-top: 8px;
-    font-family: var(--market-font-display);
-    font-size: 24px;
-    font-weight: 900;
-  }
-}
-
-// 牛皮纸相框
-.carousel-frame {
-  position: relative;
-  padding: 12px;
-  border: 1px solid rgba(143, 93, 51, 0.22);
-  border-radius: 10px;
-  background: var(--market-paper-deep);
-  box-shadow: inset 0 2px 10px rgba(62, 45, 24, 0.1);
-
-  &::before,
-  &::after {
-    position: absolute;
-    z-index: 2;
-    top: 4px;
-    width: 68px;
-    height: 14px;
-    background: rgba(217, 173, 101, 0.55);
+  span::after {
     content: "";
-  }
-
-  &::before {
-    left: 8%;
+    position: absolute;
+    z-index: -1;
+    left: 0;
+    right: 0;
+    bottom: 3px;
+    height: 15px;
+    background: var(--market-sticker-yellow);
     transform: rotate(-2deg);
-  }
-
-  &::after {
-    right: 8%;
-    transform: rotate(2deg);
+    border-radius: 3px;
   }
 }
-
-.el-carousel {
-  border-radius: 6px;
-  overflow: hidden;
-
+.discovery-copy > p {
+  color: var(--market-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.mobile-break {
+  display: none;
+}
+.discovery-search {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 54px;
+  max-width: 450px;
+  margin-top: 22px;
+  padding: 5px 6px 5px 18px;
+  border: 1px solid var(--market-line-strong);
+  border-radius: 999px;
+  background: var(--market-surface);
+  transition: border-color 180ms;
+  &:focus-within {
+    border-color: var(--market-primary);
+    box-shadow: var(--market-focus);
+  }
+  > .el-icon {
+    color: var(--market-muted);
+    font-size: 20px;
+  }
+  input {
+    width: 100%;
+    min-width: 0;
+    padding: 7px 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--market-ink);
+    &::placeholder {
+      color: var(--market-muted);
+    }
+  }
+  button {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--market-primary);
+    color: var(--market-on-primary);
+    cursor: pointer;
+    font-size: 20px;
+  }
+}
+.search-suggestions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 9px;
+  font-size: 11px;
+  color: var(--market-muted);
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    min-height: 28px;
+    &:hover {
+      color: var(--market-primary);
+    }
+  }
+}
+.discovery-scene {
+  position: relative;
+  display: block;
+  height: 324px;
+  border-radius: 20px;
+  background: var(--market-surface-soft);
+  isolation: isolate;
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: 50% center;
+    border-radius: inherit;
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    pointer-events: none;
   }
 }
-
-.photo-card {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: var(--market-surface);
-}
-
-.photo-placeholder {
+.scene-fallback {
   display: grid;
-  width: 100%;
   height: 100%;
-  place-content: center;
-  gap: 5px;
-  color: var(--market-ink);
-  text-align: center;
-  background: repeating-linear-gradient(
-      0deg,
-      transparent 0 27px,
-      var(--market-line) 27px 28px
-    ),
-    var(--market-surface);
-
-  span {
-    font-family: var(--market-font-display);
-    font-size: 22px;
-  }
-
+  align-items: center;
+  justify-content: center;
+  color: var(--market-muted);
+}
+.scene-caption {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #fffaf0;
+  color: #253348;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.scene-sticker {
+  position: absolute;
+  right: -10px;
+  bottom: 18px;
+  padding: 16px 22px;
+  border: 2px solid #fff9e7;
+  border-radius: 3px;
+  background: var(--market-sticker-yellow);
+  color: var(--market-sticker-ink);
+  font-family: var(--market-playful-font);
+  font-size: 26px;
+  line-height: 1.15;
+  transform: rotate(7deg);
+  box-shadow: 0 5px 12px rgba(30, 35, 45, 0.12);
   small {
+    display: block;
+    font-family: var(--market-font-body);
+    font-size: 7px;
+    letter-spacing: 1px;
+    margin-bottom: 9px;
+  }
+  strong {
+    font-weight: 700;
+  }
+}
+.scene-spark {
+  position: absolute;
+  right: 10px;
+  top: -22px;
+  color: var(--market-primary);
+  font-size: 62px;
+  line-height: 1;
+  transform: rotate(12deg);
+}
+.discovery-section-heading {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  h2 {
+    font-size: 26px;
+    letter-spacing: -1px;
+    font-weight: 750;
+    line-height: 1.4;
+  }
+}
+.section-index {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--market-muted);
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  font-weight: 600;
+}
+.heading-dot {
+  display: inline-block;
+  margin-left: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--market-primary);
+}
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--market-ink);
+  font-size: 12px;
+  white-space: nowrap;
+  &:hover {
+    color: var(--market-primary);
+  }
+}
+.discovery-skeleton {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+  .skeleton-cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1.15;
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+}
+.discovery-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 38px 20px;
+  background: var(--market-surface-soft);
+  border-radius: 18px;
+  text-align: center;
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  p {
     color: var(--market-muted);
+    font-size: 14px;
   }
 }
-
-@media (max-width: 980px) {
-  .home-hero {
+.discovery-extras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.guide-invitation,
+.community-invitation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 32px;
+  border-radius: 18px;
+  overflow: hidden;
+  h2 {
+    margin: 13px 0 10px;
+    font-size: 27px;
+    line-height: 1.35;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  p {
+    font-size: 12px;
+    opacity: 0.85;
+  }
+}
+.guide-invitation {
+  background: var(--market-editorial-blue);
+  color: #fff;
+}
+.community-invitation {
+  background: var(--market-sticker-yellow);
+  color: var(--market-sticker-ink);
+}
+.invitation-kicker {
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.invitation-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 23px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.guide-sticker {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 108px;
+  height: 134px;
+  transform: rotate(9deg);
+  background: #e4edff;
+  color: #234fdd;
+  border: 5px solid #fff;
+  border-radius: 9px;
+  .el-icon {
+    font-size: 35px;
+  }
+  small {
+    font-family: var(--market-playful-font);
+    font-size: 19px;
+    line-height: 1.2;
+  }
+}
+.community-sticker {
+  display: grid;
+  place-items: center;
+  width: 98px;
+  height: 98px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--market-sticker-coral);
+  color: var(--market-sticker-ink);
+  transform: rotate(-10deg);
+  .el-icon {
+    font-size: 48px;
+  }
+}
+.discovery-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--market-line);
+  padding-top: 24px;
+  color: var(--market-muted);
+  font-size: 11px;
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+  }
+}
+@media (max-width: 1000px) {
+  .discovery-hero {
+    gap: 28px;
+  }
+  h1 {
+    font-size: 40px;
+  }
+  .discovery-scene {
+    height: 300px;
+  }
+  .guide-invitation,
+  .community-invitation {
+    padding: 24px;
+  }
+  .guide-sticker,
+  .community-sticker {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .discover-home {
+    gap: 28px;
+  }
+  .discovery-hero {
     grid-template-columns: 1fr;
+    gap: 18px;
   }
-
-  .quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .discovery-copy {
+    padding: 0;
   }
-}
-
-@media (max-width: 560px) {
-  .home-hero {
-    padding: 26px 20px;
+  .discovery-kicker {
+    font-size: 11px;
   }
-
-  .hero-board {
-    display: grid;
-    grid-auto-columns: 142px;
-    grid-auto-flow: column;
-    gap: 12px;
-    min-height: 0;
-    padding: 58px 16px 18px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
+  h1 {
+    font-size: 38px;
+    margin: 12px 0;
+    line-height: 1.2;
   }
-
-  .pin-card {
-    position: relative;
-    inset: auto;
-    width: 142px;
-    min-height: 104px;
-    scroll-snap-align: start;
+  .discovery-copy > p {
+    font-size: 12px;
   }
-
-  .market-status {
-    align-items: flex-start;
-    border-radius: 8px;
-    flex-wrap: wrap;
-
-    span {
-      width: 100%;
-      padding-left: 16px;
+  .discovery-search {
+    margin-top: 16px;
+    max-width: none;
+  }
+  .discovery-scene {
+    height: 154px;
+    border-radius: 14px;
+  }
+  .scene-caption {
+    top: 12px;
+    left: 12px;
+    font-size: 9px;
+  }
+  .scene-sticker {
+    right: 10px;
+    bottom: 10px;
+    padding: 10px 15px;
+    font-size: 20px;
+    small {
+      font-size: 6px;
+      margin-bottom: 4px;
     }
   }
-
-  .quick-grid {
-    grid-template-columns: 1fr;
+  .scene-spark {
+    font-size: 40px;
+    top: -14px;
+    right: 6px;
   }
-
-  .carousel-note {
-    padding: 16px;
+  .discovery-section-heading {
+    margin-bottom: 16px;
+    gap: 8px;
+    h2 {
+      font-size: 22px;
+    }
+  }
+  .section-index {
+    font-size: 8px;
+  }
+  .text-link {
+    font-size: 11px;
+    gap: 5px;
+  }
+  .discovery-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .discovery-extras {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .guide-sticker,
+  .community-sticker {
+    display: grid;
+    width: 78px;
+  }
+  .guide-sticker {
+    height: 102px;
+  }
+  .community-sticker {
+    height: 78px;
+  }
+  .guide-invitation,
+  .community-invitation {
+    h2 {
+      font-size: 24px;
+    }
   }
 }
 </style>

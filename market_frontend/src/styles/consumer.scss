@@ -1,0 +1,119 @@
+/* The public marketplace has its own shell; administration keeps its workspace. */
+.market-consumer {
+  --market-shadow-soft: 0 4px 18px rgba(31, 38, 48, 0.035);
+  --market-shadow: 0 12px 36px rgba(31, 38, 48, 0.08);
+  --market-shadow-lift: 0 16px 36px rgba(31, 38, 48, 0.12);
+  --market-font-display: var(--market-font-body);
+  --market-radius-board: 18px;
+  --market-radius-note: 14px;
+  --market-playful-font: "Smiley Sans", "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  --market-sticker-yellow: #ffe58b;
+  --market-sticker-ink: #253348;
+  --market-sticker-coral: #ffd3c0;
+  --market-editorial-blue: #234fdd;
+  background: var(--market-canvas);
+
+  .market-page {
+    width: min(1280px, 100%);
+  }
+  .market-title {
+    font-weight: 750;
+    letter-spacing: -1px;
+  }
+  .market-eyebrow {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--market-muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .market-eyebrow::before {
+    display: none;
+  }
+  .market-board::before,
+  .market-note::before {
+    display: none;
+  }
+  .market-board,
+  .market-panel,
+  .market-note {
+    box-shadow: none;
+  }
+  .el-button--primary {
+    box-shadow: none;
+  }
+  .el-button {
+    font-weight: 600;
+  }
+  .el-button:hover:not(.is-disabled) {
+    transform: none;
+  }
+  .el-card {
+    box-shadow: none;
+  }
+}
+
+/* 外壳覆盖需压过 layout/index.vue 的 scoped 样式（同优先级时 scoped 随懒加载 chunk 后到而胜出），故用 html 前缀提一级 */
+html .market-consumer {
+  .layout_content {
+    grid-template-rows: 76px minmax(0, 1fr);
+  }
+  .layout_tabbar {
+    border-bottom: 1px solid var(--market-line);
+    background: var(--market-canvas);
+    backdrop-filter: none;
+  }
+  .layout_main {
+    padding: 28px 40px 48px;
+  }
+  .layout_main.workspace-mode {
+    padding: 12px 24px;
+  }
+  &.focus-mode {
+    .layout_content {
+      grid-template-rows: minmax(0, 1fr);
+    }
+    .market-bottom-nav {
+      display: none;
+    }
+    .layout_main.workspace-mode {
+      padding: 0;
+    }
+  }
+}
+html:not(.dark):not([data-theme="night"]) .market-consumer {
+  --market-canvas: #faf9f6;
+  --market-paper: #faf9f6;
+  --market-surface-soft: #f0efea;
+  --market-paper-deep: #f0efea;
+  --market-ink: #202b3d;
+  --market-muted: #626b78;
+  --market-faint: #717985;
+  --market-line: #e5e5df;
+  --market-line-strong: #c8cbc9;
+  --market-card-bg: #ffffff;
+}
+@media (max-width: 1100px) {
+  html .market-consumer .layout_main {
+    padding: 24px;
+  }
+}
+@media (max-width: 760px) {
+  html .market-consumer {
+    .layout_content {
+      grid-template-rows: 64px minmax(0, 1fr) auto;
+    }
+    .layout_main {
+      padding: 20px 18px 28px;
+    }
+    .layout_main.workspace-mode {
+      padding: 0;
+    }
+  }
+  .market-consumer .market-title {
+    font-size: 27px;
+  }
+}

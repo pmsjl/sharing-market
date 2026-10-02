@@ -2,10 +2,12 @@
   <div
     class="layout_container"
     :class="{
+      'market-consumer': isConsumer,
       'focus-mode': $route.meta.workspace && LayOutSettingStore.focusMode
     }"
   >
     <aside
+      v-if="!isConsumer"
       class="layout_slider"
       :class="{ fold: LayOutSettingStore.fold ? true : false }"
     >
@@ -28,20 +30,27 @@
       :class="{ fold: LayOutSettingStore.fold ? true : false }"
     >
       <header class="layout_tabbar">
-        <Tabbar />
+        <MarketNavigation v-if="isConsumer" />
+        <Tabbar v-else />
       </header>
       <main
+        id="market-main"
+        tabindex="-1"
         class="layout_main"
         :class="{ 'workspace-mode': $route.meta.workspace }"
       >
         <Main />
       </main>
+      <MarketNavigation v-if="isConsumer" mobile />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import Tabbar from "./tabbar/index.vue";
+import MarketNavigation from "./MarketNavigation.vue";
+import { computed, watch, nextTick } from "vue";
+import { GET_ROLE } from "@/utils/token";
 import { useRoute } from "vue-router";
 import Logo from "./logo/index.vue";
 import Menu from "./menu/index.vue";
@@ -52,6 +61,17 @@ import useLayOutSettingStore from "@/store/modules/setting";
 const userStore = userUserStore();
 const LayOutSettingStore = useLayOutSettingStore();
 const $route = useRoute();
+const isConsumer = computed(() => {
+  // Read the token as a dependency so a role switch updates the shell.
+  return Boolean(userStore.token) && GET_ROLE() === "user";
+});
+watch(
+  () => $route.path,
+  async () => {
+    await nextTick();
+    document.getElementById("market-main")?.scrollTo({ top: 0 });
+  }
+);
 </script>
 <script lang="ts">
 export default {

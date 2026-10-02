@@ -1,294 +1,287 @@
 <template>
-  <div class="commodity-list">
-    <div v-if="!props.commodityList.length" class="empty-stall">
+  <div class="market-listings">
+    <div v-if="!commodityList.length" class="listing-empty">
       <img
         src="@/assets/illustrations/empty-stall.svg"
-        alt="空摊位"
-        class="empty-illustration"
+        alt=""
+        width="110"
+        height="100"
       />
-      <p class="empty-title">公告栏暂时还没有商品</p>
-      <p class="empty-desc">换个筛选条件试试，或者成为第一个摆摊的人</p>
+      <h3>还没遇见合适的好物</h3>
+      <p>换个关键词或筛选条件试试。</p>
+      <slot name="empty-action"></slot>
     </div>
-    <div v-else class="commodity-grid">
+    <div v-else class="listing-grid">
       <article
-        v-for="item in props.commodityList"
+        v-for="item in commodityList"
         :key="item.id"
-        class="commodity-note"
-        role="button"
-        tabindex="0"
-        @click="goCommodityDetail(item.id)"
-        @keydown.enter="goCommodityDetail(item.id)"
+        class="listing-item"
       >
-        <div class="stall-awning" aria-hidden="true"></div>
-        <div class="image-wrap">
-          <img
-            v-if="item.commodityAvatar"
-            :src="item.commodityAvatar"
-            :alt="item.commodityName"
-          />
-          <div v-else class="image-placeholder">校园好物</div>
-          <span class="price-tag">
-            <i class="price-hole" aria-hidden="true"></i>
-            ￥{{ item.price || 0 }}
-          </span>
-        </div>
-        <div class="content">
-          <div class="title">{{ item.commodityName }}</div>
-          <p class="description">
-            {{ item.commodityDescription || "暂无简介" }}
-          </p>
-          <div class="meta-row">
-            <span class="meta-item">
-              <el-icon><Collection /></el-icon>
-              {{ item.degree || "成色未知" }}
-            </span>
-            <span class="meta-item">
-              <el-icon><Box /></el-icon>
-              余 {{ item.commodityInventory ?? 0 }}
-            </span>
-            <span class="meta-item meta-type">
-              {{ item.commodityTypeName || "未分类" }}
-            </span>
+        <router-link
+          :to="'/user/commodity/detail/' + item.id"
+          class="listing-link"
+        >
+          <div class="listing-cover">
+            <img
+              v-if="item.commodityAvatar && !failedCovers[item.commodityAvatar]"
+              :src="item.commodityAvatar"
+              :alt="item.commodityName || '商品图片'"
+              loading="lazy"
+              decoding="async"
+              width="480"
+              height="420"
+              @error="failedCovers[item.commodityAvatar] = true"
+            />
+            <div v-else class="listing-placeholder">
+              <el-icon><Picture /></el-icon><span>图片暂未就绪</span>
+            </div>
+            <span v-if="item.degree" class="listing-condition">{{
+              item.degree
+            }}</span>
           </div>
-          <div class="stats">
-            <span>
-              <el-icon><View /></el-icon>
-              {{ item.viewNum || 0 }}
-            </span>
-            <span>
-              <el-icon><Star /></el-icon>
-              {{ item.favourNum || 0 }}
-            </span>
+          <div class="listing-copy">
+            <span class="listing-category">{{
+              item.commodityTypeName || "校园好物"
+            }}</span>
+            <h3>{{ item.commodityName || "未命名商品" }}</h3>
+            <div class="listing-price">
+              <strong>{{ formatPrice(item.price) }}</strong
+              ><span>校园币</span
+              ><span v-if="item.commodityInventory === 0" class="listing-sold"
+                >已售罄</span
+              >
+            </div>
+            <div class="listing-footer">
+              <span class="listing-seller"
+                ><i aria-hidden="true">{{
+                  (item.adminName || "同学").slice(0, 1)
+                }}</i
+                >{{ item.adminName || "同学" }}</span
+              ><span class="listing-saves"
+                ><el-icon><Star /></el-icon>{{ item.favourNum || 0
+                }}<span class="sr-only">人收藏</span></span
+              >
+            </div>
           </div>
-          <div class="seller-row" v-if="item.adminName">
-            <span>卖家 {{ item.adminName || "同学" }}</span>
-          </div>
-        </div>
+        </router-link>
       </article>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import { Box, Collection, View, Star } from "@element-plus/icons-vue";
-
-const $router = useRouter();
-const props = defineProps({
-  commodityList: {
-    type: Array as any,
-    required: true
-  }
+import { ref, PropType } from "vue";
+import { Picture, Star } from "@element-plus/icons-vue";
+defineProps({
+  commodityList: { type: Array as PropType<API.CommodityVO[]>, required: true }
 });
-
-const goCommodityDetail = (id?: string) => {
-  if (!id) return;
-  $router.push("/user/commodity/detail/" + id);
-};
+const failedCovers = ref<Record<string, boolean>>({});
+const formatPrice = (value?: number) =>
+  new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(
+    Number(value) || 0
+  );
 </script>
 
 <style scoped lang="scss">
-.empty-stall {
+.listing-grid {
   display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 48px 20px;
-  border: 1px dashed var(--market-line);
-  border-radius: var(--market-radius);
-  background: var(--market-surface);
-
-  .empty-illustration {
-    width: 180px;
-    color: var(--market-muted);
-    opacity: 0.9;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px 22px;
+}
+.listing-item {
+  min-width: 0;
+}
+.listing-link {
+  display: block;
+  height: 100%;
+  border-radius: 14px;
+  &:hover .listing-cover > img {
+    transform: scale(1.035);
   }
-
-  .empty-title {
-    color: var(--market-ink);
-    font-family: var(--market-font-display);
-    font-size: 20px;
-    font-weight: 900;
-  }
-
-  .empty-desc {
-    color: var(--market-muted);
-    font-size: 14px;
+  &:hover h3 {
+    color: var(--market-primary);
   }
 }
-
-.commodity-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 18px;
-}
-
-.commodity-note {
+.listing-cover {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 358px;
+  aspect-ratio: 1.15;
+  overflow: hidden;
   border: 1px solid var(--market-line);
-  border-radius: 8px;
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    box-shadow: var(--market-shadow-lift);
-    transform: translateY(-4px) rotate(-0.3deg);
-  }
-}
-
-// 摊位雨棚
-.stall-awning {
-  flex: 0 0 10px;
-  @include awning-strip(10px);
-}
-
-.image-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 5;
-  background: var(--market-paper-deep);
-  overflow: hidden;
-
-  img,
-  .image-placeholder {
+  border-radius: 14px;
+  background: var(--market-surface-soft);
+  > img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
-    object-position: center;
+    transition: transform 240ms ease;
   }
 }
-
-.image-placeholder {
-  display: grid;
-  place-items: center;
-  color: var(--market-muted);
-  font-family: var(--market-font-display);
-  font-size: 18px;
-  font-weight: 900;
-}
-
-// 价格吊牌：旋转 + 打孔
-.price-tag {
+.listing-condition {
   position: absolute;
   top: 12px;
-  right: 10px;
+  left: 12px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: var(--market-surface);
+  color: var(--market-ink);
+  font-size: 10px;
+  font-weight: 600;
+}
+.listing-placeholder {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--market-muted);
+  font-size: 11px;
+  .el-icon {
+    font-size: 32px;
+    opacity: 0.7;
+  }
+}
+.listing-copy {
+  padding: 12px 1px 0;
+}
+.listing-category {
+  display: block;
+  color: var(--market-muted);
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--market-ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  transition: color 180ms;
+}
+.listing-price {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 6px;
+  strong {
+    color: var(--market-ink);
+    font-size: 23px;
+    font-weight: 750;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.6px;
+  }
+  > span {
+    color: var(--market-muted);
+    font-size: 10px;
+  }
+  .listing-sold {
+    margin-left: auto;
+  }
+}
+.listing-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 11px;
+  margin-top: 10px;
+  border-top: 1px solid var(--market-line);
+  color: var(--market-muted);
+  font-size: 11px;
+}
+.listing-seller {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px 6px 8px;
-  border-radius: 6px;
-  color: #fff;
-  font-family: var(--market-font-mono);
-  font-size: 16px;
-  font-weight: 900;
-  background: var(--market-orange);
-  box-shadow: var(--market-shadow-soft);
-  transform: rotate(4deg);
-  transition: transform var(--market-dur-fast) var(--market-ease-spring);
-
-  .price-hole {
-    width: 8px;
-    height: 8px;
-    border: 2px solid rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  i {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 21px;
+    height: 21px;
+    background: var(--market-primary-soft);
+    color: var(--market-primary);
     border-radius: 50%;
-    background: rgba(62, 45, 24, 0.35);
+    font-size: 9px;
+    font-style: normal;
   }
 }
-
-.commodity-note:hover .price-tag {
-  transform: rotate(0deg) scale(1.04);
-}
-
-.content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px 18px;
-}
-
-.title {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--market-ink);
-  font-family: var(--market-font-display);
-  font-size: 19px;
-  font-weight: 900;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.description {
-  display: -webkit-box;
-  min-height: 44px;
-  overflow: hidden;
-  color: var(--market-muted);
-  font-size: 14px;
-  line-height: 1.55;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-// 图标元信息行：替代三个并排 tag
-.meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 14px;
-  color: var(--market-muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.meta-item {
+.listing-saves {
   display: inline-flex;
-  align-items: center;
   gap: 4px;
-
-  .el-icon {
-    color: var(--market-green);
-  }
-}
-
-.meta-type {
-  margin-left: auto;
-  padding: 2px 9px;
-  border: 1px solid rgba(43, 110, 80, 0.3);
-  border-radius: 999px;
-  color: var(--market-green);
-  font-size: 12px;
-  background: var(--market-note-green-bg);
-}
-
-.stats {
-  display: flex;
-  gap: 14px;
-  margin-top: auto;
-  color: var(--market-muted);
-  font-size: 14px;
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-}
-
-.seller-row {
-  display: flex;
   align-items: center;
-  margin-top: 2px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--market-line);
-  color: var(--market-muted);
-  font-size: 13px;
-  font-weight: 800;
+  flex-shrink: 0;
+  .el-icon {
+    font-size: 13px;
+  }
+}
+.listing-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-height: 280px;
+  padding: 32px 16px;
+  text-align: center;
+  background: var(--market-surface-soft);
+  border-radius: 16px;
+  img {
+    object-fit: contain;
+  }
+  h3 {
+    font-size: 18px;
+  }
+  p {
+    font-size: 13px;
+    color: var(--market-muted);
+  }
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 1100px) {
+  .listing-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px 18px;
+  }
+}
+@media (max-width: 760px) {
+  .listing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 14px;
+  }
+  .listing-cover {
+    aspect-ratio: 1;
+    border-radius: 11px;
+  }
+  .listing-condition {
+    top: 8px;
+    left: 8px;
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+  h3 {
+    font-size: 13px;
+  }
+  .listing-price strong {
+    font-size: 21px;
+  }
+  .listing-footer {
+    font-size: 10px;
+  }
 }
 </style>
