@@ -40,7 +40,6 @@ from app.rag.course_relations import CourseMatch
 from app.rag.models import RagResolution
 from app.rag.service import RagService
 from app.routing.query_router import (
-    CapabilityRedirectRouteDecision,
     ClarifyRouteDecision,
     DEFAULT_INSTITUTION,
     HybridQueryRouter,
@@ -50,6 +49,7 @@ from app.routing.query_router import (
     RouteResolution,
     SkipRagRouteDecision,
     ToolPolicy,
+    is_order_related_request,
 )
 from app.tools.definitions import (
     GET_MY_PREFERENCE_SIGNALS_TOOL,
@@ -226,7 +226,6 @@ class AgentService:
         if isinstance(route_decision, (
                 ClarifyRouteDecision,
                 OutOfScopeRouteDecision,
-                CapabilityRedirectRouteDecision,
         )):
             return self._build_deterministic_response(
                 request_id,
@@ -470,30 +469,31 @@ class AgentService:
     def _build_deterministic_response(
         request_id: str,
         request: AgentRunRequest,
-        decision: (ClarifyRouteDecision | OutOfScopeRouteDecision |
-                   CapabilityRedirectRouteDecision),
+        decision: ClarifyRouteDecision | OutOfScopeRouteDecision,
         *,
         started_at: float,
         route_diagnostics: RouteDiagnostics,
     ) -> AgentRunResponse:
         if isinstance(decision, OutOfScopeRouteDecision):
-            answer = ("这个问题不属于校园二手交易咨询范围。"
-                      "我可以帮你查找或比较平台商品，也可以提供二手选购、"
-                      "验货、面交和支付安全建议。")
-            summary = "该问题超出校园二手交易咨询范围。"
-            memory_summary = "用户提出了超出校园二手交易咨询范围的问题。"
-        elif isinstance(decision, CapabilityRedirectRouteDecision):
-            if decision.redirect_target == "orders":
-                answer = ("我目前不能读取或操作你的订单。"
-                          "请前往“我的订单”（/user/orders）查看订单状态，"
-                          "支付、取消等操作也请在该页面完成。")
-                summary = "当前AI不读取或操作订单，请到我的订单页面处理。"
+            rule_id = route_diagnostics.guardrail_rule_id
+            if rule_id == "unsupported_business_request":
+                if is_order_related_request(request.message):
+                    answer = ("我目前不能读取或操作你的订单。"
+                              "请前往“我的订单”（/user/orders）查看订单状态，"
+                              "支付、取消等操作也请在该页面完成。")
+                    summary = "当前AI不读取或操作订单，请到我的订单页面处理。"
+                else:
+                    answer = ("我可以解释平台规则，但不能代你执行退款、投诉、举报或申诉。"
+                              "请使用平台现有入口办理；如果没有对应入口，请联系平台管理员。")
+                    summary = "当前AI不能代办退款、投诉、举报或申诉。"
+                memory_summary = (
+                    f"用户咨询：{request.message}；当前AI没有对应业务操作能力。")
             else:
-                answer = ("我可以解释平台规则，但不能代你执行退款、投诉、举报或申诉。"
-                          "请使用平台现有入口办理；如果没有对应入口，请联系平台管理员。")
-                summary = "当前AI不能代办退款、投诉、举报或申诉。"
-            memory_summary = (
-                f"用户咨询：{request.message}；当前AI没有对应业务操作能力。")
+                answer = ("这个问题不属于校园二手交易咨询范围。"
+                          "我可以帮你查找或比较平台商品，也可以提供二手选购、"
+                          "验货、面交和支付安全建议。")
+                summary = "该问题超出校园二手交易咨询范围。"
+                memory_summary = "用户提出了超出校园二手交易咨询范围的问题。"
         else:
             answer = decision.clarification_question
             summary = "需要补充信息后才能继续判断。"

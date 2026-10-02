@@ -32,8 +32,7 @@ public class AiChatController {
     private AiConversationService aiConversationService;
 
     /**
-     * 创建 AI 会话并同步完成首轮 Agent 问答。
-     * Service 会先写入 PENDING 助手消息，再调用 Python，并将同一消息更新为 SUCCESS 或 FAILED。
+     * 创建 AI 会话并返回 PENDING；后台调用 Python 后回写同一消息，浏览器查询最终状态。
      */
     @PostMapping
     public Result<AiChatVO> createConversation(@RequestBody AiChatMessageRequest aiChatMessageRequest,
@@ -120,6 +119,7 @@ public class AiChatController {
         return ResultUtils.success(aiConversationService.restoreConversation(conversationId, request));
     }
 
+    /** 保存新一轮消息并返回 PENDING，后台完成生成和条件回写。 */
     @PostMapping("/{conversationId}/messages")
     public Result<AiChatVO> sendMessage(@PathVariable("conversationId") Long conversationId,
                                         @RequestBody AiChatMessageRequest aiChatMessageRequest,

@@ -32,12 +32,16 @@ Vue (8080) ──axios──→ Java API (8102/api) ──→ MySQL/Redis
 
 实现位于 `src/views/user/agentGuide/index.vue`（约 3700 行，本前端最复杂的页面）。
 
-### 交互模式：同步请求 + 打字机动画
+### 交互模式：后台生成 + 消息轮询 + 打字机动画
 
-**不是 SSE/流式**：前端一次性 `POST /api/ai/conversations/{id}/messages`，Java 返回完整 `AiChatVO` 后，前端用 `requestAnimationFrame` 按设定速度逐字显示回答（打字机效果），支持打字速度档位（含"立即"）。
+首轮创建和后续发送返回已持久化的 `AiChatVO`，助手通常为 `PENDING`；后台完成后，前端通过现有消息分页接口获取 `SUCCESS` 或 `FAILED`。成功回答仍使用 `requestAnimationFrame` 按设定速度逐字显示，支持打字速度档位（含"立即"），不提供流式输出。
 
-- Java 等待 Python Agent 完成一次请求的最长时间为 120 秒，因此 AI 接口的 axios 超时时间单独设为 `160000` ms。
-- 失败消息会标记为 `FAILED`；用户重试时，前端会重新提交原消息。
+- 发送接口超时为 30 秒，不等待生成。每个待完成会话维护一个串行轮询，每次查询结束后间隔 2 秒；查询断网时保留 PENDING，10 秒后重试，不自动重复提交。
+- 刷新或重新进入会话时恢复 PENDING 的等待状态；切换会话继续更新缓存，页面卸载停止轮询但不取消后台生成。
+- 只有数据库确认 FAILED 才提供生成重试；POST 网络失败属于提交结果未知，提示加载会话确认，避免自动重复生成。线程池满载直接返回可重试 FAILED。
+- 使用真实助手消息 ID 定位结果，必要时继续查询历史页；轮询按 ID 合并，不丢失已加载历史。等待期间保持同一会话的发送、重试、归档和删除限制。
+
+轮询及页面状态测试：`node --test tests/aiMessagePolling.test.cjs tests/agentGuideAsync.test.cjs`（使用已有 TypeScript 和 Vue 依赖，无新增测试框架）。
 
 ### 引用来源与结构化内容
 

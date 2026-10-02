@@ -60,6 +60,7 @@ class CourseMatch:
 _ACADEMIC_YEAR_TERMS = ("第一学年", "第二学年", "第三学年", "第四学年")
 _SEASON_TERMS = ("春季", "秋季", "夏季")
 _ENTRY_YEAR_PATTERN = re.compile(r"(?<!\d)(20\d{2})\s*级")
+_SHORT_ENTRY_YEAR_PATTERN = re.compile(r"(?<!\d)(\d{2})\s*级")
 
 
 class CourseRelationIndex:
@@ -179,6 +180,10 @@ class CourseRelationIndex:
     def _extract_constraints(self, query: str) -> CourseConstraints:
         year_match = _ENTRY_YEAR_PATTERN.search(query)
         entry_year = int(year_match.group(1)) if year_match else None
+        if entry_year is None:
+            short_year_match = _SHORT_ENTRY_YEAR_PATTERN.search(query)
+            if short_year_match:
+                entry_year = 2000 + int(short_year_match.group(1))
         majors = tuple(self._match_non_overlapping(query,
                                                    self._majors_longest))
         major_codes = tuple(

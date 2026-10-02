@@ -29,7 +29,9 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 ### AI 会话
 
 - 会话：创建、续聊、归档、恢复、删除；历史上下文最多近 5 轮。
-- 消息：先记录为 PENDING，再调用 Agent；调用结束后使用 CAS 将状态更新为 SUCCESS 或 FAILED，并通过行锁避免重复处理。
+- 消息：短事务保存后返回 PENDING，由专用线程调用 Agent；调用结束后复用原有事务和 CAS 回写 SUCCESS 或 FAILED。会话锁、超时判断、额度预占与商品/引用校验保持原有规则。
+- 后台并发：`AI_AGENT_MAX_CONCURRENT_RUNS` 默认 4，固定线程数、不排队；满载时不调用 Python，将本轮回写为可重试的 FAILED（`AI_AGENT_BUSY`）。业务失败沿用原有额度统计，不退回预占次数。
+- 浏览器使用现有消息分页接口轮询结果，刷新或关闭页面不取消生成。任务只保存在内存；Java 重启或回写失败遗留的 PENDING 由现有超时清理收尾，不自动重跑。
 - 额度：按 `AiUsageDaily`/`AiUsageGlobalDaily` 每日限量（用户默认 10、平台默认 100，`ai.access` 配置，时区 Asia/Shanghai）。
 - 定时任务：清理超时 PENDING 消息（每 30 秒）、释放过期未支付订单（每分钟）、同步商品浏览量（每 5 分钟）。
 
@@ -115,7 +117,7 @@ Copy-Item src/main/resources/application.example.yml application-local.yml
 | `spring.data.redis` | Redis 地址、端口、密码 |
 | `oss.client` | OSS Endpoint、Bucket、访问凭证 |
 | `app.cors` | 本地前端允许来源 |
-| `ai.agent` | Python Agent 地址、内部 Token、超时 |
+| `ai.agent` | Python Agent 地址、内部 Token、超时、后台并发数 |
 | `market.campus-coin` | 初始校园币、管理员发放上限 |
 | `ai.access` | 用户/平台每日 AI 额度 |
 

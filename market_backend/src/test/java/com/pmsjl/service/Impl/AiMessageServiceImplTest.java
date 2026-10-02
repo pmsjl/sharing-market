@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
+import com.pmsjl.manager.AiAgentTaskRunner;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
@@ -77,6 +78,7 @@ class AiMessageServiceImplTest {
     private HttpServletRequest request;
 
     private AiMessageServiceImpl messageService;
+    private final AiAgentTaskRunner taskRunner = mock(AiAgentTaskRunner.class);
 
     @BeforeEach
     void setUp() {
@@ -94,6 +96,7 @@ class AiMessageServiceImplTest {
         ReflectionTestUtils.setField(messageService, "transactionTemplate", transactionTemplate);
         ReflectionTestUtils.setField(messageService, "userService", userService);
         ReflectionTestUtils.setField(messageService, "aiAccessService", accessService);
+        ReflectionTestUtils.setField(messageService, "aiAgentTaskRunner", taskRunner);
         ReflectionTestUtils.setField(messageService, "objectMapper", new ObjectMapper());
     }
 
@@ -131,6 +134,7 @@ class AiMessageServiceImplTest {
                 () -> messageService.sendMessage(500L, requestBody, request));
         assertEquals(List.of("conversation", "usage"), order);
         verify(messageMapper, never()).insert(any(AiMessage.class));
+        verifyNoInteractions(taskRunner);
     }
 
     @Test
@@ -153,6 +157,7 @@ class AiMessageServiceImplTest {
                 () -> messageService.sendMessage(500L, requestBody, request));
         verify(accessService, never()).reserveUsage(anyLong());
         verify(messageMapper, never()).insert(any(AiMessage.class));
+        verifyNoInteractions(taskRunner);
     }
 
     @Test

@@ -1168,11 +1168,19 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 OutOfScopeRouteDecision(),
             ),
             ("我的订单状态是什么", "/user/orders", None),
+            ("我买的付款了吗", "/user/orders", None),
+            ("我的订单状态是什么，也告诉我退款规则", "/user/orders", None),
+            ("订单给我取消掉", "/user/orders", None),
+            ("直接支付订单", "/user/orders", None),
             ("帮我申请退款", "不能代你执行退款", None),
+            ("马上替我举报这个卖家", "不能代你执行退款", None),
+            ("替我投诉这个卖家", "不能代你执行退款", None),
+            ("帮我申诉", "不能代你执行退款", None),
         ]:
             with self.subTest(message=message):
                 openai_client = StubOpenAIClient([])
                 rag_service = StubRagService(rag_context())
+                java_client = StubJavaBackendClient()
                 router = (
                     StubQueryRouter(
                         RouteResolution(
@@ -1189,7 +1197,7 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 service = AgentService(
                     make_settings(openai_api_key="", internal_token=""),
                     openai_client=openai_client,
-                    java_backend_client=StubJavaBackendClient(),
+                    java_backend_client=java_client,
                     rag_service=rag_service,
                     query_router=router,
                 )
@@ -1200,6 +1208,24 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 )
 
                 self.assertIn(expected_answer_fragment, result.answer)
+                if semantic_decision is None:
+                    expected_summary = (
+                        "当前AI不读取或操作订单，请到我的订单页面处理。"
+                        if expected_answer_fragment == "/user/orders" else
+                        "当前AI不能代办退款、投诉、举报或申诉。")
+                    self.assertEqual(result.output.summary, expected_summary)
+                    if expected_answer_fragment != "/user/orders":
+                        self.assertIn("请使用平台现有入口办理", result.answer)
+                        self.assertIn("请联系平台管理员", result.answer)
+                    self.assertEqual(
+                        result.output.memorySummary,
+                        f"用户咨询：{message}；当前AI没有对应业务操作能力。",
+                    )
+                elif isinstance(semantic_decision, OutOfScopeRouteDecision):
+                    self.assertEqual(result.output.summary,
+                                     "该问题超出校园二手交易咨询范围。")
+                    self.assertEqual(result.output.memorySummary,
+                                     "用户提出了超出校园二手交易咨询范围的问题。")
                 self.assertEqual(
                     result.model.provider,
                     "openai" if semantic_decision is not None else "system",
@@ -1212,6 +1238,8 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result.traces, [])
                 self.assertEqual(openai_client.calls, [])
                 self.assertEqual(rag_service.calls, [])
+                self.assertEqual(java_client.calls, [])
+                self.assertEqual(java_client.preference_calls, [])
 
     async def test_required_personalized_tools_run_preference_then_search(
             self):

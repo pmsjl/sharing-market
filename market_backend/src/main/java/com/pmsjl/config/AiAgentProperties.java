@@ -37,8 +37,14 @@ public class AiAgentProperties {
     /** 助手消息允许保持 PENDING 的最长时间（毫秒）。 */
     private long pendingTimeoutMs;
 
+    /** 后台 Agent 固定并发数；任务不排队，满载时明确失败。 */
+    private int maxConcurrentRuns = 4;
+
     @PostConstruct
     public void validateTimeoutConfiguration() {
+        if (maxConcurrentRuns <= 0) {
+            throw new IllegalStateException("AI_AGENT_MAX_CONCURRENT_RUNS 必须为正整数");
+        }
         if (connectTimeoutMs <= 0 || readTimeoutMs <= 0 || pendingTimeoutMs <= 0) {
             throw new IllegalStateException("AI Agent 超时配置必须为正整数");
         }

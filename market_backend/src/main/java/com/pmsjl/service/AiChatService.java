@@ -10,8 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 public interface AiChatService {
 
     /**
-     * 创建会话、持久化首条用户消息，并通过 Python Agent 生成首条助手回复。
-     * Python 或模型异常时，助手消息会以 FAILED 状态返回，供前端提示和后续重试。
+     * 创建会话、持久化首条用户消息，返回 PENDING 并提交后台 Agent 任务。
+     * 任务提交被拒绝时直接返回 FAILED；后台生成结果通过消息查询获取。
      *
      * @param aiChatMessageRequest 首条自然语言消息及可选购买条件
      * @param request 当前 HTTP 请求，用于读取登录用户

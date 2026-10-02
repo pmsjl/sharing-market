@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
-import com.pmsjl.manager.AiAgentClient;
+import com.pmsjl.manager.AiAgentTaskRunner;
 import com.pmsjl.manager.AiAgentClientException;
 import com.pmsjl.manager.AiStructuredContentAssembler;
 import com.pmsjl.mapper.AiConversationMapper;
@@ -66,7 +66,7 @@ public class AiChatServiceImpl implements AiChatService {
     private TransactionTemplate transactionTemplate;
 
     @Autowired
-    private AiAgentClient aiAgentClient;
+    private AiAgentTaskRunner aiAgentTaskRunner;
 
     @Autowired
     private AiAgentTraceService aiAgentTraceService;
@@ -78,8 +78,7 @@ public class AiChatServiceImpl implements AiChatService {
     private AiAccessService aiAccessService;
 
     /**
-     * 先在短事务中写入会话、USER 和 PENDING ASSISTANT 消息；事务提交后才调用 Python。
-     * 网络请求完成后，再使用另一段短事务把同一条 ASSISTANT 消息更新成 SUCCESS 或 FAILED。
+     * 短事务提交后返回 PENDING 快照，由后台任务调用 Python 并在另一段事务中回写结果。
      */
     @Override
     public AiChatVO createConversation(AiChatMessageRequest aiChatMessageRequest, HttpServletRequest request) {
@@ -100,12 +99,11 @@ public class AiChatServiceImpl implements AiChatService {
         ThrowUtils.throwIf(pendingChat == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
 
         AgentRunRequest agentRunRequest = buildAgentRunRequest(pendingChat);
-        try {
-            AgentRunResponse agentRunResponse = aiAgentClient.runAgent(requestId, agentRunRequest);
-            return persistAgentSuccess(pendingChat, agentRunResponse);
-        } catch (AiAgentClientException e) {
-            return persistAgentFailure(pendingChat, e);
-        }
+        AiChatVO pendingResponse = buildChatVO(requestId, pendingChat.conversation(), shoppingContext,
+                pendingChat.userMessage(), pendingChat.assistantMessage());
+        return aiAgentTaskRunner.submit(pendingResponse, agentRunRequest,
+                response -> persistAgentSuccess(pendingChat, response),
+                exception -> persistAgentFailure(pendingChat, exception));
     }
 
     /** 第一段数据库事务：保证三条初始记录要么全部存在，要么全部回滚。 */

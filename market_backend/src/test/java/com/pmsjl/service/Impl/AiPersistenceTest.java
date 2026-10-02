@@ -10,6 +10,7 @@ import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.entity.AiConversation;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.User;
+import com.pmsjl.model.enums.AiMessageStatusEnum;
 import com.pmsjl.utils.PersistenceTime;
 import org.apache.ibatis.datasource.unpooled.UnpooledDataSource;
 import org.apache.ibatis.executor.statement.StatementHandler;
@@ -219,22 +220,40 @@ class AiPersistenceTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "false,true", "true,false", "true,true"})
-    void completeChatReturnsStoredFieldsWithReducedQueries(boolean existingConversation, boolean failure) {
+    @CsvSource({"false,false,false", "false,true,false", "true,false,false", "true,true,false",
+            "false,true,true", "true,true,true"})
+    void submissionReturnsPendingAndBackgroundWritesStoredFields(
+            boolean existingConversation, boolean failure, boolean rejected) {
         var userService = mock(UserService.class);
         var client = mock(AiAgentClient.class);
         var access = mock(AiAccessService.class);
         var trace = mock(AiAgentTraceService.class);
         var assembler = mock(AiStructuredContentAssembler.class);
         var transactions = mock(TransactionTemplate.class);
-        when(transactions.execute(any())).thenAnswer(invocation ->
-                ((TransactionCallback<?>) invocation.getArgument(0)).doInTransaction(mock(TransactionStatus.class)));
+        List<Runnable> tasks = new ArrayList<>();
+        var inTransaction = new java.util.concurrent.atomic.AtomicBoolean();
+        when(transactions.execute(any())).thenAnswer(invocation -> {
+            inTransaction.set(true);
+            try {
+                return ((TransactionCallback<?>) invocation.getArgument(0)).doInTransaction(mock(TransactionStatus.class));
+            } finally {
+                inTransaction.set(false);
+            }
+        });
+        var runner = new AiAgentTaskRunner();
+        ReflectionTestUtils.setField(runner, "executor", (java.util.concurrent.Executor) task -> {
+            assertFalse(inTransaction.get(), "任务必须在保存事务结束后提交");
+            if (rejected) throw new java.util.concurrent.RejectedExecutionException("full");
+            tasks.add(task);
+        });
+        ReflectionTestUtils.setField(runner, "aiAgentClient", client);
+        ReflectionTestUtils.setField(runner, "aiMessageMapper", messages);
         User user = new User();
         user.setId(1L);
         when(userService.getLoginUser()).thenReturn(user);
         for (Object service : List.of(chat, continuation)) {
             ReflectionTestUtils.setField(service, "userService", userService);
-            ReflectionTestUtils.setField(service, "aiAgentClient", client);
+            ReflectionTestUtils.setField(service, "aiAgentTaskRunner", runner);
             ReflectionTestUtils.setField(service, "aiAccessService", access);
             ReflectionTestUtils.setField(service, "aiAgentTraceService", trace);
             ReflectionTestUtils.setField(service, "aiStructuredContentAssembler", assembler);
@@ -270,22 +289,49 @@ class AiPersistenceTest {
             recorder.sql.clear();
             result = chat.createConversation(request, null);
         }
-        assertEquals(existingConversation ? 5 : 1,
+        if (rejected) {
+            assertEquals(AiMessageStatusEnum.FAILED, result.getAssistantMessage().getStatus());
+            AiMessage stored = messages.selectById(result.getAssistantMessage().getId());
+            assertEquals("FAILED", stored.getStatus());
+            assertEquals("AI_AGENT_BUSY", stored.getAgentErrorKey());
+            assertTrue(stored.getRetryable());
+            assertEquals(stored.getContent(), result.getAssistantMessage().getContent());
+            verify(access, times(1)).recordFailure(eq(1L), any());
+            verifyNoInteractions(client, trace);
+            assertTrue(tasks.isEmpty());
+            return;
+        }
+        assertEquals(AiMessageStatusEnum.PENDING, result.getAssistantMessage().getStatus());
+        assertEquals("PENDING", messages.selectById(result.getAssistantMessage().getId()).getStatus());
+        verifyNoInteractions(client, trace);
+        verify(access, never()).recordSuccess(anyLong(), any(), any());
+        verify(access, never()).recordFailure(anyLong(), any());
+        assertEquals(1, tasks.size());
+        com.pmsjl.utils.UserHolder.removeUser();
+        tasks.get(0).run();
+        // 提交响应是快照，不被后台对实体的修改影响。
+        assertEquals(AiMessageStatusEnum.PENDING, result.getAssistantMessage().getStatus());
+        verify(userService, times(1)).getLoginUser();
+        assertEquals((existingConversation ? 5 : 1) + 1,
                 recorder.sql.stream().filter(sql -> sql.startsWith("SELECT")).count());
         assertEquals(existingConversation ? 3 : 2,
                 recorder.sql.stream().filter(sql -> sql.startsWith("UPDATE")).count());
         AiMessage stored = messages.selectById(result.getAssistantMessage().getId());
         assertEquals(failure ? "FAILED" : "SUCCESS", stored.getStatus());
-        assertEquals(stored.getContent(), result.getAssistantMessage().getContent());
         assertEquals(stored.getCreateTime(), result.getAssistantMessage().getCreateTime());
-        assertEquals(stored.getAgentErrorKey(), result.getAssistantMessage().getAgentErrorKey());
-        assertEquals(stored.getRetryable(), result.getAssistantMessage().getRetryable());
+        if (failure) {
+            assertEquals("AI_MODEL_TIMEOUT", stored.getAgentErrorKey());
+            assertTrue(stored.getRetryable());
+            verify(access).recordFailure(eq(1L), any());
+        } else {
+            assertEquals("answer", stored.getContent());
+            verify(access).recordSuccess(eq(1L), any(), any());
+        }
         assertEquals(messages.selectById(result.getUserMessage().getId()).getCreateTime(),
                 result.getUserMessage().getCreateTime());
         AiConversation storedConversation = conversations.selectById(result.getConversation().getId());
         assertEquals(storedConversation.getCreateTime(), result.getConversation().getCreateTime());
-        assertEquals(storedConversation.getLastMessagePreview(), result.getConversation().getLastMessagePreview());
-        assertEquals(storedConversation.getLastMessageTime(), result.getConversation().getLastMessageTime());
+        assertEquals(stored.getContent(), storedConversation.getLastMessagePreview());
     }
 
     private void assertStoredTimes(AiMessage message) {

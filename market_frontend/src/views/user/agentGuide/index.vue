@@ -39,9 +39,17 @@
           @click="selectDraft(draft.key)"
         >
           <span class="ticket-main">
-            <strong>{{ draft.state.messages[0]?.content || "新咨询" }}</strong>
+            <strong>{{
+              draft.state.messages[0]?.content ||
+              draft.state.composer ||
+              "新咨询"
+            }}</strong>
             <em>{{
-              draft.state.sending ? "正在回复…" : "发送失败，点击重试"
+              draft.state.submissionUnknown
+                ? "提交结果待确认，点击查看"
+                : draft.state.sending
+                ? "正在回复…"
+                : "发送失败，点击重试"
             }}</em>
           </span>
         </button>
@@ -233,6 +241,31 @@
         @keydown="handleMessageStageKeydown"
         @scroll="handleMessageStageScroll"
       >
+        <div
+          v-if="
+            activeChat.submissionUnknown ||
+            (messageLoadFailed && messages.length)
+          "
+          class="history-load-state"
+        >
+          <p>
+            {{
+              activeChat.submissionUnknown
+                ? "尚未确认消息是否提交成功，请重新加载会话确认后再发送。"
+                : "无法继续获取回复，请重新加载会话。"
+            }}
+          </p>
+          <el-button
+            v-if="activeConversationId"
+            size="small"
+            @click="reloadMessages"
+          >
+            重新加载消息
+          </el-button>
+          <el-button v-else size="small" @click="reloadConversations">
+            重新加载会话列表
+          </el-button>
+        </div>
         <button
           v-if="hasOlderMessages"
           type="button"
@@ -294,7 +327,7 @@
               <template v-else>
                 <div v-if="message.status === 'PENDING'" class="thinking-line">
                   <span></span><span></span><span></span>
-                  正在翻看摊位清单并整理建议
+                  {{ activeChat.pollingError || "正在翻看摊位清单并整理建议" }}
                 </div>
                 <template v-else-if="message.status === 'FAILED'">
                   <strong class="failure-title">这次没有收到 Agent 回复</strong>
@@ -709,6 +742,7 @@ import {
   getMyAiQuota,
   sendAiConversationMessage
 } from "@/api/aiController";
+import { startAiMessagePolling } from "@/utils/aiMessagePolling";
 
 type Starter = {
   kicker: string;
@@ -783,7 +817,7 @@ const contextDrawerOpen = ref(false);
 const viewportWidth = ref(window.innerWidth);
 const conversations = ref<AiConversationVO[]>([]);
 const activeConversationId = ref<string | null>(null);
-// A new conversation has no server ID until its first reply arrives.
+// A new conversation receives its server ID as soon as the message is accepted.
 let draftSequence = 0;
 const draftKey = ref(`draft-${draftSequence}`);
 const chatStates = reactive<Record<string, ChatState>>({});
@@ -797,6 +831,9 @@ type ChatState = {
   page: number;
   total: number;
   revision: number;
+  pendingMessageId?: string;
+  submissionUnknown?: boolean;
+  pollingError?: string;
   context?: AiShoppingContext;
 };
 const getChatState = (key: string): ChatState => {
@@ -837,11 +874,17 @@ const isConversationSending = (id: string) => !!chatStates[id]?.sending;
 const pendingDrafts = computed(() =>
   Object.entries(chatStates)
     .filter(
-      ([key, state]) => key.startsWith("draft-") && state.messages.length > 0
+      ([key, state]) =>
+        key.startsWith("draft-") &&
+        (state.messages.length > 0 || state.submissionUnknown)
     )
     .map(([key, state]) => ({ key, state }))
 );
 let disposed = false;
+const messagePollers = new Map<
+  string,
+  ReturnType<typeof startAiMessagePolling>
+>();
 const conversationPage = ref(1);
 const conversationTotal = ref(0);
 const archivingConversationId = ref<string | null>(null);
@@ -1261,9 +1304,105 @@ const reloadConversations = async () => {
   await loadConversations();
 };
 
+const resumePendingMessage = (conversationId: string, state: ChatState) => {
+  const pending = [...state.messages]
+    .reverse()
+    .find(
+      (message) => message.role === "ASSISTANT" && message.status === "PENDING"
+    );
+  if (!pending || pending.id.startsWith("local-")) return;
+  if (
+    state.pendingMessageId === pending.id &&
+    messagePollers.has(conversationId)
+  )
+    return;
+  messagePollers.get(conversationId)?.stop();
+  state.pendingMessageId = pending.id;
+  state.sending = true;
+  state.pollingError = undefined;
+  const isCurrent = () =>
+    !disposed &&
+    chatStates[conversationId] === state &&
+    state.pendingMessageId === pending.id;
+  const unavailable = () => {
+    if (!isCurrent()) return;
+    messagePollers.delete(conversationId);
+    state.pendingMessageId = undefined;
+    state.sending = false;
+    state.loadFailed = true;
+    state.pollingError = "无法继续获取回复，请重新加载会话。";
+    if (activeChat.value === state) ElMessage.warning(state.pollingError);
+  };
+  const poller = startAiMessagePolling({
+    messageId: pending.id,
+    fetchPage: async (page) => {
+      const res = await listAiConversationMessages(
+        conversationId,
+        page,
+        20,
+        "sequenceNo",
+        "desc",
+        true
+      );
+      if (res.code !== 200 || !res.data) {
+        throw Object.assign(new Error(res.message || "消息查询失败"), {
+          businessCode: res.code
+        });
+      }
+      return res.data;
+    },
+    onSnapshot: (records, total) => {
+      if (!isCurrent()) return;
+      const merged = new Map(
+        state.messages.map((message) => [message.id, message])
+      );
+      records.forEach((message) => merged.set(message.id, message));
+      state.messages = [...merged.values()].sort(
+        (a, b) => (a.sequenceNo || 0) - (b.sequenceNo || 0)
+      );
+      state.total = total;
+      state.pollingError = undefined;
+    },
+    onResult: (message) => {
+      if (!isCurrent()) return;
+      messagePollers.delete(conversationId);
+      state.pendingMessageId = undefined;
+      state.sending = false;
+      state.loadFailed = false;
+      if (activeChat.value === state) {
+        if (message.status === "SUCCESS") startTypingMessage(message);
+        void scrollToBottom();
+      }
+      resumePendingMessage(conversationId, state);
+      void loadConversations();
+      void loadAiQuota();
+    },
+    onMissing: unavailable,
+    onError: (error) => {
+      if (!isCurrent()) return false;
+      const failure = error as {
+        response?: { status?: number };
+        businessCode?: number;
+      };
+      if (
+        [401, 403, 404].includes(Number(failure.response?.status)) ||
+        [40100, 40101, 40400].includes(Number(failure.businessCode))
+      ) {
+        unavailable();
+        return false;
+      }
+      state.pollingError = "连接暂时中断，正在重新获取回复。";
+      return true;
+    }
+  });
+  messagePollers.set(conversationId, poller);
+};
+
 const loadMessages = async (conversationId: string, older = false) => {
   const state = getChatState(conversationId);
-  if (state.sending) return true;
+  if (state.sending && !state.pendingMessageId && !state.submissionUnknown)
+    return true;
+  if (messagePollers.has(conversationId)) return true;
   const revision = ++state.revision;
   const previousScrollHeight = older
     ? messageListRef.value?.scrollHeight || 0
@@ -1281,9 +1420,21 @@ const loadMessages = async (conversationId: string, older = false) => {
     const records = [...res.data.records].sort(
       (a, b) => (a.sequenceNo || 0) - (b.sequenceNo || 0)
     );
-    state.messages = older ? [...records, ...state.messages] : records;
+    state.messages = older
+      ? [
+          ...new Map(
+            [...records, ...state.messages].map((message) => [
+              message.id,
+              message
+            ])
+          ).values()
+        ].sort((a, b) => (a.sequenceNo || 0) - (b.sequenceNo || 0))
+      : records;
     state.total = res.data.total;
     state.loadFailed = false;
+    state.submissionUnknown = false;
+    state.sending = false;
+    resumePendingMessage(conversationId, state);
     if (activeChat.value !== state) return true;
     if (older) {
       await nextTick();
@@ -1298,7 +1449,7 @@ const loadMessages = async (conversationId: string, older = false) => {
   } catch (_error) {
     if (disposed || state.revision !== revision) return false;
     if (!older) {
-      state.messages = [];
+      if (!state.submissionUnknown) state.messages = [];
       state.loadFailed = true;
     }
     return false;
@@ -1471,9 +1622,13 @@ const applyServerResponse = async (
   conversationLoadFailed.value = false;
   if (wasActive) {
     normalizeContext(state.context);
-    startTypingMessage(data.assistantMessage);
+    if (data.assistantMessage.status === "SUCCESS")
+      startTypingMessage(data.assistantMessage);
     await scrollToBottom();
   }
+  state.submissionUnknown = false;
+  if (data.assistantMessage.status === "PENDING")
+    resumePendingMessage(data.conversation.id, state);
 };
 
 const submitContent = async (
@@ -1487,6 +1642,7 @@ const submitContent = async (
     state.sending ||
     state.loading ||
     state.loadFailed ||
+    state.submissionUnknown ||
     quotaExhausted.value
   )
     return;
@@ -1541,7 +1697,7 @@ const submitContent = async (
     );
   } catch (error: any) {
     if (disposed) return;
-    const protectedRejection = [40901, 42901, 42902].includes(
+    const protectedRejection = [40900, 40901, 42901, 42902].includes(
       Number(error?.businessCode)
     );
     if (protectedRejection) {
@@ -1549,22 +1705,26 @@ const submitContent = async (
         (item) => !localIds.includes(item.id)
       );
       state.composer = content;
+      if (
+        conversationId &&
+        [40900, 40901].includes(Number(error?.businessCode))
+      ) {
+        state.sending = false;
+        await loadMessages(conversationId);
+      }
       if (activeChat.value === state)
         ElMessage.warning(error?.message || "当前暂时无法继续咨询");
       return;
     }
-    state.unavailable = true;
+    // POST 失败可能发生在服务端提交之后，不能伪造 FAILED 或自动再发一轮。
+    state.submissionUnknown = true;
+    state.loadFailed = true;
     state.messages = state.messages.filter(
-      (item) => item.id !== pendingMessage.id
+      (item) => !localIds.includes(item.id)
     );
-    state.messages.push({
-      ...makeLocalMessage(
-        "ASSISTANT",
-        error?.message || "AI 服务暂不可用，请检查服务后重试。",
-        "FAILED"
-      ),
-      retryable: true
-    });
+    state.composer = content;
+    if (conversationId) await loadMessages(conversationId);
+    else await loadConversations();
     if (
       activeChat.value === state &&
       error?.message &&
@@ -1575,7 +1735,7 @@ const submitContent = async (
     }
     if (activeChat.value === state) await scrollToBottom();
   } finally {
-    state.sending = false;
+    state.sending = !!state.pendingMessageId;
     if (!disposed) await loadAiQuota();
   }
 };
@@ -1709,6 +1869,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   disposed = true;
+  messagePollers.forEach((poller) => poller.stop());
+  messagePollers.clear();
   finishActiveTyping();
   messageResizeObserver?.disconnect();
   messageResizeObserver = null;

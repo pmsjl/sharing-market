@@ -35,8 +35,8 @@ AgentRunRequest(会话 + 工具结果)
    │
    ▼
 ① HybridQueryRouter.resolve()
-   ├─ 安全规则（Guardrail）：拦截退款/订单/举报等"写操作"，改为说明系统能力边界并引导用户使用现有功能
-   └─ LLM 意图路由：retrieve（走 RAG）/ skip_rag / clarify / out_of_scope / capability_redirect
+   ├─ 安全规则（Guardrail）：订单读取或操作、退款/投诉/举报/申诉代办返回 out_of_scope，说明能力边界并引导用户使用现有功能
+   └─ LLM 语义判断：输出意图和资料需求，由程序派生最终路由与工具策略
    │
    ▼ retrieve 时
 ② RAG 检索
@@ -50,8 +50,10 @@ AgentRunRequest(会话 + 工具结果)
    └─ 输出：answer + structuredContent（recommendations/relatedPosts/sources）
    │
    ▼
-④ 返回 AgentRunResponse → Java 校验商品和 Post 后整理为前端需要的格式
+④ 返回 AgentRunResponse → Java 校验商品和 Post 后回写助手消息 → 前端轮询获取结果
 ```
+
+最终路由只有 `retrieve`（走 RAG）、`skip_rag`（跳过 RAG，可调用只读工具）、`clarify`（补充信息）和 `out_of_scope`（超出当前 AI 的咨询范围或能力）。个人订单读取、订单操作及退款、投诉、举报、申诉等当前不支持的业务请求，由 Guardrail 在模型调用前拦截，统一使用 `unsupported_business_request` 诊断标识；回复按业务对象给出针对性说明，订单请求提示前往“我的订单”，其他业务操作提示使用平台入口或联系管理员。规则咨询与代办操作混合的请求继续判断意图并回答可咨询部分，同时保留 `mixed_business_action` 诊断标识和 `no_business_action` 限制。
 
 ## 当前能力
 
@@ -61,7 +63,7 @@ AgentRunRequest(会话 + 工具结果)
 - 使用独立 Embedding 接口和 FAISS 检索 GUIDE 文档与社区 Post。
 - 校验 Post 当前版本，并在检索或外部服务异常时降级。
 
-订单、退款、投诉和举报等写操作没有 AI 工具。
+当前 AI 没有订单读取或操作工具，也没有退款、投诉、举报或申诉代办工具。
 
 ## 源码结构
 

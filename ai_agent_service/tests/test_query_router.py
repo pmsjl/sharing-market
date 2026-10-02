@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from app.models.agent import AgentHistoryMessage, AgentRunRequest, ShoppingContext
 from app.prompts.shopping_guide import SYSTEM_PROMPT
@@ -11,13 +11,15 @@ from app.rag.course_relations import CourseRelationIndex
 from app.rag.index_store import KNOWLEDGE_ROOT
 from app.core.config import Settings
 from app.routing.query_router import (
-    CapabilityRedirectRouteDecision,
     ClarifyRouteDecision,
     GuardrailContinue,
     GuardrailStop,
     HybridQueryRouter,
     INTENT_ROUTE_TEXT_FORMAT,
     LLMRouteDecision,
+    OutOfScopeRouteDecision,
+    QueryRouteDecision,
+    RouteDiagnostics,
     RetrieveRouteDecision,
     SkipRagRouteDecision,
     ToolPolicy,
@@ -309,16 +311,28 @@ def _router_settings(**overrides) -> Settings:
     return Settings(**values)
 
 
-def test_guardrail_blocks_business_actions_without_llm() -> None:
+@pytest.mark.parametrize("message", [
+    "帮我申请退款",
+    "我的订单状态是什么",
+    "我买的付款了吗",
+    "我的订单状态是什么，也告诉我退款规则",
+    "订单给我取消掉",
+    "直接支付订单",
+    "马上替我举报这个卖家",
+    "请帮我办理退款",
+    "替我投诉这个卖家",
+    "帮我申诉",
+])
+def test_guardrail_blocks_business_requests_without_llm(message) -> None:
     client = _RouterClient({})
     router = HybridQueryRouter(_router_settings(), client)
 
-    refund = asyncio.run(router.resolve(_request("帮我申请退款")))
-    order = asyncio.run(router.resolve(_request("我的订单状态是什么")))
+    result = asyncio.run(router.resolve(_request(message)))
 
-    assert refund.decision.route == "capability_redirect"
-    assert order.decision.route == "capability_redirect"
-    assert refund.diagnostics.decision_source == "guardrail"
+    assert result.decision.model_dump() == {"route": "out_of_scope"}
+    assert result.diagnostics.decision_source == "guardrail"
+    assert result.diagnostics.guardrail_rule_id == "unsupported_business_request"
+    assert result.diagnostics.decision_reason == "当前AI不支持读取个人订单或代办相关业务操作"
     assert client.calls == []
 
 
@@ -333,28 +347,55 @@ def test_guardrail_uses_general_business_action_components() -> None:
         "怎么申请退款？",
         "投诉流程是什么？",
         "订单取消规则是什么？",
+        "帮我看看订单有哪些取消规则？",
     ]
 
     for query in terminal_queries:
         result = evaluate_guardrail(_request(query))
         assert result.action == "stop"
-        assert result.decision.route == "capability_redirect"
+        assert result.decision.route == "out_of_scope"
     for query in informational_queries:
         result = evaluate_guardrail(_request(query))
         assert result.action == "continue"
 
 
-def test_guardrail_models_reject_unknown_rule_id() -> None:
+@pytest.mark.parametrize("rule_id", [
+    "typo_rule",
+    "unsupported_order_access",
+    "unsupported_business_action",
+])
+def test_guardrail_models_reject_unknown_or_removed_rule_id(rule_id) -> None:
     with pytest.raises(ValidationError):
-        GuardrailContinue.model_validate({"rule_id": "typo_rule"})
+        GuardrailContinue.model_validate({"rule_id": rule_id})
 
     with pytest.raises(ValidationError):
         GuardrailStop.model_validate({
             "decision": {
-                "route": "capability_redirect",
-                "redirect_target": "orders",
+                "route": "out_of_scope",
             },
-            "rule_id": "typo_rule",
+            "rule_id": rule_id,
+        })
+
+    with pytest.raises(ValidationError):
+        RouteDiagnostics.model_validate({
+            "decision_source": "guardrail",
+            "decision_reason": "不支持的业务请求",
+            "guardrail_rule_id": rule_id,
+        })
+
+
+@pytest.mark.parametrize("decision", [
+    {"route": "capability_redirect", "redirect_target": "orders"},
+    {"route": "out_of_scope", "redirect_target": "orders"},
+])
+def test_route_models_reject_removed_capability_redirect(decision) -> None:
+    with pytest.raises(ValidationError):
+        TypeAdapter(QueryRouteDecision).validate_python(decision)
+
+    with pytest.raises(ValidationError):
+        GuardrailStop.model_validate({
+            "decision": decision,
+            "rule_id": "unsupported_business_request",
         })
 
 
@@ -377,7 +418,11 @@ def test_route_models_reject_unknown_execution_constraint() -> None:
         })
 
 
-def test_policy_plus_operation_keeps_constraint_and_uses_llm() -> None:
+@pytest.mark.parametrize("message", [
+    "退款规则是什么，也帮我申请退款",
+    "订单取消规则是什么，也帮我取消订单",
+])
+def test_policy_plus_operation_keeps_constraint_and_uses_llm(message) -> None:
     payload = {
         "disposition": "continue",
         "commodity_intents": [],
@@ -385,18 +430,39 @@ def test_policy_plus_operation_keeps_constraint_and_uses_llm() -> None:
         "preference_mode": "not_needed",
         "missing_fields": [],
         "clarification_question": None,
-        "reason": "需要解释退款规则",
+        "reason": "需要解释平台规则",
         "confidence": 0.96,
     }
     client = _RouterClient(_route_response(payload))
     result = asyncio.run(
         HybridQueryRouter(_router_settings(),
-                          client).resolve(_request("退款规则是什么，也帮我申请退款")))
+                          client).resolve(_request(message)))
 
     assert result.decision.route == "retrieve"
     assert result.decision.execution_constraints == ["no_business_action"]
     assert result.diagnostics.decision_source == "llm"
+    assert result.diagnostics.guardrail_rule_id == "mixed_business_action"
     assert len(client.calls) == 1
+
+
+@pytest.mark.parametrize("message", [
+    "退款规则是什么，也帮我申请退款",
+    "订单取消规则是什么，也帮我取消订单",
+])
+@pytest.mark.parametrize("router_enabled", [True, False])
+def test_policy_plus_operation_keeps_constraint_on_fallback(
+        message, router_enabled) -> None:
+    client = _RouterClient({})
+    router = HybridQueryRouter(
+        _router_settings(intent_router_enabled=router_enabled), client)
+
+    result = asyncio.run(router.resolve(_request(message)))
+
+    assert result.decision.route == "retrieve"
+    assert result.decision.execution_constraints == ["no_business_action"]
+    assert result.diagnostics.decision_source == "deterministic_fallback"
+    assert result.diagnostics.guardrail_rule_id == "mixed_business_action"
+    assert len(client.calls) == (1 if router_enabled else 0)
 
 
 def test_llm_mixed_intent_controls_rag_and_tools() -> None:
@@ -526,16 +592,12 @@ def test_final_decisions_reject_removed_diagnostic_fields() -> None:
             "clarification_question": "请补充问题。",
             "reason": "旧字段",
         }),
-        (CapabilityRedirectRouteDecision, {
-            "redirect_target": "orders",
+        (OutOfScopeRouteDecision, {
             "decision_source": "guardrail",
         }),
     ):
-        try:
+        with pytest.raises(ValidationError):
             model.model_validate(values)
-        except Exception:
-            continue
-        raise AssertionError("旧的诊断字段不应被最终决策模型接受")
 
 
 def test_router_context_uses_fixed_hit_shenzhen_institution() -> None:

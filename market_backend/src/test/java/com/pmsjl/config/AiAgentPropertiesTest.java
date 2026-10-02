@@ -16,6 +16,13 @@ class AiAgentPropertiesTest {
         assertThrows(IllegalStateException.class, invalid::validateTimeoutConfiguration);
     }
 
+    @Test
+    void concurrentRunsMustBePositive() {
+        AiAgentProperties properties = properties(3_000L, 30_000L, 60_000L);
+        properties.setMaxConcurrentRuns(0);
+        assertThrows(IllegalStateException.class, properties::validateTimeoutConfiguration);
+    }
+
     private static AiAgentProperties properties(long connectTimeout,
                                                 long readTimeout,
                                                 long pendingTimeout) {

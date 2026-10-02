@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.exception.BusinessException;
-import com.pmsjl.manager.AiAgentClient;
+import com.pmsjl.manager.AiAgentTaskRunner;
 import com.pmsjl.manager.AiAgentClientException;
 import com.pmsjl.manager.AiStructuredContentAssembler;
 import com.pmsjl.mapper.AiConversationMapper;
@@ -76,7 +76,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private AiAgentClient aiAgentClient;
+    private AiAgentTaskRunner aiAgentTaskRunner;
     @Autowired
     private AiAgentTraceService aiAgentTraceService;
     @Autowired
@@ -196,12 +196,11 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
         //5.构建传入Python的请求类
         AgentRunRequest agentRunRequest = buildAgentRunRequest(pendingMessage);
-        try {
-            AgentRunResponse agentRunResponse = aiAgentClient.runAgent(requestId, agentRunRequest);
-            return persistAgentSuccess(pendingMessage, agentRunResponse);
-        } catch (AiAgentClientException e) {
-            return persistAgentFailure(pendingMessage, e);
-        }
+        AiChatVO pendingResponse = buildChatVO(requestId, pendingMessage.conversation(),
+                pendingMessage.shoppingContext(), pendingMessage.userMessage(), pendingMessage.assistantMessage());
+        return aiAgentTaskRunner.submit(pendingResponse, agentRunRequest,
+                response -> persistAgentSuccess(pendingMessage, response),
+                exception -> persistAgentFailure(pendingMessage, exception));
 
 
     }

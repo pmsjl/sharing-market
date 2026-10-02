@@ -63,13 +63,13 @@ flowchart LR
 ### 一次 AI 导购的数据流
 
 ```
-前端(agentGuide) ──> Java /ai/conversations ──> Python /agent/v1/runs
-     ▲                                            │ Router → RAG → 生成
-     │  <—— AiChatVO（回答+来源+推荐）<───────────┘
-         └ Java 确认商品仍可售、Post 版本仍有效后返回
+前端(agentGuide) ──POST──> Java 保存消息，返回 AiChatVO（PENDING）
+                             └ 后台线程 → Python /agent/v1/runs → 完整结果
+                                           └ Java 校验商品/Post 并回写消息
+前端(agentGuide) ──GET 消息轮询──> Java 读取消息，返回 PENDING / SUCCESS / FAILED
 ```
 
-- 交互为**同步请求 + 前端打字机动画**（非流式）。
+- 交互为**后台生成 + 前端轮询 + 打字机动画**（非流式）。提交成功只表示消息已保存，生成结果由消息查询获取。
 - 每次发送消息时都会携带购买需求（预算/场景/偏好/避雷项）。
 - 最多携带最近 5 轮历史对话。Java 使用 CAS 更新消息状态，并通过行锁避免并发重复处理。
 
@@ -132,7 +132,7 @@ python ai_agent_service/evaluation/tools/run_golden_pipeline.py `
 ## 当前边界
 
 - 私信目前没有未读数、撤回、删除和独立会话资源。
-- AI 当前返回同步 JSON，不提供流式输出。
+- AI 消息提交返回 PENDING，后台生成后轮询获取结果；Python 内部接口仍返回完整 JSON，不提供流式输出。
 - `market_backend/sql/script.sql` 是用于初始化空数据库的完整建表脚本；演示账号、商品分类、商品和攻略帖子等种子数据位于 `market_backend/sql/seed/`，与建表脚本分开提供。
 
 ## 技术栈

@@ -23,18 +23,15 @@ PreferenceMode = Literal["explicit", "eligible", "not_needed"]
 DecisionSource = Literal["guardrail", "llm", "deterministic_fallback"]
 RetrievalStrategy = Literal["targeted", "broad_fallback"]
 ExecutionConstraint = Literal["no_business_action"]
-CapabilityRedirectTarget = Literal["orders", "restricted_business_action"]
 GuardrailRuleId = Literal[
     "empty_message",
-    "unsupported_order_access",
-    "unsupported_business_action",
+    "unsupported_business_request",
     "mixed_business_action",
 ]
 
 _GUARDRAIL_RULE_REASONS: dict[GuardrailRuleId, str] = {
     "empty_message": "用户问题为空",
-    "unsupported_order_access": "当前AI没有订单读取或操作工具",
-    "unsupported_business_action": "当前AI没有退款、投诉或举报业务操作工具",
+    "unsupported_business_request": "当前AI不支持读取个人订单或代办相关业务操作",
     "mixed_business_action": "请求同时包含规则咨询和当前AI无法执行的业务操作",
 }
 
@@ -71,22 +68,17 @@ class ClarifyRouteDecision(BaseModel):
 
 
 class OutOfScopeRouteDecision(BaseModel):
+    """超出当前AI的咨询范围或能力；具体原因保留在路由诊断中。"""
+
     model_config = ConfigDict(extra="forbid")
     route: Literal["out_of_scope"] = "out_of_scope"
-
-
-class CapabilityRedirectRouteDecision(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    route: Literal["capability_redirect"] = "capability_redirect"
-    redirect_target: CapabilityRedirectTarget
 
 
 QueryRouteDecision = Annotated[
     RetrieveRouteDecision
     | SkipRagRouteDecision
     | ClarifyRouteDecision
-    | OutOfScopeRouteDecision
-    | CapabilityRedirectRouteDecision,
+    | OutOfScopeRouteDecision,
     Field(discriminator="route"),
 ]
 
@@ -168,9 +160,7 @@ class GuardrailStop(BaseModel):
     model_config = ConfigDict(extra="forbid")
     action: Literal["stop"] = "stop"
     decision: Annotated[
-        ClarifyRouteDecision
-        | OutOfScopeRouteDecision
-        | CapabilityRedirectRouteDecision,
+        ClarifyRouteDecision | OutOfScopeRouteDecision,
         Field(discriminator="route"),
     ]
     rule_id: GuardrailRuleId
@@ -319,15 +309,18 @@ def _is_business_action_request(query: str) -> bool:
     has_request_marker = _contains_any(query, _BUSINESS_ACTION_REQUEST_MARKERS)
     has_action = _contains_any(query, _BUSINESS_ACTION_TERMS)
     direct_restricted_action = _contains_any(query, {"退款", "投诉", "举报", "申诉"})
-    order_mutation = "订单" in query and _contains_any(query, {"取消", "支付"})
-    return has_request_marker and (has_action or direct_restricted_action
-                                   or order_mutation)
+    return has_request_marker and (has_action or direct_restricted_action)
 
 
 def _is_order_fact_request(query: str) -> bool:
     """识别需要读取用户订单数据的请求；当前Agent没有订单读取工具。"""
     return (_contains_any(query, _PERSONAL_ORDER_REFERENCES)
             and _contains_any(query, _ORDER_FACT_TERMS))
+
+
+def is_order_related_request(query: str) -> bool:
+    """选择订单相关的能力限制提示，不用于决定是否拦截请求。"""
+    return "订单" in query or _is_order_fact_request(query)
 
 
 def evaluate_guardrail(request: AgentRunRequest) -> GuardrailResult:
@@ -344,13 +337,9 @@ def evaluate_guardrail(request: AgentRunRequest) -> GuardrailResult:
     order_fact = _is_order_fact_request(query)
     informational = _contains_any(query, _INFORMATIONAL_TERMS)
     if order_fact or (operation and not informational):
-        target: CapabilityRedirectTarget = ("orders"
-                                            if order_fact or "订单" in query else
-                                            "restricted_business_action")
         return GuardrailStop(
-            decision=CapabilityRedirectRouteDecision(redirect_target=target, ),
-            rule_id=("unsupported_order_access"
-                     if target == "orders" else "unsupported_business_action"),
+            decision=OutOfScopeRouteDecision(),
+            rule_id="unsupported_business_request",
         )
     if operation:
         return GuardrailContinue(
