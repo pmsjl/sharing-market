@@ -347,6 +347,7 @@
                 >
                   <MdPreview
                     class="agent-markdown"
+                    :editor-id="`agent-answer-${message.id}`"
                     :model-value="getDisplayedContent(message)"
                     preview-theme="github"
                     code-theme="github"
@@ -702,6 +703,7 @@ import {
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { MdPreview } from "md-editor-v3";
+import { splitMarkdownTypingUnits } from "@/utils/agentMarkdown";
 import "md-editor-v3/lib/style.css";
 import useLayOutSettingStore from "@/store/modules/setting";
 import {
@@ -1206,7 +1208,7 @@ const startTypingMessage = (message: AiMessageVO) => {
     return;
   }
 
-  const units = splitGraphemes(message.content);
+  const units = splitMarkdownTypingUnits(message.content, splitGraphemes);
   if (units.length <= 1) return;
 
   typingBuffers[message.id] = "";

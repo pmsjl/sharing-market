@@ -13,6 +13,11 @@ import "@/assets/fonts/iconfont.css";
 import "@/assets/fonts/smiley-sans.css";
 import { restoreTheme } from "@/utils/theme";
 
+// Configure the renderer before any editor/preview instance is created.
+import { config as configureMarkdown } from "md-editor-v3";
+import { agentMarkdownPlugins } from "@/utils/agentMarkdown";
+configureMarkdown({ markdownItPlugins: agentMarkdownPlugins });
+
 const app = createApp(App);
 import useUserStore from "@/store/modules/user";
 import useLayOutSettingStore from "@/store/modules/setting"; // 引入 layout 相关配置

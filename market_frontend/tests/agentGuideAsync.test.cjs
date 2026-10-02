@@ -71,6 +71,7 @@ function fixture(overrides = {}) {
     } };
     if (name === "@/store/modules/setting") return { default: () => ({ focusMode: false }) };
     if (name === "@/api/aiController") return api;
+    if (name === "@/utils/agentMarkdown") return { splitMarkdownTypingUnits: (text, split) => split(text) };
     if (name === "@/utils/aiMessagePolling") return pollModule;
     if (name === "@/components/AgentSelection/index.vue") return { default: {} };
     if (name === "md-editor-v3" || name.endsWith(".css")) return {};

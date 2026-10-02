@@ -420,6 +420,7 @@ button {
   font-size: 1.1em;
 }
 .markdown-answer :deep(strong) {
+  font-weight: 700;
   color: var(--market-ink);
 }
 .markdown-answer :deep(a) {
