@@ -7,96 +7,123 @@
       <span>继续查看刚才的咨询与推荐理由</span>
     </div>
 
-    <section class="detail-hero market-board">
-      <div class="detail-media">
-        <img
-          v-if="commodity.commodityAvatar"
-          :src="commodity.commodityAvatar"
-          :alt="commodity.commodityName"
-        />
-        <div v-else class="detail-placeholder">校园好物</div>
-      </div>
-
-      <div class="detail-summary">
-        <span class="market-eyebrow">ITEM NOTE</span>
-        <h1>{{ commodity.commodityName || "商品详情" }}</h1>
-        <div class="status-info">
-          <el-tag type="info">成色 {{ commodity.degree || "未知" }}</el-tag>
-          <el-tag type="success">{{
-            commodity.commodityTypeName || "未分类"
-          }}</el-tag>
-          <el-tag type="primary"
-            >发布者 {{ commodity.adminName || "-" }}</el-tag
-          >
-          <el-tag v-if="commodity.isListed === 0" type="danger">未上架</el-tag>
-          <el-tag v-if="commodity.isListed === 1" type="success">已上架</el-tag>
-        </div>
-
-        <div class="price-board">
-          <div class="price-cell">
-            <span>价格</span>
-            <strong><em>￥</em>{{ commodity.price }}</strong>
+    <div v-if="detailLoading" class="detail-loading" role="status">
+      <el-skeleton :rows="7" animated />
+    </div>
+    <div v-else-if="detailFailed" class="detail-loading" role="status">
+      <p>商品暂时没有加载出来。</p>
+      <el-button @click="fetchCommodityDetail">重新加载</el-button>
+    </div>
+    <template v-else>
+      <section class="item-feature">
+        <div class="item-visual">
+          <img
+            v-if="commodity.commodityAvatar && !coverFailed"
+            :src="commodity.commodityAvatar"
+            :alt="commodity.commodityName"
+            @error="coverFailed = true"
+          />
+          <div v-else class="item-placeholder">
+            <el-icon><Picture /></el-icon><span>商品图片暂未就绪</span>
           </div>
-          <div class="stock-cell">
-            <span>库存</span>
-            <i class="stock-stamp">余量 {{ commodity.commodityInventory }}</i>
+          <span class="item-sticker" aria-hidden="true"
+            >好物<br />继续发光</span
+          >
+        </div>
+        <div class="item-story">
+          <span class="item-category">{{
+            commodity.commodityTypeName || "校园好物"
+          }}</span>
+          <h1>{{ commodity.commodityName || "商品详情" }}</h1>
+          <div class="item-facts">
+            <span>{{ commodity.degree || "成色待确认" }}</span
+            ><span
+              class="item-availability"
+              :class="{
+                unavailable:
+                  commodity.isListed !== 1 || commodity.commodityInventory <= 0
+              }"
+              ><i aria-hidden="true"></i
+              >{{
+                commodity.isListed !== 1
+                  ? "未上架"
+                  : commodity.commodityInventory <= 0
+                  ? "已售罄"
+                  : "在售"
+              }}</span
+            ><span>剩余 {{ commodity.commodityInventory }} 件</span>
           </div>
-        </div>
-
-        <div class="action-buttons">
-          <el-button type="primary" @click="handleBuy" :icon="Coin">
-            购买商品
-          </el-button>
-          <el-button
-            v-if="canContactSeller"
-            type="primary"
-            plain
-            @click="handleContactSeller"
-          >
-            联系卖家
-          </el-button>
-          <el-button @click="handleShare" :icon="Share">分享</el-button>
-        </div>
-
-        <div class="metric-strip">
-          <button type="button" class="metric-item">
-            <el-icon><View /></el-icon>
-            <span>{{ viewCount }} 浏览</span>
-          </button>
-          <button
-            type="button"
-            class="metric-item metric-favour"
-            :class="{ stamped: initStatus === 1 }"
-            @click="handleCollect"
-          >
-            <el-icon>
-              <Star v-if="initStatus === 0" />
-              <StarFilled v-if="initStatus === 1" color="#f97316" />
-            </el-icon>
-            <span>{{ favourCount }} 收藏</span>
-            <i v-if="initStatus === 1" ref="favourStamp" class="favour-stamp"
-              >已收藏</i
+          <div class="item-price">
+            <strong>{{ commodity.price }}</strong
+            ><span>校园币</span>
+          </div>
+          <p class="item-price-note">站内模拟币交易</p>
+          <div class="item-seller">
+            <span class="seller-initial" aria-hidden="true">{{
+              (commodity.adminName || "同学").slice(0, 1)
+            }}</span>
+            <div>
+              <small>这件好物的主人</small
+              ><strong>{{ commodity.adminName || "同学" }}</strong>
+            </div>
+          </div>
+          <div class="item-purchase">
+            <el-button
+              type="primary"
+              :disabled="
+                commodity.isListed !== 1 || commodity.commodityInventory <= 0
+              "
+              @click="handleBuy"
+              :icon="Coin"
+              >{{
+                commodity.isListed !== 1
+                  ? "暂不可购买"
+                  : commodity.commodityInventory <= 0
+                  ? "已售罄"
+                  : "购买商品"
+              }}</el-button
+            ><el-button
+              v-if="canContactSeller"
+              class="seller-contact"
+              text
+              @click="handleContactSeller"
+              >联系卖家 <el-icon><ArrowRight /></el-icon
+            ></el-button>
+          </div>
+          <div class="item-social">
+            <button
+              type="button"
+              :aria-pressed="initStatus === 1"
+              :class="{ collected: initStatus === 1 }"
+              @click="handleCollect"
             >
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section class="detail-tabs market-panel">
-      <el-tabs v-model="detailActiveName">
-        <el-tab-pane label="商品详情" name="first">
-          <p class="description-text">
-            {{ commodity.commodityDescription || "卖家暂未填写商品详情。" }}
-          </p>
-        </el-tab-pane>
-        <el-tab-pane label="商品评分" name="second">
-          <div class="score-area">
-            <CommodityScore />
-            <CommodityScoreList />
+              <el-icon
+                ><StarFilled v-if="initStatus === 1" /><Star v-else /></el-icon
+              >{{ initStatus === 1 ? "已收藏" : "收藏" }}
+              {{ favourCount }}</button
+            ><button type="button" @click="handleShare">
+              <el-icon><Share /></el-icon>分享</button
+            ><span class="item-views"
+              ><el-icon><View /></el-icon>{{ viewCount }} 次浏览</span
+            >
           </div>
-        </el-tab-pane>
-      </el-tabs>
-    </section>
+        </div>
+      </section>
+      <section class="item-details" aria-label="商品说明与评价">
+        <el-tabs v-model="detailActiveName"
+          ><el-tab-pane label="关于这件好物" name="first"
+            ><p class="description-text">
+              {{
+                commodity.commodityDescription ||
+                "卖家暂未填写商品详情，可以联系卖家了解。"
+              }}
+            </p></el-tab-pane
+          ><el-tab-pane label="同学评价" name="second"
+            ><div class="score-area">
+              <CommodityScore /><CommodityScoreList /></div></el-tab-pane
+        ></el-tabs>
+      </section>
+    </template>
 
     <el-dialog v-model="shareDialogVisible" title="分享此商品" width="460px">
       <div class="share-dialog-content">
@@ -133,7 +160,7 @@
             @change="updatePaymentAmount"
           />
         </el-form-item>
-        <el-form-item label="支付金额" prop="paymentAmount">
+        <el-form-item label="支付校园币" prop="paymentAmount">
           <el-input-number
             v-model="buyForm.paymentAmount"
             :min="0"
@@ -160,11 +187,13 @@
 
 <script setup lang="ts">
 import usePrivateMessageStore from "@/store/modules/privateMessage";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import {
   ArrowLeft,
+  ArrowRight,
+  Picture,
   Coin,
   Share,
   Star,
@@ -184,7 +213,7 @@ import {
 } from "@/api/userCommodityFavoritesController";
 import CommodityScore from "@/components/CommodityScore/index.vue";
 import CommodityScoreList from "@/components/CommodityScoreList/index.vue";
-import { animateIn, stampIn } from "@/utils/motion";
+
 import { GET_ID } from "@/utils/token";
 
 const route = useRoute();
@@ -192,7 +221,9 @@ const router = useRouter();
 const commodityId = route.params.id as string;
 const currentUserId = String(GET_ID() || "");
 const pageRef = ref<HTMLElement | null>(null);
-const favourStamp = ref<HTMLElement | null>(null);
+const detailLoading = ref(true);
+const detailFailed = ref(false);
+const coverFailed = ref(false);
 const detailActiveName = ref("first");
 const commodity = ref({
   commodityName: "",
@@ -254,6 +285,9 @@ watch(
 );
 
 const fetchCommodityDetail = async () => {
+  detailLoading.value = true;
+  detailFailed.value = false;
+  coverFailed.value = false;
   try {
     const res = await getCommodityVoByIdUsingGet({ id: commodityId });
     if (res.code === 200) {
@@ -263,10 +297,12 @@ const fetchCommodityDetail = async () => {
       buyForm.value.paymentAmount =
         buyForm.value.buyNumber * commodity.value.price;
     } else {
-      ElMessage.error("获取商品详情失败");
+      detailFailed.value = true;
     }
   } catch (error) {
-    ElMessage.error("获取商品详情失败");
+    detailFailed.value = true;
+  } finally {
+    detailLoading.value = false;
   }
 };
 
@@ -336,12 +372,7 @@ const handleCollect = async () => {
     });
   }
   syncFavourCount(!hadRecord || previousStatus !== 1 ? 1 : -1);
-  const willStamp = !hadRecord || previousStatus !== 1;
   await fetchInitFavour();
-  if (willStamp) {
-    await nextTick();
-    stampIn(favourStamp.value);
-  }
 };
 
 const handleShare = () => {
@@ -420,262 +451,306 @@ const copyLink = async () => {
 onMounted(async () => {
   await fetchCommodityDetail();
   await fetchInitFavour();
-  animateIn(
-    pageRef.value?.querySelectorAll(".detail-hero, .detail-tabs") || []
-  );
 });
 </script>
 
 <style scoped lang="scss">
 .commodity-detail {
   display: grid;
-  gap: 20px;
+  gap: 36px;
 }
-
 .agent-return-bar {
   display: flex;
-  min-height: 48px;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  border: 1px dashed var(--market-line);
-  border-radius: 8px;
   color: var(--market-muted);
-  background: var(--market-surface);
-  font-size: 13px;
+  font-size: 12px;
+  .el-button {
+    padding-left: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
 }
-
-.agent-return-bar .el-button {
-  min-height: 40px;
-}
-
-.detail-hero {
+.item-feature {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 28px;
-  padding: 28px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(32px, 6vw, 88px);
+  align-items: center;
 }
-
-.detail-media {
+.item-visual {
+  position: relative;
   display: grid;
-  aspect-ratio: 1 / 1;
-  min-height: 420px;
-  padding: 14px;
-  overflow: hidden;
   place-items: center;
-  border: 1px solid rgba(143, 93, 51, 0.2);
-  border-radius: 8px;
-  background: var(--market-paper-deep);
-  box-shadow: inset 0 2px 10px rgba(62, 45, 24, 0.08);
-
-  img,
-  .detail-placeholder {
+  min-width: 0;
+  height: clamp(340px, 38vw, 490px);
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--market-surface-soft);
+  img {
+    display: block;
     width: 100%;
     height: 100%;
-    border-radius: 4px;
+    min-height: 0;
     object-fit: contain;
   }
 }
-
-.detail-placeholder {
+.item-placeholder {
   display: grid;
-  place-items: center;
+  justify-items: center;
+  gap: 12px;
   color: var(--market-muted);
-  font-family: var(--market-font-display);
-  font-size: 24px;
-  font-weight: 900;
-}
-
-.detail-summary {
-  align-self: center;
-
-  h1 {
-    margin: 14px 0;
-    color: var(--market-ink);
-    font-family: var(--market-font-display);
-    font-size: clamp(30px, 4vw, 48px);
-    font-weight: 900;
-    line-height: 1.12;
+  font-size: 13px;
+  .el-icon {
+    font-size: 40px;
   }
 }
-
-.status-info,
-.action-buttons,
-.metric-strip {
+.item-sticker {
+  position: absolute;
+  bottom: 24px;
+  right: -12px;
+  padding: 13px 20px;
+  color: var(--market-sticker-ink, #253348);
+  background: var(--market-sticker-yellow, #ffe58b);
+  font-family: var(--market-playful-font);
+  font-size: 21px;
+  line-height: 1.2;
+  transform: rotate(7deg);
+}
+.item-story {
+  padding: 12px 0;
+  min-width: 0;
+}
+.item-category {
+  color: var(--market-muted);
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+h1 {
+  margin: 12px 0 18px;
+  font-size: clamp(30px, 3.5vw, 46px);
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -1.5px;
+  overflow-wrap: anywhere;
+}
+.item-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 10px 18px;
+  color: var(--market-muted);
+  font-size: 13px;
 }
-
-.price-board {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 12px;
-  max-width: 460px;
-  margin: 22px 0;
-
-  > div {
-    padding: 16px;
-    border: 1px dashed rgba(35, 49, 63, 0.18);
-    border-radius: 8px;
-    background: var(--market-paper-deep);
-  }
-
-  span {
-    display: block;
-    color: var(--market-muted);
-    font-size: 13px;
-    font-weight: 800;
-  }
-}
-
-.price-cell strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--market-orange-text);
-  font-family: var(--market-font-mono);
-  font-size: 40px;
-  font-weight: 900;
-  line-height: 1;
-
-  em {
-    margin-right: 2px;
-    font-size: 22px;
-    font-style: normal;
-    vertical-align: 8px;
-  }
-}
-
-// 余量章
-.stock-cell .stock-stamp {
-  margin-top: 10px;
-  font-size: 15px;
-  font-style: normal;
-  @include stamp-text(var(--market-green));
-}
-
-.metric-strip {
-  margin-top: 20px;
-}
-
-.metric-item {
-  position: relative;
+.item-availability {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 42px;
-  padding: 0 14px;
-  border: 1px solid var(--market-line);
-  border-radius: 999px;
-  color: var(--market-ink);
-  font-weight: 800;
-  background: var(--market-surface);
-  cursor: pointer;
-  transition: border-color var(--market-dur-fast) ease,
-    box-shadow var(--market-dur-fast) ease;
-
-  &:hover {
-    border-color: rgba(224, 101, 31, 0.4);
-    box-shadow: var(--market-shadow-soft);
+  gap: 6px;
+  i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--market-success);
+  }
+  &.unavailable i {
+    background: var(--market-muted);
   }
 }
-
-// 已收藏态：橙色描边 + 盖章
-.metric-favour.stamped {
-  border-color: rgba(224, 101, 31, 0.55);
-  background: rgba(224, 101, 31, 0.08);
+.item-price {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 28px 0 4px;
+  strong {
+    color: var(--market-ink);
+    font-size: 46px;
+    font-weight: 750;
+    letter-spacing: -2px;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  span {
+    font-size: 12px;
+    color: var(--market-muted);
+  }
 }
-
-.favour-stamp {
-  position: absolute;
-  top: -14px;
-  right: -10px;
-  font-size: 11px;
-  font-style: normal;
-  letter-spacing: 1px;
-  @include stamp-text(var(--market-stamp-red));
-  background: var(--market-surface);
-}
-
-.detail-tabs {
-  padding: 24px;
-}
-
-.description-text {
+.item-price-note {
   color: var(--market-muted);
+  font-size: 11px;
+}
+.item-seller {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 22px 0;
+  margin: 22px 0;
+  border-block: 1px solid var(--market-line);
+  small {
+    display: block;
+    color: var(--market-muted);
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  strong {
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+.seller-initial {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--market-primary);
+  background: var(--market-primary-soft);
+}
+.item-purchase {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  .el-button--primary {
+    min-width: 170px;
+    min-height: 46px;
+    border-radius: 10px;
+    box-shadow: none;
+  }
+  .seller-contact {
+    background: transparent !important;
+    border: 0;
+    padding-inline: 0;
+    .el-icon {
+      margin-left: 7px;
+    }
+  }
+}
+.item-social {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  color: var(--market-muted);
+  font-size: 12px;
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    min-height: 40px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    &:hover,
+    &.collected {
+      color: var(--market-primary);
+    }
+  }
+  .el-icon {
+    font-size: 16px;
+  }
+}
+.item-views {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+  font-size: 11px;
+}
+.item-details {
+  padding-top: 4px;
+  border-top: 1px solid var(--market-line);
+  :deep(.el-tabs__item) {
+    height: 60px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  :deep(.el-tabs__nav-wrap::after) {
+    height: 1px;
+  }
+}
+.description-text {
+  max-width: 820px;
+  margin: 16px 0 28px;
   font-size: 16px;
+  color: var(--market-ink);
   line-height: 1.9;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
-
-.score-area {
-  display: grid;
-  gap: 16px;
-}
-
-.share-dialog-content {
-  display: grid;
-  gap: 20px;
-}
-
+.score-area,
+.share-dialog-content,
 .share-section {
   display: grid;
-  gap: 10px;
-
-  p {
-    color: var(--market-ink);
-    font-weight: 900;
-  }
+  gap: 18px;
 }
-
 .link-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  display: flex;
   align-items: center;
-  padding: 12px;
-  border: 1px dashed var(--market-line);
-  border-radius: 8px;
-  background: var(--market-paper-deep);
-
+  gap: 12px;
   span {
+    min-width: 0;
     overflow: hidden;
-    color: var(--market-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 }
-
 .qr-section {
   justify-items: center;
 }
-
-// 深色模式下的价格/库存纸底与按钮底
-html.dark .price-board > div,
-html.dark .metric-item,
-html.dark .link-container {
-  background: var(--market-paper-deep);
+.detail-loading {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  padding: 50px 20px;
 }
-
-@media (max-width: 860px) {
-  .detail-hero {
+@media (max-width: 760px) {
+  .commodity-detail {
+    gap: 24px;
+  }
+  .item-feature {
     grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .item-visual {
+    height: 300px;
     padding: 20px;
   }
-}
-
-@media (max-width: 520px) {
-  .detail-media {
-    min-height: 300px;
+  .item-sticker {
+    right: 10px;
+    bottom: 12px;
+    font-size: 18px;
+  }
+  .item-story {
+    padding: 0;
+  }
+  h1 {
+    font-size: 32px;
+    margin: 9px 0 14px;
+  }
+  .item-price {
+    margin-top: 22px;
+    strong {
+      font-size: 38px;
+    }
+  }
+  .item-seller {
+    margin: 20px 0;
+    padding: 16px 0;
+  }
+  .item-purchase {
+    gap: 14px;
+    .el-button--primary {
+      flex: 1;
+      min-width: 0;
+    }
   }
   .agent-return-bar {
-    align-items: flex-start;
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 2px;
   }
-
-  .price-board,
-  .link-container {
-    grid-template-columns: 1fr;
+  .item-social {
+    gap: 18px;
   }
 }
 </style>

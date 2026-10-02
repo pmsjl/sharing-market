@@ -14,7 +14,8 @@ const component = read("views/user/agentGuide/index.vue").match(/<script setup l
 const polling = compile(read("utils/aiMessagePolling.ts"));
 const componentCode = compile(component + `
 export const __test = { submitContent, loadMessages, selectConversation, startNewChat,
-  activeConversationId, chatStates, activeChat, typingMessageId };
+  activeConversationId, chatStates, activeChat, typingMessageId,
+  selectedRecommendationId, selectionOpen, selectionMessage, selectionPrompt, openSelection };
 `);
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const message = (id, status = "PENDING", sequenceNo = 2, role = "ASSISTANT") => ({
@@ -71,6 +72,7 @@ function fixture(overrides = {}) {
     if (name === "@/store/modules/setting") return { default: () => ({ focusMode: false }) };
     if (name === "@/api/aiController") return api;
     if (name === "@/utils/aiMessagePolling") return pollModule;
+    if (name === "@/components/AgentSelection/index.vue") return { default: {} };
     if (name === "md-editor-v3" || name.endsWith(".css")) return {};
     throw new Error(`Unexpected import ${name}`);
   };
@@ -87,6 +89,48 @@ function fixture(overrides = {}) {
     dispose: () => { lifecycle.forEach((fn) => fn()); scope.stop(); }
   };
 }
+
+test("selection stays attached to its answer and question when another result arrives", async (t) => {
+  const f = fixture();
+  t.after(f.dispose);
+  f.entry.activeConversationId.value = "c";
+  const rows = f.entry.activeChat.value.messages;
+  const answer = { ...message("answer", "SUCCESS"), structuredContent: {
+    recommendations: [{ commodity: { id: "book", commodityName: "活着", price: 12 } }]
+  } };
+  rows.push({ ...message("question", "SUCCESS", 1, "USER"), content: "想找一本小说" }, answer);
+  f.entry.openSelection("answer");
+  assert.equal(f.entry.selectionOpen.value, true);
+  assert.equal(f.entry.selectionPrompt.value, "想找一本小说");
+  rows.push({ ...message("next-question", "SUCCESS", 3, "USER"), content: "再看看台灯" },
+    { ...answer, id: "next-answer", sequenceNo: 4 });
+  await flush();
+  assert.equal(f.entry.selectionMessage.value.id, "answer");
+  assert.equal(f.entry.selectionPrompt.value, "想找一本小说");
+  f.entry.openSelection("next-answer");
+  assert.equal(f.entry.selectionPrompt.value, "再看看台灯");
+  f.entry.activeConversationId.value = "other";
+  assert.equal(f.entry.selectionOpen.value, false);
+  assert.equal(f.entry.selectedRecommendationId.value, null);
+});
+
+test("selection cannot display failed or removed recommendations", async (t) => {
+  const f = fixture();
+  t.after(f.dispose);
+  f.entry.activeConversationId.value = "c";
+  const rows = f.entry.activeChat.value.messages;
+  rows.push({ ...message("answer", "SUCCESS"), structuredContent: {
+    recommendations: [{ commodity: { id: "book", commodityName: "活着", price: 12 } }]
+  } });
+  f.entry.openSelection("answer");
+  assert.equal(f.entry.selectionOpen.value, true);
+  rows[0].status = "FAILED";
+  await flush();
+  assert.equal(f.entry.selectionOpen.value, false);
+  assert.equal(f.entry.selectionMessage.value, null);
+  f.entry.openSelection("missing");
+  assert.equal(f.entry.selectionOpen.value, false);
+});
 
 test("submission stays locked after returning PENDING and unlocks only on the server result", async (t) => {
   const f = fixture();

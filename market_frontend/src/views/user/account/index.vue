@@ -90,7 +90,9 @@
               </label>
               <label class="field-card">
                 <span>用户身份</span>
-                <el-input disabled v-model="user.userRole" />
+                <span>{{
+                  user.userRole === "admin" ? "管理员" : "校园用户"
+                }}</span>
               </label>
               <label class="field-card full">
                 <span>用户简介</span>

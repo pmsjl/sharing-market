@@ -103,7 +103,7 @@ class Retriever:
         if plan.include_course_purchase_policy:
             return self._retrieve_course_guides(query_vector, plan)
 
-        has_scopes = bool(plan.primary_guide_categories
+        has_scopes = bool(plan.primary_guide_categories 
                           or plan.fallback_guide_categories)
         if not has_scopes:
             return []

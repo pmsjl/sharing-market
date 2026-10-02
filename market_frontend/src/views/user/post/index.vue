@@ -59,6 +59,9 @@
         v-for="post in postList"
         :key="post.id"
         class="post-item"
+        role="link"
+        tabindex="0"
+        @keydown.enter="goToPostDetail(post.id)"
         @click="goToPostDetail(post.id)"
       >
         <!-- 用户信息 -->

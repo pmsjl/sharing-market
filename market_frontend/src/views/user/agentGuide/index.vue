@@ -1,142 +1,137 @@
 <template>
-  <div class="agent-desk" ref="pageRef">
-    <button
-      v-if="historyDrawerOpen"
-      type="button"
-      class="mobile-scrim"
-      aria-label="关闭会话列表"
-      @click="historyDrawerOpen = false"
-    ></button>
+  <div
+    class="agent-desk"
+    :class="{
+      'has-selection':
+        selectionOpen && selectionMessage && viewportWidth >= 1100
+    }"
+    ref="pageRef"
+  >
+    <el-drawer
+      v-model="historyDrawerOpen"
+      title="咨询记录"
+      direction="ltr"
+      :size="Math.min(340, viewportWidth - 24)"
+      append-to-body
+      class="agent-history-drawer"
+      ><div class="conversation-rail">
+        <el-button class="new-chat-button" type="primary" @click="startNewChat">
+          <span aria-hidden="true">＋</span>
+          新建咨询
+        </el-button>
 
-    <aside class="conversation-rail" :class="{ open: historyDrawerOpen }">
-      <div class="rail-heading">
-        <div>
-          <span class="market-eyebrow">MARKET GUIDE</span>
-          <h1>咨询记录</h1>
-        </div>
-        <button
-          type="button"
-          class="rail-close"
-          aria-label="关闭会话列表"
-          @click="historyDrawerOpen = false"
-        >
-          ×
-        </button>
-      </div>
-
-      <el-button class="new-chat-button" type="primary" @click="startNewChat">
-        <span aria-hidden="true">＋</span>
-        新建咨询
-      </el-button>
-
-      <div class="conversation-list" v-loading="conversationLoading">
-        <button
-          v-for="draft in pendingDrafts"
-          :key="draft.key"
-          type="button"
-          class="conversation-ticket"
-          :class="{ active: !activeConversationId && draftKey === draft.key }"
-          @click="selectDraft(draft.key)"
-        >
-          <span class="ticket-main">
-            <strong>{{
-              draft.state.messages[0]?.content ||
-              draft.state.composer ||
-              "新咨询"
-            }}</strong>
-            <em>{{
-              draft.state.submissionUnknown
-                ? "提交结果待确认，点击查看"
-                : draft.state.sending
-                ? "正在回复…"
-                : "发送失败，点击重试"
-            }}</em>
-          </span>
-        </button>
-        <button
-          v-for="item in conversations"
-          :key="item.id"
-          type="button"
-          class="conversation-ticket"
-          :class="{ active: item.id === activeConversationId }"
-          @click="selectConversation(item)"
-        >
-          <span class="ticket-main">
-            <strong>{{ item.title || "未命名咨询" }}</strong>
-            <em>{{
-              isConversationSending(item.id)
-                ? "正在回复…"
-                : item.lastMessagePreview || "还没有消息"
-            }}</em>
-          </span>
-          <span class="ticket-foot">
-            <time>{{ formatConversationTime(item.lastMessageTime) }}</time>
-            <span class="ticket-actions">
-              <span
-                class="ticket-archive"
-                role="button"
-                :tabindex="isConversationSending(item.id) ? -1 : 0"
-                :aria-disabled="
-                  isConversationSending(item.id) ? 'true' : 'false'
-                "
-                aria-label="归档会话"
-                @click.stop="archiveConversation(item)"
-                @keydown.enter.stop="archiveConversation(item)"
-                @keydown.space.prevent.stop="archiveConversation(item)"
-              >
-                归档
-              </span>
-              <span
-                class="ticket-delete"
-                role="button"
-                tabindex="0"
-                aria-label="删除会话"
-                @click.stop="confirmDeleteConversation(item)"
-                @keydown.enter.stop="confirmDeleteConversation(item)"
-                @keydown.space.prevent.stop="confirmDeleteConversation(item)"
-              >
-                删除
+        <div class="conversation-list" v-loading="conversationLoading">
+          <button
+            v-for="draft in pendingDrafts"
+            :key="draft.key"
+            type="button"
+            class="conversation-ticket"
+            :class="{ active: !activeConversationId && draftKey === draft.key }"
+            @click="selectDraft(draft.key)"
+          >
+            <span class="ticket-main">
+              <strong>{{
+                draft.state.messages[0]?.content ||
+                draft.state.composer ||
+                "新咨询"
+              }}</strong>
+              <em>{{
+                draft.state.submissionUnknown
+                  ? "提交结果待确认，点击查看"
+                  : draft.state.sending
+                  ? "正在回复…"
+                  : "发送失败，点击重试"
+              }}</em>
+            </span>
+          </button>
+          <button
+            v-for="item in conversations"
+            :key="item.id"
+            type="button"
+            class="conversation-ticket"
+            :class="{ active: item.id === activeConversationId }"
+            @click="selectConversation(item)"
+          >
+            <span class="ticket-main">
+              <strong>{{ item.title || "未命名咨询" }}</strong>
+              <em>{{
+                isConversationSending(item.id)
+                  ? "正在回复…"
+                  : item.lastMessagePreview || "还没有消息"
+              }}</em>
+            </span>
+            <span class="ticket-foot">
+              <time>{{ formatConversationTime(item.lastMessageTime) }}</time>
+              <span class="ticket-actions">
+                <span
+                  class="ticket-archive"
+                  role="button"
+                  :tabindex="isConversationSending(item.id) ? -1 : 0"
+                  :aria-disabled="
+                    isConversationSending(item.id) ? 'true' : 'false'
+                  "
+                  aria-label="归档会话"
+                  @click.stop="archiveConversation(item)"
+                  @keydown.enter.stop="archiveConversation(item)"
+                  @keydown.space.prevent.stop="archiveConversation(item)"
+                >
+                  归档
+                </span>
+                <span
+                  class="ticket-delete"
+                  role="button"
+                  tabindex="0"
+                  aria-label="删除会话"
+                  @click.stop="confirmDeleteConversation(item)"
+                  @keydown.enter.stop="confirmDeleteConversation(item)"
+                  @keydown.space.prevent.stop="confirmDeleteConversation(item)"
+                >
+                  删除
+                </span>
               </span>
             </span>
-          </span>
+          </button>
+
+          <div
+            v-if="conversationLoadFailed"
+            class="history-load-state rail-history-error"
+          >
+            <strong>暂时无法加载历史记录</strong>
+            <p>不影响你发起新的咨询。</p>
+            <button type="button" @click="reloadConversations">重新加载</button>
+          </div>
+
+          <div
+            v-else-if="!conversationLoading && !conversations.length"
+            class="rail-empty"
+          >
+            <span aria-hidden="true">⌁</span>
+            <p>还没有历史咨询</p>
+            <small>第一条消息会自动建立会话</small>
+          </div>
+        </div>
+
+        <button
+          v-if="conversations.length < conversationTotal"
+          type="button"
+          class="load-more"
+          :disabled="conversationLoading"
+          @click="loadMoreConversations"
+        >
+          加载更多
         </button>
 
-        <div
-          v-if="conversationLoadFailed"
-          class="history-load-state rail-history-error"
-        >
-          <strong>暂时无法加载历史记录</strong>
-          <p>不影响你发起新的咨询。</p>
-          <button type="button" @click="reloadConversations">重新加载</button>
+        <div class="rail-note">
+          <span
+            class="status-dot"
+            :class="{ offline: agentUnavailable }"
+          ></span>
+          <span>{{
+            agentUnavailable ? "AI 服务暂不可用" : "智能导购可开始咨询"
+          }}</span>
         </div>
-
-        <div
-          v-else-if="!conversationLoading && !conversations.length"
-          class="rail-empty"
-        >
-          <span aria-hidden="true">⌁</span>
-          <p>还没有历史咨询</p>
-          <small>第一条消息会自动建立会话</small>
-        </div>
-      </div>
-
-      <button
-        v-if="conversations.length < conversationTotal"
-        type="button"
-        class="load-more"
-        :disabled="conversationLoading"
-        @click="loadMoreConversations"
-      >
-        加载更多
-      </button>
-
-      <div class="rail-note">
-        <span class="status-dot" :class="{ offline: agentUnavailable }"></span>
-        <span>{{
-          agentUnavailable ? "AI 服务暂不可用" : "智能导购可开始咨询"
-        }}</span>
-      </div>
-    </aside>
+      </div></el-drawer
+    >
 
     <main class="chat-workspace">
       <header class="chat-toolbar">
@@ -144,16 +139,18 @@
           type="button"
           class="icon-button history-trigger"
           aria-label="打开会话列表"
+          :aria-expanded="historyDrawerOpen"
           @click="historyDrawerOpen = true"
         >
           ☰
         </button>
+        <button type="button" class="new-conversation" @click="startNewChat">
+          ＋ <span>新咨询</span>
+        </button>
         <div class="chat-title">
-          <span class="desk-mark" aria-hidden="true">校</span>
+          <span class="desk-mark" aria-hidden="true">AI</span>
           <div>
-            <strong>{{
-              activeConversation?.title || "校园市集智能导购台"
-            }}</strong>
+            <strong>{{ activeConversation?.title || "你的选物搭子" }}</strong>
             <small>先聊需求，再一起缩小选择范围</small>
           </div>
         </div>
@@ -290,12 +287,12 @@
         </div>
 
         <div v-else-if="!messages.length" class="welcome-card">
-          <div class="welcome-stamp">智能导购</div>
-          <span class="market-eyebrow">AFTER CLASS GUIDE DESK</span>
-          <h2>直接说你想买什么</h2>
-          <p>
-            不用先填完整表单。告诉我商品、用途或困惑，我会继续追问预算和偏好；你也可以随时打开“购买条件”补充信息。
-          </p>
+          <span class="welcome-stamp" aria-hidden="true"
+            >一起挑<br />不踩坑</span
+          >
+          <span class="market-eyebrow">聊聊需求，再遇见好物</span>
+          <h2>有点心动，<br /><span>一起选明白。</span></h2>
+          <p>想买什么、预算多少，或者哪里拿不准，都可以直接问。</p>
           <div class="starter-grid">
             <button
               v-for="starter in starters"
@@ -314,6 +311,8 @@
           v-for="message in messages"
           :key="message.id"
           class="chat-message"
+          :data-message-id="message.id"
+          tabindex="-1"
           :class="message.role.toLowerCase()"
         >
           <div v-if="message.role === 'ASSISTANT'" class="agent-seal">AI</div>
@@ -361,51 +360,29 @@
               </template>
             </div>
 
-            <div
+            <button
               v-if="
+                message.status === 'SUCCESS' &&
                 !isMessageTyping(message.id) &&
                 message.structuredContent?.recommendations?.length
               "
-              class="recommendation-block"
+              type="button"
+              class="selection-trigger"
+              :aria-expanded="
+                selectionOpen && selectedRecommendationId === message.id
+              "
+              :aria-label="`查看本轮 ${message.structuredContent.recommendations.length} 件好物`"
+              @click="openSelection(message.id, $event)"
             >
-              <div class="recommendation-heading">
-                <strong>匹配到的在售商品</strong>
-                <span
-                  >{{
-                    message.structuredContent.recommendations.length
-                  }}
-                  件</span
-                >
-              </div>
-              <div class="recommendation-grid">
-                <button
-                  v-for="item in message.structuredContent.recommendations"
-                  :key="item.commodity.id"
-                  type="button"
-                  class="commodity-card"
-                  @click="openCommodity(item.commodity.id)"
-                >
-                  <img
-                    v-if="item.commodity.commodityAvatar"
-                    :src="item.commodity.commodityAvatar"
-                    :alt="item.commodity.commodityName"
-                  />
-                  <div v-else class="commodity-placeholder">校园好物</div>
-                  <div class="commodity-copy">
-                    <span v-if="item.matchScore != null" class="match-score">
-                      匹配 {{ item.matchScore }}%
-                    </span>
-                    <strong>{{ item.commodity.commodityName }}</strong>
-                    <p v-if="item.reason">{{ item.reason }}</p>
-                    <div>
-                      <b>¥{{ item.commodity.price }}</b>
-                      <em>{{ item.commodity.degree || "成色待确认" }}</em>
-                    </div>
-                    <small v-if="item.riskTip">验货：{{ item.riskTip }}</small>
-                  </div>
-                </button>
-              </div>
-            </div>
+              <span class="selection-trigger-mark" aria-hidden="true">↗</span
+              ><span
+                ><strong
+                  >这轮帮你找到了
+                  {{ message.structuredContent.recommendations.length }}
+                  件好物</strong
+                ><small>查看商品、推荐理由和验货提醒</small></span
+              ><span class="selection-trigger-action">展开清单 →</span>
+            </button>
 
             <div
               v-if="
@@ -426,7 +403,9 @@
                 :aria-label="`查看来源详情：${source.title}`"
                 @click="openSource(source)"
               >
-                <span>{{ source.sourceType }}</span>
+                <span>{{
+                  source.sourceType === "GUIDE" ? "指南" : "参考"
+                }}</span>
                 <div>
                   <strong>{{ source.title }}</strong>
                   <p>{{ sourcePreview(source) }}</p>
@@ -474,50 +453,21 @@
       </section>
 
       <footer class="composer-dock">
-        <section
-          v-if="aiQuota"
-          class="quota-board"
-          aria-label="今日 AI 咨询额度"
-        >
-          <article
-            class="quota-ticket"
-            :class="quotaStateClass(aiQuota.remaining, aiQuota.dailyLimit)"
-          >
-            <div class="quota-ticket__heading">
-              <span>我的今日额度</span>
-              <strong>{{ aiQuota.remaining }}<small> 次可用</small></strong>
-            </div>
-            <div class="quota-meter" aria-hidden="true">
-              <span :style="{ width: `${userQuotaPercent}%` }"></span>
-            </div>
-            <p>已用 {{ aiQuota.usedCount }} / {{ aiQuota.dailyLimit }} 次</p>
-          </article>
-
-          <article
-            class="quota-ticket"
-            :class="
-              quotaStateClass(aiQuota.globalRemaining, aiQuota.globalDailyLimit)
-            "
-          >
-            <div class="quota-ticket__heading">
-              <span>平台今日额度</span>
-              <strong
-                >{{ aiQuota.globalRemaining }}<small> 次可用</small></strong
-              >
-            </div>
-            <div class="quota-meter" aria-hidden="true">
-              <span :style="{ width: `${globalQuotaPercent}%` }"></span>
-            </div>
+        <details v-if="aiQuota" class="quota-disclosure">
+          <summary>
+            今日可用 {{ aiQuota.remaining }} 次 <span>额度说明</span>
+          </summary>
+          <div>
             <p>
-              已用 {{ aiQuota.globalUsed }} / {{ aiQuota.globalDailyLimit }} 次
+              个人：已用 {{ aiQuota.usedCount }} / {{ aiQuota.dailyLimit }} 次
             </p>
-          </article>
-
-          <div class="quota-reset">
-            <span>每日重置</span>
-            <strong>{{ quotaResetLabel }}</strong>
+            <p>
+              平台：剩余 {{ aiQuota.globalRemaining }} /
+              {{ aiQuota.globalDailyLimit }} 次
+            </p>
+            <p>重置时间：{{ quotaResetLabel }}</p>
           </div>
-        </section>
+        </details>
         <div v-if="contextFieldCount" class="active-context">
           <span>本轮会带上 {{ contextFieldCount }} 项购买条件</span>
           <button type="button" @click="contextDrawerOpen = true">
@@ -548,10 +498,6 @@
             <span v-else-if="aiQuota && aiQuota.remaining <= 0">
               你今天的 {{ aiQuota.dailyLimit }} 次咨询已用完，明天再来
             </span>
-            <span v-else-if="aiQuota">
-              今日剩余 {{ aiQuota.remaining }}/{{ aiQuota.dailyLimit }} 次 ·
-              Enter 发送
-            </span>
             <span v-else>Enter 发送 · Shift + Enter 换行</span>
             <el-button
               class="stamp-send"
@@ -566,12 +512,45 @@
               "
               @click="sendMessage"
             >
-              盖戳发送
+              发送
             </el-button>
           </div>
         </div>
       </footer>
     </main>
+
+    <aside
+      v-if="selectionOpen && selectionMessage && viewportWidth >= 1100"
+      class="desktop-selection"
+      aria-label="本轮选物清单"
+      @keydown.esc="closeSelection"
+    >
+      <AgentSelection
+        :message="selectionMessage"
+        :prompt="selectionPrompt"
+        @close="closeSelection"
+        @return-to-answer="returnToSelectionAnswer"
+        @open-commodity="openCommodity"
+      />
+    </aside>
+    <el-drawer
+      :model-value="
+        selectionOpen && Boolean(selectionMessage) && viewportWidth < 1100
+      "
+      :with-header="false"
+      :size="Math.min(460, viewportWidth - 12)"
+      append-to-body
+      class="agent-selection-drawer"
+      aria-label="本轮选物清单"
+      @update:model-value="onSelectionDrawerChange"
+      ><AgentSelection
+        v-if="selectionMessage"
+        :message="selectionMessage"
+        :prompt="selectionPrompt"
+        @close="closeSelection"
+        @return-to-answer="returnToSelectionAnswer"
+        @open-commodity="openCommodity"
+    /></el-drawer>
 
     <el-drawer
       v-model="contextDrawerOpen"
@@ -589,7 +568,7 @@
       </template>
 
       <el-form label-position="top" class="context-form">
-        <el-form-item label="预算范围（元）">
+        <el-form-item label="预算范围（校园币）">
           <div class="budget-row">
             <el-input-number
               v-model="shoppingContext.budgetMin"
@@ -643,8 +622,10 @@
       </el-form>
 
       <div class="context-tip">
-        <strong>Agent 会怎么使用？</strong>
-        <p>后端会把条件作为结构化上下文保存，不会让前端拼接系统提示词。</p>
+        <strong>让推荐更懂你</strong>
+        <p>
+          这些条件会随咨询保留，帮助我找到更适合你的商品。你可以随时修改或清空。
+        </p>
       </div>
 
       <template #footer>
@@ -674,7 +655,6 @@
           }}</span>
           <div>
             <h2>{{ selectedSource?.title || "参考来源" }}</h2>
-            <p>{{ selectedSource?.documentId || selectedSource?.sourceId }}</p>
           </div>
         </div>
       </template>
@@ -694,7 +674,6 @@
           >
             <h3>{{ citation.section || "引用片段" }}</h3>
             <p>{{ citation.content || citation.excerpt }}</p>
-            <small>{{ citation.chunkId }}</small>
           </article>
         </div>
         <p v-else>
@@ -742,6 +721,7 @@ import {
   getMyAiQuota,
   sendAiConversationMessage
 } from "@/api/aiController";
+import AgentSelection from "@/components/AgentSelection/index.vue";
 import { startAiMessagePolling } from "@/utils/aiMessagePolling";
 
 type Starter = {
@@ -864,6 +844,85 @@ const chatField = <K extends keyof ChatState>(key: K) =>
   });
 const composer = chatField("composer");
 const messages = chatField("messages");
+const selectedRecommendationId = ref<string | null>(null);
+const selectionOpen = ref(false);
+let selectionOrigin: HTMLElement | null = null;
+const selectionMessage = computed(
+  () =>
+    messages.value.find(
+      (message) =>
+        message.id === selectedRecommendationId.value &&
+        message.role === "ASSISTANT" &&
+        message.status === "SUCCESS" &&
+        message.structuredContent?.recommendations?.length
+    ) || null
+);
+const selectionPrompt = computed(() => {
+  const index = messages.value.findIndex(
+    (message) => message.id === selectedRecommendationId.value
+  );
+  if (index < 0) return "";
+  return (
+    messages.value
+      .slice(0, index)
+      .reverse()
+      .find((message) => message.role === "USER")?.content || ""
+  );
+});
+const openSelection = (messageId: string, event?: Event) => {
+  selectedRecommendationId.value = messageId;
+  if (!selectionMessage.value) {
+    selectionOpen.value = false;
+    return;
+  }
+  selectionOrigin =
+    event && event.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : null;
+  selectionOpen.value = true;
+  if (viewportWidth.value >= 1100)
+    void nextTick(() =>
+      pageRef.value
+        ?.querySelector<HTMLElement>(".desktop-selection button")
+        ?.focus()
+    );
+};
+const closeSelection = () => {
+  selectionOpen.value = false;
+  void nextTick(() => {
+    if (selectionOrigin?.isConnected) selectionOrigin.focus();
+  });
+};
+const onSelectionDrawerChange = (open: boolean) => {
+  if (!open) closeSelection();
+};
+const returnToSelectionAnswer = async () => {
+  const id = selectedRecommendationId.value;
+  selectionOpen.value = false;
+  await nextTick();
+  const answer = Array.from(
+    messageListRef.value?.querySelectorAll<HTMLElement>("[data-message-id]") ||
+      []
+  ).find((el) => el.dataset.messageId === id);
+  answer?.scrollIntoView({ block: "center", behavior: "auto" });
+  answer?.focus({ preventScroll: true });
+};
+watch(
+  () => activeConversationId.value || draftKey.value,
+  () => {
+    selectionOpen.value = false;
+    selectedRecommendationId.value = null;
+    selectionOrigin = null;
+  },
+  { flush: "sync" }
+);
+watch(
+  selectionMessage,
+  (message) => {
+    if (!message) selectionOpen.value = false;
+  },
+  { flush: "sync" }
+);
 const sending = chatField("sending");
 const messageLoading = chatField("loading");
 const agentUnavailable = chatField("unavailable");
@@ -906,31 +965,6 @@ const quotaExhausted = computed(
     (Number(aiQuota.value?.remaining || 0) <= 0 ||
       Number(aiQuota.value?.globalRemaining || 0) <= 0)
 );
-
-const quotaUsedPercent = (used: number, limit: number) => {
-  if (!Number.isFinite(limit) || limit <= 0) return 0;
-  return Math.min(100, Math.max(0, (Number(used || 0) / limit) * 100));
-};
-
-const userQuotaPercent = computed(() =>
-  quotaUsedPercent(
-    aiQuota.value?.usedCount || 0,
-    aiQuota.value?.dailyLimit || 0
-  )
-);
-
-const globalQuotaPercent = computed(() =>
-  quotaUsedPercent(
-    aiQuota.value?.globalUsed || 0,
-    aiQuota.value?.globalDailyLimit || 0
-  )
-);
-
-const quotaStateClass = (remaining: number, limit: number) => {
-  if (remaining <= 0) return "is-empty";
-  if (limit > 0 && remaining / limit <= 0.2) return "is-low";
-  return "";
-};
 
 const quotaResetLabel = computed(() => {
   if (!aiQuota.value?.resetAt) return "次日 00:00";
@@ -1020,7 +1054,6 @@ const currentTypingSpeedOption = computed(
 
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
-  if (window.innerWidth > 900) historyDrawerOpen.value = false;
 };
 
 const toggleFocusMode = () => {
@@ -1843,7 +1876,7 @@ const openCommodity = (commodityId: string) => {
 };
 
 onMounted(async () => {
-  layoutSettingStore.focusMode = true;
+  layoutSettingStore.focusMode = false;
   window.addEventListener("resize", handleResize);
   await loadAiQuota();
   const loaded = await loadConversations();
@@ -1883,2123 +1916,4 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<style scoped lang="scss">
-.agent-desk {
-  display: grid;
-  grid-template-columns: 278px minmax(0, 1fr);
-  width: 100%;
-  height: 100%;
-  max-height: 100%;
-  max-width: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  border: 1px solid var(--market-line);
-  border-radius: var(--market-radius-lg);
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow);
-}
-
-button {
-  font: inherit;
-}
-
-.conversation-rail {
-  position: relative;
-  z-index: 4;
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 22px 16px 16px;
-  border-right: 1px solid var(--market-line);
-  background: var(--market-sidebar-bg);
-}
-
-.rail-heading,
-.chat-toolbar,
-.chat-title,
-.ticket-foot,
-.composer-actions,
-.context-footer,
-.recommendation-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.rail-heading h1 {
-  margin: 5px 0 0;
-  color: var(--market-ink);
-  font-size: 24px;
-}
-.rail-close {
-  display: none;
-  border: 0;
-  color: var(--market-muted);
-  font-size: 28px;
-  background: transparent;
-}
-.new-chat-button {
-  width: 100%;
-  margin: 20px 0 14px;
-  font-weight: 800;
-}
-.new-chat-button span {
-  margin-right: 5px;
-  font-size: 20px;
-}
-.conversation-list {
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.conversation-ticket {
-  position: relative;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 13px 12px 13px 20px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--market-ink);
-  text-align: left;
-  background: var(--market-surface);
-  cursor: pointer;
-  transition: 0.2s ease;
-
-  &::before {
-    position: absolute;
-    top: 6px;
-    bottom: 6px;
-    left: 3px;
-    width: 8px;
-    background: radial-gradient(
-      circle,
-      transparent 0 2.5px,
-      var(--market-line) 3px 3.5px,
-      transparent 4px
-    );
-    background-size: 8px 13px;
-    content: "";
-  }
-}
-.conversation-ticket:hover {
-  border-color: rgba(47, 125, 92, 0.28);
-  background: var(--market-card-bg);
-  box-shadow: 0 8px 18px rgba(62, 45, 24, 0.07);
-  transform: translateY(-1px);
-}
-.conversation-ticket:focus-visible {
-  border-color: rgba(47, 125, 92, 0.48);
-  box-shadow: var(--market-focus);
-  outline: none;
-}
-.conversation-ticket.active {
-  border-color: rgba(47, 125, 92, 0.32);
-  background: var(--market-menu-active-bg);
-
-  .ticket-main {
-    padding-right: 56px;
-  }
-
-  &::after {
-    position: absolute;
-    top: 7px;
-    right: 8px;
-    padding: 2px 5px;
-    border: 1.5px solid var(--market-stamp-red);
-    border-radius: 3px;
-    color: var(--market-stamp-red);
-    font-family: var(--market-font-display);
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: 1px;
-    content: "咨询中";
-    transform: rotate(-7deg);
-  }
-}
-.ticket-main {
-  display: grid;
-  gap: 5px;
-}
-.ticket-main strong,
-.ticket-main em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ticket-main strong {
-  font-size: 14px;
-}
-.ticket-main em {
-  color: var(--market-muted);
-  font-size: 12px;
-  font-style: normal;
-}
-.ticket-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 9px;
-  color: var(--market-muted);
-  font-size: 12px;
-}
-.ticket-actions {
-  display: inline-flex;
-  gap: 10px;
-}
-.ticket-archive,
-.ticket-delete {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.ticket-archive {
-  color: var(--market-green);
-}
-.ticket-archive[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.42;
-}
-.ticket-archive:focus-visible,
-.ticket-delete:focus-visible {
-  border-radius: 2px;
-  outline: 2px solid var(--market-green);
-  outline-offset: 2px;
-}
-.ticket-delete {
-  color: var(--market-red);
-}
-.conversation-ticket:hover .ticket-archive,
-.conversation-ticket.active .ticket-archive,
-.conversation-ticket:hover .ticket-delete,
-.conversation-ticket.active .ticket-delete {
-  opacity: 1;
-}
-
-.rail-empty {
-  padding: 56px 10px;
-  color: var(--market-muted);
-  text-align: center;
-}
-.history-load-state {
-  display: grid;
-  justify-items: start;
-  gap: 7px;
-  padding: 22px 16px;
-  border: 1px dashed rgba(217, 108, 44, 0.42);
-  border-radius: 8px;
-  color: var(--market-ink);
-  background: var(--market-note-yellow-bg);
-}
-.history-load-state p {
-  margin: 0;
-  color: var(--market-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.rail-history-error > button {
-  border: 0;
-  color: var(--market-orange-text);
-  font-weight: 800;
-  background: transparent;
-  cursor: pointer;
-}
-.rail-history-error {
-  margin: 12px 0;
-}
-.rail-empty span {
-  display: block;
-  color: var(--market-board);
-  font-size: 48px;
-}
-.rail-empty p {
-  margin: 6px 0;
-  color: var(--market-ink);
-  font-weight: 800;
-}
-.load-more {
-  margin: 4px auto 10px;
-  border: 0;
-  color: var(--market-green);
-  background: transparent;
-  cursor: pointer;
-}
-.rail-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: auto;
-  padding: 11px;
-  border-top: 1px solid var(--market-line);
-  color: var(--market-muted);
-  font-size: 12px;
-}
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--market-green);
-}
-.status-dot.offline {
-  background: var(--market-orange);
-}
-
-.chat-workspace {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  height: 100%;
-  max-height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  background: radial-gradient(
-      ellipse at 52% -8%,
-      rgba(244, 201, 93, 0.16),
-      transparent 36%
-    ),
-    linear-gradient(rgba(35, 49, 63, 0.018), rgba(35, 49, 63, 0.018)),
-    var(--market-paper);
-}
-.chat-toolbar,
-.composer-dock {
-  min-width: 0;
-  flex-shrink: 0;
-}
-.chat-toolbar {
-  flex: 0 0 auto;
-  min-height: 72px;
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--market-line);
-  background: linear-gradient(90deg, rgba(47, 125, 92, 0.05), transparent 28%),
-    var(--market-topbar-bg);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 5px 18px rgba(62, 45, 24, 0.04);
-}
-.chat-title {
-  justify-content: flex-start;
-  gap: 11px;
-}
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-.typing-speed-trigger {
-  min-width: 34px;
-  height: 32px;
-  padding: 0 4px;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  color: var(--market-muted);
-  font-family: var(--market-font-display);
-  font-size: 12px;
-  font-weight: 800;
-  background: transparent;
-  cursor: pointer;
-}
-.typing-speed-trigger:hover,
-.typing-speed-trigger:focus-visible {
-  border-bottom-color: var(--market-orange);
-  color: var(--market-green);
-}
-.chat-title strong {
-  display: block;
-  color: var(--market-ink);
-  font-size: 16px;
-}
-.chat-title small {
-  display: block;
-  margin-top: 3px;
-  color: var(--market-muted);
-}
-.desk-mark,
-.agent-seal {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  color: #fff;
-  font-weight: 900;
-  background: var(--market-green);
-}
-.desk-mark {
-  width: 38px;
-  height: 38px;
-  box-shadow: 0 0 0 4px var(--market-note-green-bg);
-}
-.agent-seal {
-  width: 34px;
-  height: 34px;
-  margin-top: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  font-size: 12px;
-  box-shadow: 0 0 0 3px rgba(47, 125, 92, 0.16);
-  transform: rotate(-6deg);
-}
-.icon-button,
-.context-trigger,
-.focus-toggle {
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  color: var(--market-ink);
-  background: var(--market-surface);
-  cursor: pointer;
-}
-.history-trigger {
-  display: none;
-  width: 38px;
-  height: 38px;
-  margin-right: 10px;
-}
-.context-trigger {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 12px;
-  font-weight: 800;
-}
-.focus-toggle {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  flex: 0 0 36px;
-  padding: 0;
-  border-color: transparent;
-  border-radius: 50%;
-  color: var(--market-muted);
-  background: transparent;
-}
-.focus-toggle svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-.focus-toggle:hover {
-  color: var(--market-green);
-  background: var(--market-note-green-bg);
-}
-.context-trigger {
-  flex: 0 0 auto;
-}
-.focus-toggle:focus-visible {
-  border-color: rgba(47, 125, 92, 0.35);
-}
-.context-trigger.active {
-  border-color: rgba(217, 108, 44, 0.42);
-  color: var(--market-orange-text);
-}
-.context-trigger b {
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--market-on-accent);
-  font-size: 12px;
-  background: var(--market-accent-solid);
-}
-
-.message-stage {
-  height: auto;
-  max-height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 38px clamp(20px, 4vw, 64px);
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  -webkit-overflow-scrolling: touch;
-  contain: size layout;
-  outline: none;
-}
-.message-stage:focus-visible {
-  box-shadow: inset 0 0 0 2px rgba(47, 125, 92, 0.42);
-}
-.welcome-card {
-  position: relative;
-  max-width: 800px;
-  margin: 7vh auto 0;
-  padding: 34px;
-  border: 1px solid var(--market-line);
-  border-radius: 10px;
-  background: var(--market-card-bg);
-  box-shadow: var(--market-shadow-soft);
-}
-.welcome-card::before {
-  position: absolute;
-  top: 0;
-  left: 28px;
-  width: 88px;
-  height: 7px;
-  background: var(--market-orange);
-  content: "";
-}
-.welcome-stamp {
-  position: absolute;
-  top: 24px;
-  right: 28px;
-  padding: 6px 10px;
-  border: 2px solid var(--market-green);
-  border-radius: 999px;
-  color: var(--market-green);
-  font-size: 12px;
-  font-weight: 900;
-  transform: rotate(5deg);
-}
-.welcome-card h2 {
-  max-width: 620px;
-  margin: 12px 0 10px;
-  color: var(--market-ink);
-  font-size: clamp(28px, 4vw, 42px);
-  line-height: 1.15;
-}
-.welcome-card > p {
-  max-width: 660px;
-  color: var(--market-muted);
-  line-height: 1.8;
-}
-.starter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 26px;
-}
-.starter-grid button {
-  display: grid;
-  gap: 7px;
-  padding: 15px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  color: var(--market-ink);
-  text-align: left;
-  background: var(--market-surface);
-  cursor: pointer;
-}
-.starter-grid button:hover {
-  border-color: rgba(217, 108, 44, 0.45);
-  transform: translateY(-2px);
-}
-.starter-grid span {
-  color: var(--market-orange-text);
-  font-size: 12px;
-  font-weight: 900;
-}
-.starter-grid strong {
-  font-size: 15px;
-}
-.starter-grid em {
-  color: var(--market-muted);
-  font-size: 12px;
-  font-style: normal;
-  line-height: 1.5;
-}
-
-.chat-message {
-  display: flex;
-  width: min(100%, 960px);
-  gap: 12px;
-  margin: 0 auto 28px;
-}
-.chat-message.user {
-  justify-content: flex-end;
-}
-.message-column {
-  min-width: 0;
-  max-width: min(780px, calc(100% - 48px));
-}
-.chat-message.assistant .message-column {
-  width: min(780px, calc(100% - 48px));
-}
-.chat-message.user .message-column {
-  display: grid;
-  max-width: min(720px, 78%);
-  justify-items: end;
-}
-.message-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 5px 6px;
-  color: var(--market-muted);
-  font-size: 12px;
-}
-.message-meta strong {
-  color: var(--market-ink);
-  font-size: 12px;
-}
-.message-bubble {
-  position: relative;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  padding: 15px 18px;
-  border: 1px solid var(--market-line);
-  border-radius: 6px 13px 13px;
-  color: var(--market-ink);
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.chat-message.assistant .message-bubble:not(.failed) {
-  overflow: visible;
-  padding: 20px 22px;
-  border-color: rgba(253, 246, 227, 0.18);
-  border-radius: 5px 14px 14px 14px;
-  color: var(--market-chalk);
-  background: radial-gradient(
-        circle at 1px 1px,
-        rgba(253, 246, 227, 0.045) 1px,
-        transparent 1.2px
-      )
-      0 0 / 17px 17px,
-    linear-gradient(145deg, #1e4f8f, #183d70);
-  box-shadow: 0 15px 30px rgba(27, 53, 44, 0.19),
-    inset 0 0 0 1px rgba(253, 246, 227, 0.035);
-
-  &::before {
-    position: absolute;
-    top: -9px;
-    left: 19px;
-    width: 9px;
-    height: 25px;
-    border: 2px solid var(--market-ticket-pink);
-    border-radius: 999px;
-    content: "";
-    transform: rotate(18deg);
-  }
-}
-.chat-message.user .message-bubble {
-  border-color: rgba(47, 125, 92, 0.24);
-  border-radius: 14px 7px 14px 14px;
-  background: linear-gradient(
-      135deg,
-      transparent calc(100% - 15px),
-      rgba(47, 125, 92, 0.08) 0
-    ),
-    var(--market-paper-deep);
-  box-shadow: 0 8px 20px rgba(62, 45, 24, 0.08);
-  transform: rotate(-0.35deg);
-}
-.message-bubble p {
-  margin: 0;
-  line-height: 1.75;
-  white-space: pre-wrap;
-}
-.message-bubble.failed {
-  border-color: rgba(198, 69, 69, 0.3);
-  background: rgba(198, 69, 69, 0.07);
-}
-.failure-title {
-  display: block;
-  margin-bottom: 7px;
-  color: var(--market-red);
-}
-.failure-title + p {
-  margin-bottom: 12px;
-  color: var(--market-muted);
-}
-.thinking-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 12px;
-  border-left: 3px solid var(--market-ticket-pink);
-  border-radius: 4px;
-  color: var(--market-chalk);
-  background: rgba(253, 246, 227, 0.08);
-}
-.thinking-line span,
-.stage-loading span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--market-orange);
-  animation: bounce 1s infinite ease-in-out;
-}
-.thinking-line span:nth-child(2),
-.stage-loading span:nth-child(2) {
-  animation-delay: 0.12s;
-}
-.thinking-line span:nth-child(3),
-.stage-loading span:nth-child(3) {
-  margin-right: 5px;
-  animation-delay: 0.24s;
-}
-.stage-loading {
-  display: flex;
-  justify-content: center;
-  gap: 7px;
-  padding: 80px;
-}
-.older-messages {
-  display: block;
-  margin: 0 auto 24px;
-  border: 0;
-  color: var(--market-green);
-  background: transparent;
-  cursor: pointer;
-}
-.markdown-answer {
-  min-width: 0;
-  max-width: 100%;
-  color: var(--market-chalk);
-  overscroll-behavior-x: contain;
-}
-
-.markdown-answer :deep(.md-editor) {
-  --md-color: var(--market-chalk);
-  --md-hover-color: #fff4d6;
-  --md-bk-color: transparent;
-  --md-bk-color-outstand: rgba(253, 246, 227, 0.08);
-  --md-bk-hover-color: rgba(253, 246, 227, 0.1);
-  --md-border-color: rgba(253, 246, 227, 0.18);
-  --md-border-hover-color: rgba(253, 246, 227, 0.3);
-  --md-border-active-color: rgba(253, 246, 227, 0.42);
-  width: 100%;
-  min-width: 0;
-  height: auto;
-  border: 0;
-  color: var(--market-chalk);
-  background: transparent;
-}
-
-.markdown-answer :deep(.md-editor-content) {
-  min-width: 0;
-  height: auto;
-}
-
-.markdown-answer :deep(.md-editor-preview-wrapper) {
-  min-width: 0;
-  overflow: visible;
-  padding: 0;
-  background: transparent;
-}
-
-.markdown-answer.typing {
-  position: relative;
-  padding-bottom: 9px;
-}
-
-.typing-caret {
-  position: absolute;
-  right: 3px;
-  bottom: 0;
-  width: 7px;
-  height: 14px;
-  border-radius: 2px;
-  background: var(--market-ticket-pink);
-  animation: typing-blink 0.75s steps(1, end) infinite;
-}
-
-.markdown-answer :deep(.md-editor-preview) {
-  --md-theme-color: var(--market-chalk);
-  --md-theme-heading-color: #ffe0a3;
-  --md-theme-heading-1-color: #ffe0a3;
-  --md-theme-heading-2-color: #ffe0a3;
-  --md-theme-heading-3-color: #ffe8bb;
-  --md-theme-heading-4-color: #ffe8bb;
-  --md-theme-heading-5-color: var(--market-chalk);
-  --md-theme-heading-6-color: rgba(253, 246, 227, 0.78);
-  --md-theme-heading-1-border: 1px solid rgba(253, 246, 227, 0.14);
-  --md-theme-heading-2-border: 1px solid rgba(253, 246, 227, 0.12);
-  --md-theme-link-color: #ffc27a;
-  --md-theme-link-hover-color: #ffe0a3;
-  --md-theme-border-color: rgba(253, 246, 227, 0.18);
-  --md-theme-border-color-inset: rgba(253, 246, 227, 0.23);
-  --md-theme-code-inline-color: #ffe0a3;
-  --md-theme-code-inline-bg-color: rgba(15, 38, 31, 0.5);
-  --md-theme-code-block-color: #f4ead4;
-  --md-theme-code-block-bg-color: #111c31;
-  --md-theme-code-before-bg-color: #111c31;
-  --md-theme-quote-color: rgba(253, 246, 227, 0.88);
-  --md-theme-quote-border: 3px solid var(--market-ticket-pink);
-  --md-theme-quote-bg-color: rgba(253, 246, 227, 0.065);
-  --md-theme-table-stripe-color: rgba(253, 246, 227, 0.055);
-  --md-theme-table-tr-bg-color: transparent;
-  --md-theme-table-td-border-color: rgba(253, 246, 227, 0.18);
-  min-width: 0;
-  overflow: visible;
-  color: var(--market-chalk);
-  font-family: var(--market-font-body);
-  font-size: 14px;
-  line-height: 1.82;
-  background: transparent;
-}
-
-.markdown-answer :deep(.github-theme) {
-  color: var(--market-chalk);
-  background: transparent;
-}
-
-.markdown-answer :deep(h1),
-.markdown-answer :deep(h2),
-.markdown-answer :deep(h3),
-.markdown-answer :deep(h4),
-.markdown-answer :deep(h5),
-.markdown-answer :deep(h6) {
-  color: #ffe0a3;
-  font-family: var(--market-font-display);
-  letter-spacing: 0.02em;
-}
-
-.markdown-answer :deep(h1:first-child),
-.markdown-answer :deep(h2:first-child),
-.markdown-answer :deep(h3:first-child),
-.markdown-answer :deep(p:first-child) {
-  margin-top: 0;
-}
-
-.markdown-answer :deep(p) {
-  margin: 0.7em 0;
-  color: var(--market-chalk);
-}
-
-.markdown-answer :deep(strong) {
-  color: #ffe4ad;
-}
-
-.markdown-answer :deep(a) {
-  color: #ffc27a;
-  text-decoration: underline;
-  text-decoration-color: rgba(255, 194, 122, 0.45);
-  text-underline-offset: 3px;
-}
-
-.markdown-answer :deep(blockquote) {
-  margin: 1em 0;
-  padding: 8px 13px;
-  border-left: 3px solid var(--market-ticket-pink);
-  border-radius: 0 5px 5px 0;
-  color: rgba(253, 246, 227, 0.88);
-  background: rgba(253, 246, 227, 0.065);
-}
-
-.markdown-answer :deep(ul),
-.markdown-answer :deep(ol) {
-  padding-left: 1.75em;
-}
-
-.markdown-answer :deep(p),
-.markdown-answer :deep(li),
-.markdown-answer :deep(blockquote),
-.markdown-answer :deep(td),
-.markdown-answer :deep(th) {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.markdown-answer :deep(pre) {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.markdown-answer :deep(table) {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-  border-collapse: collapse;
-}
-
-.markdown-answer :deep(th),
-.markdown-answer :deep(td) {
-  min-width: 110px;
-  padding: 7px 9px;
-  color: var(--market-chalk);
-}
-.markdown-answer :deep(img),
-.markdown-answer :deep(video),
-.markdown-answer :deep(canvas) {
-  max-width: 100%;
-  height: auto;
-}
-
-.recommendation-block {
-  margin-top: 12px;
-  padding: 15px;
-  border: 1px dashed rgba(217, 108, 44, 0.38);
-  border-radius: 8px;
-  background: var(--market-paper-deep);
-}
-
-.source-block {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 14px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  background: var(--market-surface);
-}
-
-.related-post-block {
-  margin-top: 12px;
-  padding: 14px;
-  border: 1px dashed rgba(47, 125, 92, 0.38);
-  border-radius: 8px;
-  background: var(--market-paper-deep);
-}
-
-.related-post-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.related-post-card {
-  position: relative;
-  min-width: 0;
-  padding: 13px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  color: var(--market-ink);
-  text-align: left;
-  background: var(--market-surface);
-  cursor: pointer;
-}
-
-.related-post-card strong,
-.related-post-card p {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-}
-
-.related-post-card strong {
-  padding-right: 64px;
-  -webkit-line-clamp: 2;
-}
-
-.related-post-card p {
-  margin: 7px 0;
-  color: var(--market-muted);
-  font-size: 12px;
-  line-height: 1.55;
-  -webkit-line-clamp: 3;
-}
-
-.cited-post-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  color: var(--market-green);
-  font-size: 10px;
-  font-weight: 900;
-  background: var(--market-note-green-bg);
-}
-
-.related-post-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  color: var(--market-orange-text);
-  font-size: 10px;
-}
-
-.source-link {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--market-line);
-  border-radius: 7px;
-  color: var(--market-ink);
-  text-align: left;
-  background: var(--market-paper);
-  cursor: pointer;
-}
-
-.source-link > span {
-  padding: 3px 6px;
-  border-radius: 999px;
-  color: var(--market-green);
-  font-size: 10px;
-  font-weight: 900;
-  background: var(--market-note-green-bg);
-}
-
-.source-link div {
-  min-width: 0;
-}
-
-.source-link strong,
-.source-link p {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.source-link p {
-  margin: 3px 0 0;
-  color: var(--market-muted);
-  font-size: 12px;
-}
-
-.source-link b {
-  color: var(--market-orange-text);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.source-detail-heading {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 12px;
-  padding-right: 28px;
-}
-.source-detail-heading h2 {
-  margin: 0;
-  color: var(--market-ink);
-  font-size: 20px;
-  line-height: 1.35;
-}
-.source-detail-heading p {
-  margin: 5px 0 0;
-  overflow-wrap: anywhere;
-  color: var(--market-muted);
-  font-family: var(--market-font-mono);
-  font-size: 12px;
-}
-.source-detail-type {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  color: var(--market-green);
-  background: var(--market-note-green-bg);
-  font-size: 12px;
-  font-weight: 900;
-}
-.source-detail-body {
-  max-height: min(58dvh, 560px);
-  overflow-y: auto;
-  padding: 18px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  background: var(--market-paper);
-  overscroll-behavior: contain;
-}
-.source-detail-label {
-  margin-bottom: 10px;
-  color: var(--market-orange-text);
-  font-size: 12px;
-  font-weight: 900;
-}
-.source-citation-list {
-  display: grid;
-  gap: 16px;
-}
-.source-citation {
-  min-width: 0;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--market-line);
-}
-.source-citation:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-.source-citation h3 {
-  margin: 0 0 8px;
-  color: var(--market-ink);
-  font-size: 15px;
-}
-.source-citation small {
-  display: block;
-  margin-top: 8px;
-  overflow-wrap: anywhere;
-  color: var(--market-muted);
-  font-family: var(--market-font-mono);
-  font-size: 10px;
-}
-.source-detail-body p {
-  margin: 0;
-  color: var(--market-ink);
-  font-size: 15px;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-.recommendation-heading {
-  margin-bottom: 10px;
-  color: var(--market-ink);
-}
-.recommendation-heading span {
-  color: var(--market-orange-text);
-  font-size: 12px;
-  font-weight: 800;
-}
-.recommendation-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.commodity-card {
-  display: grid;
-  grid-template-columns: 86px 1fr;
-  min-width: 0;
-  overflow: hidden;
-  padding: 0;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  text-align: left;
-  background: var(--market-surface);
-  cursor: pointer;
-}
-.commodity-card img,
-.commodity-placeholder {
-  width: 86px;
-  height: 100%;
-  min-height: 120px;
-  object-fit: cover;
-}
-.commodity-placeholder {
-  display: grid;
-  place-items: center;
-  color: var(--market-muted);
-  font-size: 12px;
-  background: var(--market-note-yellow-bg);
-}
-.commodity-copy {
-  display: grid;
-  align-content: center;
-  gap: 5px;
-  min-width: 0;
-  padding: 10px;
-}
-.commodity-copy strong,
-.commodity-copy p {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.commodity-copy p,
-.commodity-copy small {
-  margin: 0;
-  color: var(--market-muted);
-  font-size: 12px;
-}
-.commodity-copy div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.commodity-copy b {
-  color: var(--market-orange-text);
-}
-.commodity-copy em {
-  color: var(--market-muted);
-  font-size: 12px;
-  font-style: normal;
-}
-.match-score {
-  width: fit-content;
-  padding: 2px 6px;
-  border-radius: 999px;
-  color: var(--market-green);
-  font-size: 10px;
-  font-weight: 900;
-  background: var(--market-note-green-bg);
-}
-
-.composer-dock {
-  position: relative;
-  z-index: 2;
-  min-width: 0;
-  padding: 11px clamp(20px, 4vw, 64px) max(16px, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--market-line);
-  background: radial-gradient(
-      ellipse at 50% 0,
-      rgba(244, 201, 93, 0.09),
-      transparent 52%
-    ),
-    var(--market-topbar-bg);
-  backdrop-filter: blur(12px);
-}
-.composer-shell {
-  position: relative;
-  max-width: 960px;
-  margin: auto;
-  padding: 9px 10px 8px 15px;
-  border: 1px solid var(--market-line);
-  border-radius: 7px;
-  background: repeating-linear-gradient(
-      0deg,
-      transparent 0 27px,
-      rgba(94, 160, 181, 0.09) 27px 28px
-    ),
-    var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  transition: 0.2s ease;
-  transform: rotate(-0.16deg);
-
-  &::before {
-    position: absolute;
-    top: -5px;
-    left: 24px;
-    width: 74px;
-    height: 12px;
-    background: rgba(217, 173, 101, 0.42);
-    content: "";
-    transform: rotate(-1deg);
-  }
-}
-.stamp-send {
-  min-width: 88px;
-  min-height: 34px;
-  border: 2px solid var(--market-stamp-red) !important;
-  border-radius: 5px !important;
-  color: var(--market-stamp-red) !important;
-  font-family: var(--market-font-display);
-  font-weight: 900;
-  letter-spacing: 1px;
-  background: transparent !important;
-  transform: rotate(-2.5deg);
-}
-.stamp-send:hover:not(.is-disabled) {
-  color: var(--market-chalk) !important;
-  background: var(--market-stamp-red) !important;
-}
-.stamp-send.is-disabled {
-  border-color: var(--market-line) !important;
-  color: var(--market-muted) !important;
-  opacity: 0.58;
-  transform: none;
-}
-.composer-shell.focused {
-  border-color: rgba(47, 125, 92, 0.55);
-  box-shadow: var(--market-focus);
-  transform: rotate(0);
-}
-.composer-shell :deep(.el-textarea__inner) {
-  max-height: min(118px, 30dvh) !important;
-  overflow-y: auto !important;
-  padding: 7px 0 5px;
-  color: var(--market-ink);
-  line-height: 1.7;
-  background: transparent;
-  box-shadow: none;
-}
-.composer-actions {
-  gap: 15px;
-  margin-top: 2px;
-}
-.composer-actions > span {
-  color: var(--market-muted);
-  font-size: 12px;
-}
-.active-context {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 960px;
-  margin: 0 auto 7px;
-  color: var(--market-muted);
-  font-size: 12px;
-}
-.active-context button {
-  border: 0;
-  color: var(--market-orange-text);
-  background: transparent;
-  cursor: pointer;
-}
-
-.context-heading h2 {
-  margin: 6px 0 7px;
-  color: var(--market-ink);
-  font-size: 26px;
-}
-.context-heading p {
-  margin: 0;
-  color: var(--market-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-.context-form :deep(.el-select) {
-  width: 100%;
-}
-.budget-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-.budget-row :deep(.el-input-number) {
-  width: 100%;
-}
-.context-tip {
-  padding: 15px;
-  border-left: 4px solid var(--market-orange);
-  border-radius: 8px;
-  color: var(--market-ink);
-  background: var(--market-note-yellow-bg);
-}
-.context-tip p {
-  margin: 6px 0 0;
-  color: var(--market-muted);
-  font-size: 13px;
-  line-height: 1.65;
-}
-.context-footer {
-  justify-content: flex-end;
-}
-.mobile-scrim {
-  display: none;
-}
-
-:global(.typing-speed-popover.el-popper) {
-  padding: 10px;
-  border-color: var(--market-line);
-  border-radius: 9px;
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow);
-}
-
-:global(.typing-speed-menu) {
-  display: grid;
-  gap: 4px;
-}
-
-:global(.typing-speed-menu > span) {
-  padding: 3px 7px 7px;
-  color: var(--market-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-:global(.typing-speed-menu button) {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 9px;
-  border: 0;
-  border-radius: 7px;
-  color: var(--market-ink);
-  text-align: left;
-  background: transparent;
-  cursor: pointer;
-}
-
-:global(.typing-speed-menu button:hover) {
-  background: var(--market-soft-bg);
-}
-
-:global(.typing-speed-menu button.active) {
-  color: var(--market-green);
-  background: var(--market-note-green-bg);
-}
-
-:global(.typing-speed-menu strong) {
-  font-size: 12px;
-}
-
-:global(.typing-speed-menu small) {
-  color: var(--market-muted);
-  font-size: 12px;
-}
-
-@keyframes bounce {
-  0%,
-  80%,
-  100% {
-    opacity: 0.3;
-    transform: translateY(0);
-  }
-  40% {
-    opacity: 1;
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes typing-blink {
-  0%,
-  48% {
-    opacity: 1;
-  }
-  49%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
-@media (max-height: 720px) {
-  .chat-toolbar {
-    min-height: 64px;
-    padding: 8px 18px;
-  }
-
-  .message-stage {
-    padding-top: 18px;
-    padding-bottom: 18px;
-  }
-
-  .welcome-card {
-    margin-top: 0;
-    padding: 24px 28px;
-  }
-
-  .welcome-card h2 {
-    margin-top: 8px;
-    font-size: clamp(26px, 3vw, 36px);
-  }
-
-  .welcome-card > p {
-    line-height: 1.55;
-  }
-
-  .starter-grid {
-    margin-top: 16px;
-  }
-
-  .starter-card {
-    padding: 14px 16px;
-  }
-
-  .composer-dock {
-    padding-top: 8px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
-  }
-}
-
-@media (max-width: 900px) {
-  .agent-desk {
-    grid-template-columns: 1fr;
-    height: 100%;
-    min-height: 0;
-  }
-  .conversation-rail {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: min(84vw, 330px);
-    transform: translateX(-105%);
-    transition: transform 0.25s ease;
-    box-shadow: var(--market-shadow);
-  }
-  .conversation-rail.open {
-    transform: translateX(0);
-  }
-  .rail-close,
-  .history-trigger,
-  .mobile-scrim {
-    display: block;
-  }
-  .mobile-scrim {
-    position: fixed;
-    z-index: 3;
-    inset: 0;
-    border: 0;
-    background: rgba(22, 29, 34, 0.46);
-  }
-  .chat-toolbar {
-    justify-content: flex-start;
-  }
-  .toolbar-actions {
-    margin-left: auto;
-  }
-}
-
-@media (max-width: 660px) {
-  .agent-desk {
-    height: 100%;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-  }
-  .chat-toolbar {
-    min-height: 64px;
-    padding: 9px 12px;
-  }
-  .chat-title small {
-    display: none;
-  }
-  .context-trigger {
-    padding: 8px;
-    font-size: 0;
-  }
-  .context-trigger span,
-  .context-trigger b {
-    font-size: 12px;
-  }
-  .message-stage {
-    padding: 22px 12px;
-    scrollbar-gutter: auto;
-  }
-  .welcome-card {
-    margin-top: 10px;
-    padding: 26px 20px;
-  }
-  .welcome-stamp {
-    position: static;
-    width: fit-content;
-    margin-bottom: 15px;
-  }
-  .starter-grid,
-  .recommendation-grid,
-  .related-post-grid {
-    grid-template-columns: 1fr;
-  }
-  .chat-message {
-    gap: 7px;
-  }
-  .agent-seal {
-    width: 28px;
-    height: 28px;
-    margin-top: 18px;
-    font-size: 10px;
-  }
-  .message-column {
-    max-width: 88%;
-  }
-  .chat-message.assistant .message-column {
-    width: calc(100% - 35px);
-  }
-  .chat-message.assistant .message-bubble:not(.failed) {
-    padding: 17px 16px;
-  }
-  .markdown-answer :deep(.md-editor-preview) {
-    font-size: 13.5px;
-    line-height: 1.75;
-  }
-  .composer-dock {
-    padding: 9px 10px max(12px, env(safe-area-inset-bottom));
-  }
-  .composer-actions > span {
-    display: none;
-  }
-  .composer-actions {
-    justify-content: flex-end;
-  }
-  .composer-shell {
-    transform: none;
-  }
-}
-
-@media (max-width: 420px) {
-  .chat-title strong {
-    max-width: 148px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .message-stage {
-    padding-right: 9px;
-    padding-left: 9px;
-  }
-  .chat-message {
-    gap: 6px;
-    margin-bottom: 22px;
-  }
-  .agent-seal {
-    width: 25px;
-    height: 25px;
-    border-width: 1px;
-    font-size: 9px;
-  }
-  .chat-message.assistant .message-column {
-    width: calc(100% - 31px);
-    max-width: calc(100% - 31px);
-  }
-  .chat-message.user .message-column {
-    max-width: 88%;
-  }
-  .message-bubble {
-    padding: 13px 14px;
-  }
-  .chat-message.assistant .message-bubble:not(.failed) {
-    padding: 16px 14px;
-  }
-  .markdown-answer :deep(h1) {
-    font-size: 1.55em;
-  }
-  .markdown-answer :deep(h2) {
-    font-size: 1.3em;
-  }
-  .stamp-send {
-    min-width: 76px;
-    padding-right: 9px;
-    padding-left: 9px;
-    font-size: 12px;
-  }
-}
-
-@media (max-height: 560px) {
-  .chat-toolbar {
-    min-height: 56px;
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-  .chat-title small {
-    display: none;
-  }
-  .message-stage {
-    padding-top: 14px;
-    padding-bottom: 14px;
-  }
-  .composer-dock {
-    padding-top: 6px;
-    padding-bottom: max(7px, env(safe-area-inset-bottom));
-  }
-}
-</style>
-
-<style scoped lang="scss">
-/* 海盐蓝 · 校园市集智能导购台 */
-.agent-desk {
-  border-radius: var(--market-radius-board);
-  background: var(--market-surface);
-}
-.conversation-rail {
-  background: linear-gradient(
-      180deg,
-      var(--market-primary-soft),
-      transparent 190px
-    ),
-    var(--market-surface-soft);
-}
-.conversation-rail::before {
-  display: block;
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 6px;
-  background: linear-gradient(
-    90deg,
-    var(--market-primary) 0 64%,
-    var(--market-orange) 64% 80%,
-    var(--market-yellow) 80%
-  );
-  content: "";
-}
-.rail-heading h1,
-.chat-title strong {
-  font-family: var(--market-font-display);
-}
-.conversation-ticket {
-  border-color: transparent;
-  border-radius: var(--market-radius-note);
-  background: transparent;
-}
-.conversation-ticket:hover,
-.conversation-ticket.active {
-  border-color: rgba(37, 99, 235, 0.2);
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  transform: translateX(3px);
-}
-.new-chat-button {
-  border-radius: var(--market-radius-note);
-  color: var(--market-on-primary);
-  background: var(--market-primary);
-  box-shadow: 0 9px 18px rgba(37, 99, 235, 0.18);
-}
-.rail-note {
-  border-color: var(--market-line);
-  color: var(--market-muted);
-  background: var(--market-yellow-soft);
-}
-.chat-workspace {
-  background: linear-gradient(
-      90deg,
-      transparent 0 42px,
-      rgba(37, 99, 235, 0.05) 42px 44px,
-      transparent 44px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 31px,
-      rgba(37, 99, 235, 0.045) 31px 32px
-    ),
-    var(--market-canvas);
-}
-.chat-toolbar {
-  border-bottom-color: var(--market-line);
-  background: color-mix(in srgb, var(--market-surface) 91%, transparent);
-  backdrop-filter: blur(18px) saturate(1.15);
-}
-.desk-mark {
-  border-color: rgba(249, 115, 22, 0.32);
-  color: var(--market-orange-text);
-  background: var(--market-orange-soft);
-}
-.status-dot {
-  background: var(--market-success);
-  box-shadow: 0 0 0 4px var(--market-success-soft);
-}
-.welcome-card {
-  overflow: hidden;
-  border: 1px solid var(--market-line);
-  border-radius: 12px 22px 12px 22px;
-  color: var(--market-ink);
-  background: radial-gradient(
-      circle at 92% 14%,
-      rgba(246, 196, 83, 0.16),
-      transparent 22%
-    ),
-    linear-gradient(125deg, var(--market-surface), var(--market-primary-soft));
-  box-shadow: var(--market-shadow);
-}
-.welcome-card::before {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 7px;
-  background: linear-gradient(
-    90deg,
-    var(--market-primary) 0 65%,
-    var(--market-orange) 65% 80%,
-    var(--market-yellow) 80%
-  );
-  content: "";
-}
-.welcome-stamp {
-  border-color: var(--market-orange);
-  color: var(--market-orange-text);
-  background: var(--market-orange-soft);
-}
-.starter-card {
-  border-color: var(--market-line);
-  border-radius: 7px 14px 7px 14px;
-  color: var(--market-ink);
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-}
-.starter-card:hover {
-  border-color: rgba(37, 99, 235, 0.34);
-  color: var(--market-primary);
-  box-shadow: var(--market-shadow-lift);
-  transform: translateY(-3px) rotate(0);
-}
-.agent-seal {
-  border-color: rgba(37, 99, 235, 0.24);
-  color: var(--market-primary);
-  background: var(--market-primary-soft);
-  box-shadow: none;
-}
-.chat-message {
-  animation: message-arrive 0.24s var(--market-ease-standard) both;
-}
-.chat-message.assistant .message-bubble:not(.failed) {
-  overflow: visible;
-  border-color: var(--market-line);
-  border-radius: 7px 16px 16px 16px;
-  color: var(--market-ink);
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-}
-.chat-message.assistant .message-bubble:not(.failed)::before {
-  top: -8px;
-  left: 21px;
-  width: 8px;
-  height: 23px;
-  border-color: var(--market-primary);
-  opacity: 0.42;
-}
-.chat-message.user .message-bubble {
-  border-color: rgba(37, 99, 235, 0.22);
-  color: var(--market-ink);
-  background: linear-gradient(
-      135deg,
-      transparent calc(100% - 15px),
-      rgba(37, 99, 235, 0.08) 0
-    ),
-    var(--market-primary-soft);
-  box-shadow: 0 8px 20px rgba(30, 64, 109, 0.08);
-}
-.thinking-line {
-  border-left-color: var(--market-primary);
-  color: var(--market-muted);
-  background: var(--market-primary-soft);
-}
-.markdown-answer,
-.markdown-answer :deep(.md-editor),
-.markdown-answer :deep(.md-editor-preview),
-.markdown-answer :deep(.github-theme) {
-  color: var(--market-ink);
-}
-.markdown-answer :deep(.md-editor) {
-  --md-color: var(--market-ink);
-  --md-hover-color: var(--market-primary);
-  --md-bk-color: transparent;
-  --md-bk-color-outstand: var(--market-surface-soft);
-  --md-bk-hover-color: var(--market-primary-soft);
-  --md-border-color: var(--market-line);
-  --md-border-hover-color: var(--market-line-strong);
-  --md-border-active-color: var(--market-primary);
-}
-.markdown-answer :deep(.md-editor-preview) {
-  --md-theme-color: var(--market-ink);
-  --md-theme-heading-color: var(--market-ink);
-  --md-theme-heading-1-color: var(--market-ink);
-  --md-theme-heading-2-color: var(--market-ink);
-  --md-theme-heading-3-color: var(--market-primary);
-  --md-theme-heading-4-color: var(--market-primary);
-  --md-theme-heading-5-color: var(--market-ink);
-  --md-theme-heading-6-color: var(--market-muted);
-  --md-theme-heading-1-border: 1px solid var(--market-line);
-  --md-theme-heading-2-border: 1px solid var(--market-line);
-  --md-theme-link-color: var(--market-primary);
-  --md-theme-link-hover-color: var(--market-primary-hover);
-  --md-theme-border-color: var(--market-line);
-  --md-theme-border-color-inset: var(--market-line-strong);
-  --md-theme-code-inline-color: var(--market-primary-hover);
-  --md-theme-code-inline-bg-color: var(--market-primary-soft);
-  --md-theme-code-block-color: #dce8f8;
-  --md-theme-code-block-bg-color: #111c31;
-  --md-theme-code-before-bg-color: #111c31;
-  --md-theme-quote-color: var(--market-muted);
-  --md-theme-quote-border: 3px solid var(--market-primary);
-  --md-theme-quote-bg-color: var(--market-primary-soft);
-  --md-theme-table-stripe-color: var(--market-surface-soft);
-  --md-theme-table-tr-bg-color: transparent;
-  --md-theme-table-td-border-color: var(--market-line);
-  font-size: 15.5px;
-  line-height: 1.82;
-}
-.markdown-answer :deep(h1),
-.markdown-answer :deep(h2),
-.markdown-answer :deep(h3),
-.markdown-answer :deep(h4),
-.markdown-answer :deep(h5),
-.markdown-answer :deep(h6),
-.markdown-answer :deep(p),
-.markdown-answer :deep(strong) {
-  color: var(--market-ink);
-}
-.markdown-answer :deep(a) {
-  color: var(--market-primary);
-  text-decoration-color: rgba(37, 99, 235, 0.36);
-}
-.markdown-answer :deep(blockquote) {
-  border-left-color: var(--market-primary);
-  color: var(--market-muted);
-  background: var(--market-primary-soft);
-}
-.typing-caret {
-  background: var(--market-primary);
-}
-.recommendation-block,
-.source-block,
-.related-post-block {
-  border: 1px solid var(--market-line);
-  border-radius: 9px 16px 9px 16px;
-  background: var(--market-surface-soft);
-}
-.recommendation-block {
-  border-top: 4px solid var(--market-orange);
-}
-.source-block {
-  border-top: 4px solid var(--market-primary);
-}
-.related-post-block {
-  border-top: 4px solid var(--market-yellow);
-}
-.commodity-card,
-.source-link,
-.related-post-card {
-  border-color: var(--market-line);
-  border-radius: var(--market-radius-note);
-  color: var(--market-ink);
-  background: var(--market-surface);
-  box-shadow: 0 5px 14px rgba(30, 64, 109, 0.06);
-  transition: transform var(--market-dur-fast),
-    border-color var(--market-dur-fast), box-shadow var(--market-dur-fast);
-}
-.commodity-card:hover,
-.source-link:hover,
-.related-post-card:hover {
-  border-color: rgba(37, 99, 235, 0.34);
-  box-shadow: var(--market-shadow-soft);
-  transform: translateY(-2px);
-}
-.match-score,
-.cited-post-badge {
-  color: var(--market-primary);
-  background: var(--market-primary-soft);
-}
-.commodity-copy b {
-  color: var(--market-orange-text);
-}
-.source-link b {
-  color: var(--market-primary);
-}
-.composer-dock {
-  border-top-color: var(--market-line);
-  background: color-mix(in srgb, var(--market-surface) 94%, transparent);
-  backdrop-filter: blur(18px);
-}
-.composer-shell {
-  border-color: var(--market-line);
-  border-radius: 12px 20px 12px 20px;
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-}
-.composer-shell.focused {
-  border-color: var(--market-primary);
-  box-shadow: var(--market-focus), var(--market-shadow-soft);
-}
-.stamp-send {
-  border-radius: 8px 13px 8px 13px;
-  color: var(--market-on-primary);
-  background: var(--market-primary);
-}
-@keyframes message-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-html.dark .chat-workspace {
-  background: linear-gradient(
-      90deg,
-      transparent 0 42px,
-      rgba(96, 165, 250, 0.05) 42px 44px,
-      transparent 44px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 31px,
-      rgba(96, 165, 250, 0.035) 31px 32px
-    ),
-    var(--market-canvas);
-}
-html.dark .markdown-answer :deep(.md-editor-preview) {
-  --md-theme-code-inline-color: #93c5fd;
-  --md-theme-code-inline-bg-color: rgba(96, 165, 250, 0.12);
-}
-</style>
-
-<style scoped lang="scss">
-/* Markdown 表格最终对比度覆盖：覆盖 github 主题内部变量 */
-.markdown-answer :deep(.github-theme) {
-  --md-theme-color: var(--market-ink) !important;
-  --md-theme-table-tr-bg-color: var(--market-surface) !important;
-  --md-theme-table-stripe-color: var(--market-surface-soft) !important;
-  --md-theme-table-td-border-color: var(--market-line) !important;
-  --md-theme-border-color: var(--market-line) !important;
-  color: var(--market-ink) !important;
-  background: transparent !important;
-}
-.markdown-answer :deep(.github-theme table) {
-  color: var(--market-ink) !important;
-  background: var(--market-surface) !important;
-}
-.markdown-answer :deep(.github-theme table tr),
-.markdown-answer :deep(.github-theme table tr:nth-child(2n)) {
-  color: var(--market-ink) !important;
-  background: var(--market-surface) !important;
-}
-.markdown-answer :deep(.github-theme table tr:nth-child(2n)) {
-  background: var(--market-surface-soft) !important;
-}
-.markdown-answer :deep(.github-theme table th),
-.markdown-answer :deep(.github-theme table td) {
-  color: var(--market-ink) !important;
-  border-color: var(--market-line) !important;
-  background: inherit !important;
-}
-.markdown-answer :deep(.github-theme table th) {
-  color: var(--market-primary-hover) !important;
-  font-weight: 800;
-  background: var(--market-primary-soft) !important;
-}
-html.dark .markdown-answer :deep(.github-theme) {
-  --md-theme-color: var(--market-ink) !important;
-  --md-theme-table-tr-bg-color: var(--market-surface) !important;
-  --md-theme-table-stripe-color: var(--market-surface-soft) !important;
-  --md-theme-table-td-border-color: var(--market-line) !important;
-}
-html.dark .markdown-answer :deep(.github-theme table th) {
-  color: var(--market-ink) !important;
-  background: var(--market-primary-soft) !important;
-}
-</style>
-<style scoped lang="scss">
-.quota-board {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: 8px;
-  max-width: 960px;
-  margin: 0 auto 9px;
-}
-
-.quota-ticket,
-.quota-reset {
-  position: relative;
-  min-width: 0;
-  border: 1px solid var(--market-line);
-  color: var(--market-ink);
-  background: color-mix(
-    in srgb,
-    var(--market-surface) 92%,
-    var(--market-primary-soft)
-  );
-  box-shadow: 0 4px 12px rgba(30, 64, 109, 0.05);
-}
-
-.quota-ticket {
-  padding: 8px 11px 7px;
-  border-radius: 8px 13px 8px 13px;
-  overflow: hidden;
-
-  &::after {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 3px;
-    background: var(--market-primary);
-    content: "";
-  }
-}
-
-.quota-ticket__heading {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.quota-ticket__heading > span,
-.quota-reset span {
-  color: var(--market-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.quota-ticket__heading strong {
-  color: var(--market-primary);
-  font-family: var(--market-font-display);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.quota-ticket__heading small {
-  font-family: var(--market-font-body);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.quota-ticket p {
-  margin: 4px 0 0;
-  color: var(--market-muted);
-  font-size: 10px;
-}
-
-.quota-meter {
-  height: 4px;
-  margin-top: 7px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--market-surface-soft);
-}
-
-.quota-meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--market-primary);
-  transition: width 0.25s ease;
-}
-
-.quota-ticket.is-low {
-  &::after,
-  .quota-meter span {
-    background: var(--market-orange);
-  }
-
-  .quota-ticket__heading strong {
-    color: var(--market-orange-text);
-  }
-}
-
-.quota-ticket.is-empty {
-  &::after,
-  .quota-meter span {
-    background: var(--market-stamp-red);
-  }
-
-  .quota-ticket__heading strong {
-    color: var(--market-stamp-red);
-  }
-}
-
-.quota-reset {
-  display: flex;
-  min-width: 126px;
-  padding: 8px 11px;
-  border-style: dashed;
-  border-radius: 11px 7px 11px 7px;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.quota-reset strong {
-  margin-top: 3px;
-  color: var(--market-ink);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-@media (max-width: 760px) {
-  .quota-board {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .quota-reset {
-    grid-column: 1 / -1;
-    padding: 6px 10px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .quota-reset strong {
-    margin-top: 0;
-  }
-}
-
-@media (max-width: 480px) {
-  .quota-board {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .quota-reset {
-    grid-column: auto;
-  }
-}
-</style>
+<style scoped lang="scss" src="./guide.scss"></style>

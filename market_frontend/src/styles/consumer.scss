@@ -117,3 +117,278 @@ html:not(.dark):not([data-theme="night"]) .market-consumer {
     font-size: 27px;
   }
 }
+
+/* Consumer information is grouped by spacing and rules; forms retain control boundaries.
+   Important declarations below replace legacy campus-pages important decorations. */
+html .market-consumer {
+  .post-browse .search-bar {
+    border: 0;
+    border-bottom: 1px solid var(--market-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0 0 20px;
+  }
+  .post-browse .post-list {
+    gap: 0;
+  }
+  .post-browse .post-list .post-item {
+    padding: 24px 0;
+    border: 0 !important;
+    border-bottom: 1px solid var(--market-line) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .post-browse .post-item::before {
+    display: none;
+  }
+  .post-browse .handwritten-tag {
+    padding: 0;
+    border: 0 !important;
+    border-radius: 0;
+    color: var(--market-muted) !important;
+    background: transparent !important;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .post-browse .post-item .post-title {
+    font-size: 20px;
+    font-weight: 650;
+  }
+  .post-browse .post-item:hover .post-title {
+    color: var(--market-primary);
+  }
+  .post-browse .post-item .post-time {
+    font-size: 11px;
+  }
+  .post-detail .post-content {
+    border: 0;
+    border-radius: 0 !important;
+    box-shadow: none;
+    background: transparent !important;
+  }
+
+  .personal-home-page .profile-hero {
+    padding: 16px 0 30px;
+    border: 0;
+    border-bottom: 1px solid var(--market-line);
+    border-radius: 0;
+    background: transparent;
+  }
+  .personal-home-page .profile-hero::after {
+    display: none;
+  }
+  .personal-home-page .profile-meta span {
+    padding: 0;
+    border-radius: 0;
+    font-family: var(--market-font-body);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--market-muted);
+    background: transparent;
+  }
+  .personal-home-page .coin-summary {
+    border: 0;
+    border-radius: 12px;
+    background: var(--market-primary-soft);
+    box-shadow: none;
+  }
+  .personal-home-page .account-tabs .el-tabs__header {
+    padding: 0;
+    border-bottom: 1px solid var(--market-line);
+  }
+  .personal-home-page .account-tabs .el-tabs__item {
+    height: 52px;
+    padding-inline: 16px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-weight: 500;
+    transform: none;
+  }
+  .personal-home-page .account-tabs .el-tabs__item.is-active {
+    color: var(--market-primary);
+  }
+  .personal-home-page .account-tabs .el-tabs__item.is-active::after {
+    bottom: 0;
+    height: 2px;
+    background: var(--market-primary);
+  }
+  .personal-home-page .account-tabs .el-tabs__content {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .personal-home-page .profile-form,
+  .personal-home-page .tab-panel {
+    padding: 26px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none;
+  }
+  .personal-home-page .field-card {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none;
+  }
+
+  .my-orders-page .orders-panel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .order-list-container {
+    gap: 0;
+  }
+  .order-list-container .order-item {
+    padding: 24px 0;
+    border: 0;
+    border-bottom: 1px solid var(--market-line);
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .order-list-container .order-item::before,
+  .order-list-container .ticket-punch {
+    display: none;
+  }
+  .order-list-container .order-stamp {
+    top: 24px;
+    right: 0;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    font-family: var(--market-font-body);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    transform: none;
+    opacity: 1;
+  }
+  .order-list-container .order-stamp::before {
+    content: "";
+    display: inline-block;
+    margin-right: 6px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: middle;
+  }
+  .order-list-container .order-header {
+    border: 0;
+    padding-bottom: 12px;
+    h3 {
+      font-size: 19px;
+      font-weight: 650;
+    }
+  }
+  .order-list-container .order-kicker {
+    color: var(--market-muted);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .order-list-container .field-label {
+    font-weight: 400;
+  }
+  .order-list-container .field-value {
+    font-weight: 500;
+  }
+  .order-list-container .order-footer {
+    margin: 18px 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .rating-component,
+  .score-list-container {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .rating-component .average-rating,
+  .rating-component .rated-text {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+  .score-list-container .score-item {
+    border: 0;
+    border-bottom: 1px solid var(--market-line);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .notice-container .campus-newsflash {
+    border: 0;
+    border-radius: 12px;
+    background: var(--market-primary-soft);
+    box-shadow: none;
+  }
+  .notice-container .newsflash-count {
+    border: 0;
+    background: transparent;
+    transform: none;
+  }
+  .notice-container .notice-board {
+    padding: 24px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .notice-container .notice-board::before,
+  .notice-container .paper-pin {
+    display: none;
+  }
+  .notice-container .board-heading {
+    border-bottom-style: solid;
+    > div {
+      text-align: left;
+    }
+    h1 {
+      font-size: 28px;
+    }
+  }
+  .notice-container .notice-stack {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .notice-container .notice-paper {
+    min-height: 0;
+    padding: 26px 0;
+    border: 0;
+    border-bottom: 1px solid var(--market-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    animation: none;
+  }
+  .notice-container .notice-paper.is-latest {
+    border-bottom-color: var(--market-line);
+    background: transparent;
+  }
+  .notice-container .latest-stamp {
+    padding: 0;
+    border: 0;
+    font-family: var(--market-font-body);
+    font-size: 11px;
+    letter-spacing: 0;
+    transform: none;
+  }
+}

@@ -50,8 +50,7 @@
 
       <div v-if="order.payStatus === 0" class="order-footer">
         <el-button type="warning" @click="showPayDialog(order)">
-          <el-icon style="margin-right: 4px"><Scissor /></el-icon>
-          撕下副券 · 立即支付
+          立即支付
         </el-button>
       </div>
     </article>
@@ -72,7 +71,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { Scissor } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 type CommodityOrderItem = API.CommodityOrderVO & {
