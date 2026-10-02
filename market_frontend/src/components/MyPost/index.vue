@@ -32,39 +32,8 @@
     />
 
     <div v-else class="post-list" v-loading="loading">
-      <article v-for="post in postList" :key="post.id" class="post-item">
-        <div class="post-main" @click="goToPostDetail(post.id)">
-          <div class="post-title-row">
-            <h3>{{ post.title }}</h3>
-            <span>{{ post.createTime || "-" }}</span>
-          </div>
-          <p>{{ truncateContent(post.content || "", 120) }}</p>
-          <div class="post-footer">
-            <div class="post-tags">
-              <span
-                v-for="tag in post.tagList || []"
-                :key="tag"
-                class="post-topic"
-              >
-                <b>#</b>{{ tag }}
-              </span>
-            </div>
-            <div class="post-stats">
-              <span :class="{ 'stat-active': post.hasThumb }">
-                {{ post.hasThumb ? "已点赞" : "点赞" }} {{ post.thumbNum || 0 }}
-              </span>
-              <span>收藏 {{ post.favourNum || 0 }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="post-actions">
-          <el-button
-            class="action-button"
-            size="small"
-            @click="goToPostDetail(post.id)"
-            >查看</el-button
-          >
+      <PostPreview v-for="post in postList" :key="post.id" :post="post"
+        ><template #actions>
           <el-button
             class="action-button"
             size="small"
@@ -83,8 +52,8 @@
               </el-button>
             </template>
           </el-popconfirm>
-        </div>
-      </article>
+        </template>
+      </PostPreview>
     </div>
 
     <div class="market-pagination">
@@ -93,7 +62,8 @@
         v-model:current-page="queryParams.current"
         v-model:page-size="queryParams.pageSize"
         :total="total"
-        layout="total, prev, pager, next, jumper"
+        layout="total, prev, pager, next"
+        :pager-count="5"
         @current-change="loadMyPosts"
         @size-change="loadMyPosts"
       />
@@ -139,7 +109,7 @@
 <script setup lang="ts">
 import "md-editor-v3/lib/style.css";
 import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import PostPreview from "@/components/PostPreview/index.vue";
 import PostTagFilter from "@/components/PostTagFilter/index.vue";
 import { Search } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
@@ -150,7 +120,6 @@ import {
   listMyPostVoByPageUsingPost
 } from "@/api/postController";
 
-const router = useRouter();
 const loading = ref(false);
 const postList = ref<API.PostVO[]>([]);
 const total = ref(0);
@@ -202,11 +171,6 @@ const loadMyPosts = async () => {
 const handleSearch = () => {
   queryParams.value.current = 1;
   loadMyPosts();
-};
-
-const goToPostDetail = (postId?: string) => {
-  if (!postId) return;
-  router.push({ name: "PostDetail", params: { id: postId } });
 };
 
 const openEditDialog = (post: API.PostVO) => {
@@ -281,13 +245,6 @@ const validateTag = (tag: string) => {
   return true;
 };
 
-const truncateContent = (text: string, length: number) => {
-  if (text.length > length) {
-    return `${text.slice(0, length)}...`;
-  }
-  return text;
-};
-
 onMounted(() => {
   loadMyPosts();
 });
@@ -315,80 +272,8 @@ onMounted(() => {
 
 .post-list {
   display: grid;
-  gap: 14px;
+  gap: 0;
   min-height: 120px;
-}
-
-.post-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 24px 0;
-  border-bottom: 1px solid var(--market-line);
-}
-
-.post-main {
-  min-width: 0;
-  cursor: pointer;
-
-  p {
-    margin: 10px 0;
-    color: var(--market-muted);
-    line-height: 1.7;
-    word-break: break-word;
-  }
-}
-
-.post-title-row {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-
-  h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 650;
-    font-family: var(--market-font-body);
-  }
-
-  span {
-    flex: none;
-    color: var(--market-muted);
-    font-size: 13px;
-  }
-}
-
-.post-footer {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.post-tags,
-.post-stats,
-.post-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.post-stats {
-  color: var(--market-muted);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.post-stats .stat-active {
-  color: var(--market-primary);
-}
-
-.post-actions {
-  align-content: start;
-  justify-content: flex-end;
-  min-width: 190px;
 }
 
 :deep(.post-edit-dialog) {
@@ -423,22 +308,9 @@ onMounted(() => {
 }
 
 @media (max-width: 760px) {
-  .my-posts-toolbar,
-  .post-item {
-    grid-template-columns: 1fr;
+  .my-posts-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
-
-  .post-title-row,
-  .post-footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .post-actions {
-    justify-content: flex-start;
-    min-width: 0;
-  }
-
   .post-edit-md {
     height: calc(100vh - 300px);
     min-height: 320px;

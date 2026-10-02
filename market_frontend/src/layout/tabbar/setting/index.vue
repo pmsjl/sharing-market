@@ -54,7 +54,13 @@
               :aria-checked="accentPreset === option.value"
               @click="setAccent(option.value)"
             >
-              <i :style="{ background: option.color }"></i>
+              <i
+                :style="{
+                  background: dark
+                    ? THEME_ACCENTS[option.value].night.primary
+                    : option.color
+                }"
+              ></i>
               <span>{{ option.label }}</span>
             </button>
           </div>
@@ -62,7 +68,7 @@
         <div class="mode-row">
           <span>
             <b>夜间校园</b>
-            <small>降低眩光，保留摊位暖灯</small>
+            <small>柔和灰阶，保留校园色彩</small>
           </span>
           <el-switch
             @change="changeThemeMode"
@@ -157,6 +163,7 @@ import { UserData } from "@/api/user/type";
 import { getUserVoByIdUsingGet } from "@/api/userController";
 import { ElMessage } from "element-plus";
 import {
+  THEME_ACCENTS,
   applyAccentPreset,
   applyThemeMode,
   getStoredAccentPreset,

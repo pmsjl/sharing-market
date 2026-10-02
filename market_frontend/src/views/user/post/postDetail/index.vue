@@ -1,5 +1,9 @@
 <template>
-  <div class="post-detail">
+  <div
+    class="post-detail"
+    :class="{ 'has-catalog': catalog.length >= 3 }"
+    ref="articleRef"
+  >
     <div v-if="isAgentEntry" class="agent-return-bar">
       <el-button :icon="ArrowLeft" plain @click="returnToAgent">
         返回智能导购
@@ -7,12 +11,18 @@
       <span>继续查看刚才的咨询与推荐理由</span>
     </div>
 
+    <router-link v-if="!isAgentEntry" class="back-to-journal" to="/user/post"
+      >‹ 返回同学攻略</router-link
+    >
     <!-- 帖子详情 -->
     <div class="post-content">
+      <h1 class="post-title">{{ post.title || "未命名攻略" }}</h1>
       <div class="post-header">
-        <el-avatar :src="post.user?.userAvatar" class="user-avatar" />
+        <el-avatar :src="post.user?.userAvatar" class="user-avatar">{{
+          (post.user?.userName || "同学").slice(0, 1)
+        }}</el-avatar>
         <div class="user-details">
-          <span class="user-name">{{ post.user?.userName }}</span>
+          <span class="user-name">{{ post.user?.userName || "同学" }}</span>
           <span class="post-time">{{ post.createTime }}</span>
         </div>
         <el-button
@@ -26,12 +36,30 @@
           私聊作者
         </el-button>
       </div>
-      <h1 class="post-title">{{ post.title }}</h1>
+      <div class="article-topics">
+        <span v-for="tag in post.tagList || []" :key="tag">#{{ tag }}</span>
+      </div>
+      <details v-if="catalog.length >= 3" class="mobile-catalog">
+        <summary>文章目录</summary>
+        <nav aria-label="文章目录">
+          <button
+            v-for="item in catalog"
+            :key="item.id"
+            :class="{ subheading: item.level === 3 }"
+            type="button"
+            @click="jumpToHeading(item.id)"
+          >
+            {{ item.text }}
+          </button>
+        </nav>
+      </details>
       <MdPreview
         class="post-body"
         editor-id="mdPreview"
         :modelValue="post.content"
         previewTheme="github"
+        :mdHeadingId="headingId"
+        @onGetCatalog="receiveCatalog"
         showCodeRowNumber
       />
 
@@ -71,6 +99,9 @@
           <el-icon><Share /></el-icon><span>分享</span>
         </button>
       </div>
+      <button class="join-discussion" type="button" @click="joinDiscussion">
+        参与讨论 ↓
+      </button>
       <ShareDialog
         v-model="shareDialogVisible"
         title="分享这篇攻略"
@@ -79,15 +110,31 @@
       />
     </div>
 
+    <aside v-if="catalog.length >= 3" class="desktop-catalog">
+      <span>这篇文章</span>
+      <nav aria-label="文章目录">
+        <button
+          v-for="item in catalog"
+          :key="item.id"
+          :class="{ subheading: item.level === 3 }"
+          type="button"
+          @click="jumpToHeading(item.id)"
+        >
+          {{ item.text }}
+        </button>
+      </nav>
+    </aside>
     <!-- 评论区 -->
-    <Comments :postId="postId" style="margin-top: 20px" />
+    <div class="article-discussion" ref="discussionRef">
+      <Comments :postId="postId" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import usePrivateMessageStore from "@/store/modules/privateMessage";
 import Comments from "@/components/Comment/index.vue";
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getPostVoByIdUsingGet } from "@/api/postController";
 import { doPostFavourUsingPost } from "@/api/postFavourController";
@@ -99,6 +146,36 @@ import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/preview.css";
 import { GET_ID } from "@/utils/token";
 import { ArrowLeft, Star, StarFilled, Share } from "@element-plus/icons-vue";
+const articleRef = ref<HTMLElement | null>(null);
+const discussionRef = ref<HTMLElement | null>(null);
+const catalog = ref<{ text: string; level: number; id: string }[]>([]);
+const headingId = (_text: string, _level: number, index: number) =>
+  `post-heading-${index}`;
+const receiveCatalog = (heads: { text: string; level: number }[]) => {
+  catalog.value = heads
+    .map((head, index) => ({
+      ...head,
+      id: headingId(head.text, head.level, index + 1)
+    }))
+    .filter((head) => head.level === 2 || head.level === 3);
+};
+const jumpToHeading = async (id: string) => {
+  const details =
+    articleRef.value?.querySelector<HTMLDetailsElement>(".mobile-catalog");
+  if (details) details.open = false;
+  await nextTick();
+  const heading = articleRef.value?.querySelector<HTMLElement>(`#${id}`);
+  if (!heading) return;
+  heading.tabIndex = -1;
+  heading.scrollIntoView({ block: "start", behavior: "auto" });
+  heading.focus({ preventScroll: true });
+};
+const joinDiscussion = () => {
+  discussionRef.value?.scrollIntoView({ block: "start", behavior: "auto" });
+  discussionRef.value
+    ?.querySelector<HTMLTextAreaElement>("textarea")
+    ?.focus({ preventScroll: true });
+};
 // 获取路由参数
 const route = useRoute();
 const router = useRouter();
@@ -155,6 +232,7 @@ const fetchPostDetail = async () => {
       post.value = {
         id: response.data.id || postId,
         title: response.data.title,
+        tagList: response.data.tagList || [],
         content: response.data.content,
         createTime: response.data.createTime,
         userId: response.data.userId,
@@ -264,7 +342,7 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .post-detail {
-  max-width: 920px;
+  max-width: 740px;
   margin: 0 auto;
   padding: 20px 0;
 }
@@ -314,8 +392,8 @@ onMounted(async () => {
 .post-body {
   color: var(--market-ink);
   background: transparent;
-  font-size: 16px;
-  line-height: 1.9;
+  font-size: 17px;
+  line-height: 1.85;
   --md-bk-color: transparent;
   --md-color: var(--market-ink);
   --md-border-color: var(--market-line);
@@ -326,7 +404,25 @@ onMounted(async () => {
   :deep(.md-editor-preview) {
     color: var(--market-ink);
     overflow-wrap: anywhere;
+    word-break: normal;
     font-family: var(--market-font-body);
+    font-size: inherit;
+    line-height: inherit;
+  }
+  :deep(.github-theme) {
+    --md-theme-color: var(--market-ink);
+    --md-theme-heading-color: var(--market-ink);
+    --md-theme-link-color: var(--market-primary);
+    --md-theme-border-color: var(--market-line);
+    --md-theme-table-stripe-color: var(--market-surface-soft);
+  }
+  :deep(.md-editor-preview h1),
+  :deep(.md-editor-preview h2),
+  :deep(.md-editor-preview h3) {
+    color: var(--market-ink);
+    border: 0;
+    line-height: 1.5;
+    margin-top: 1.6em;
   }
   :deep(.md-editor-preview ul) {
     list-style: disc;
@@ -403,6 +499,139 @@ onMounted(async () => {
   }
   .post-reactions {
     gap: 10px 20px;
+  }
+}
+
+.back-to-journal {
+  display: inline-block;
+  margin-bottom: 28px;
+  color: var(--market-muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+.article-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: -8px 0 30px;
+  color: var(--market-muted);
+  font-size: 13px;
+}
+.article-discussion {
+  margin-top: 32px;
+  min-width: 0;
+}
+.join-discussion {
+  border: 0;
+  background: transparent;
+  color: var(--market-primary);
+  padding: 12px 0;
+  min-height: 44px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+.desktop-catalog {
+  display: none;
+}
+.mobile-catalog {
+  border-block: 1px solid var(--market-line);
+  padding: 14px 0;
+  margin-bottom: 28px;
+  summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--market-muted);
+  }
+}
+.desktop-catalog,
+.mobile-catalog {
+  nav {
+    display: grid;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  button {
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 8px 0;
+    color: var(--market-muted);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    &:hover {
+      color: var(--market-primary);
+    }
+    &.subheading {
+      padding-left: 14px;
+    }
+  }
+}
+.post-detail :deep(.md-editor-preview h2),
+.post-detail :deep(.md-editor-preview h3) {
+  scroll-margin-top: 24px;
+}
+.post-body :deep(blockquote) {
+  border-left: 3px solid var(--market-line-strong);
+  padding: 4px 20px;
+  color: var(--market-muted);
+  background: transparent;
+}
+.post-body :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.post-body :deep(pre) {
+  max-width: 100%;
+}
+@media (min-width: 1200px) {
+  .post-detail.has-catalog {
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: minmax(0, 740px) 200px;
+    gap: 0 60px;
+  }
+  .has-catalog > .back-to-journal,
+  .has-catalog > .agent-return-bar {
+    grid-column: 1 / -1;
+  }
+  .has-catalog > .post-content {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .has-catalog > .article-discussion {
+    grid-column: 1;
+  }
+  .desktop-catalog {
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    position: sticky;
+    top: 24px;
+    max-height: calc(100dvh - 170px);
+    overflow-y: auto;
+    border-left: 1px solid var(--market-line);
+    padding-left: 20px;
+    > span {
+      color: var(--market-ink);
+      font-size: 13px;
+    }
+  }
+  .mobile-catalog {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .post-body {
+    font-size: 16px;
+  }
+  .back-to-journal {
+    margin-bottom: 20px;
   }
 }
 </style>

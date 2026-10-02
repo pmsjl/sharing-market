@@ -1,12 +1,15 @@
 package com.pmsjl.utils;
 
 import cn.hutool.dfa.WordTree;
-
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.exception.BusinessException;
-import org.springframework.util.ResourceUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,39 +17,40 @@ import java.util.List;
 /**
  * 内容工具类
  */
+@Slf4j
 public class WordUtils {
     private static final WordTree WORD_TREE;
 
     static {
-        WORD_TREE = new WordTree();
-        try {
-            File file = ResourceUtils.getFile("classpath:forbiddenWords.txt");
-            List<String> blackList = loadBlackListFromFile(file);
-            WORD_TREE.addWords(blackList);
-        } catch (FileNotFoundException e) {
+        try (InputStream input = new ClassPathResource(
+                "forbiddenWords.txt", WordUtils.class.getClassLoader()).getInputStream()) {
+            List<String> blackList = loadBlackListFromStream(input);
+            WordTree wordTree = new WordTree();
+            wordTree.addWords(blackList);
+            WORD_TREE = wordTree;
+        } catch (IOException e) {
+            log.error("读取违禁词文件时出错", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "读取违禁词文件出错");
         }
     }
 
     /**
-     * 从文件中加载违禁词列表
+     * 从资源流中加载违禁词列表，读取失败时不返回部分词库。
      *
-     * @param file 违禁词文件
+     * @param input 违禁词资源流
      * @return 违禁词列表
      */
-    private static List<String> loadBlackListFromFile(File file) {
+    private static List<String> loadBlackListFromStream(InputStream input) throws IOException {
         List<String> blackList = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+                new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (!line.isEmpty()) {
-                    blackList.add(line.trim());
-                } // 去掉首尾空格
+                String word = line.trim();
+                if (!word.isEmpty()) {
+                    blackList.add(word);
+                }
             }
-        } catch (IOException e) {
-            System.err.println("读取违禁词文件时出错: " + e.getMessage());
-            e.printStackTrace();
         }
         return blackList;
     }

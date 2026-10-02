@@ -30,7 +30,8 @@
     "vue": "3.3.4",
     "vue-clipboard3": "^2.0.0",
     "vue-router": "^4.0.3",
-    "vue3-emoji-picker": "^1.1.8"
+    "vue3-emoji-picker": "^1.1.8",
+    "markdown-it": "13.0.2"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.4.0",
@@ -50,7 +51,8 @@
     "openapi-typescript-codegen": "^0.29.0",
     "prettier": "^2.4.1",
     "sass": "^1.63.6",
-    "typescript": "4.5.5"
+    "typescript": "4.5.5",
+    "@types/markdown-it": "12.2.3"
   },
   "overrides": {
     "@types/lodash": "4.14.195",

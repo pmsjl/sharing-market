@@ -174,95 +174,86 @@ $base-menu-background: #edf4fc;
   --el-font-family: var(--market-font);
 }
 
+// Neutral night surfaces; accent values match the default runtime night scale.
 html.dark,
 html[data-theme="night"] {
   color-scheme: dark;
-  --market-canvas: #0c1426;
-  --market-surface: #141f33;
-  --market-surface-soft: #19263b;
-  --market-surface-raised: #1c2940;
-  --market-ink: #e8eef7;
-  --market-muted: #a8b5c8;
-  --market-faint: #7f90a8;
-  --market-line: #33445f;
-  --market-line-strong: #465b79;
-  --market-primary: #60a5fa;
-  --market-primary-hover: #93c5fd;
-  --market-primary-soft: rgba(96, 165, 250, 0.15);
-  --market-lake: #38bdf8;
-  --market-orange: #fb923c;
-  --market-orange-text: #fb923c;
-  --market-accent-solid: #fb923c;
-  --market-on-accent: #172033;
-  --market-on-primary: #172033;
-  --market-orange-soft: rgba(251, 146, 60, 0.14);
-  --market-yellow: #f6c453;
-  --market-yellow-soft: rgba(246, 196, 83, 0.13);
-  --market-success: #4fd1a1;
-  --market-success-soft: rgba(79, 209, 161, 0.13);
-  --market-warning: #f0b95a;
-  --market-danger: #fb7185;
-  --market-danger-soft: rgba(251, 113, 133, 0.13);
-
+  --market-canvas: #1c1e20;
+  --market-surface: #24272a;
+  --market-surface-soft: #292d30;
+  --market-surface-raised: #2d3135;
+  --market-heading: #e5e7e3;
+  --market-ink: #d0d3d1;
+  --market-muted: #a4aba8;
+  --market-faint: #969e9a;
+  --market-line: #383e42;
+  --market-line-strong: #778185;
+  --market-control-border: #778185;
+  --market-primary: #91aed2;
+  --market-primary-hover: #adc2dd;
+  --market-primary-soft: #2b3949;
+  --market-lake: #8cb8bd;
+  --market-orange: #c9a087;
+  --market-orange-text: #c9a087;
+  --market-accent-solid: #c9a087;
+  --market-on-accent: #1c1e20;
+  --market-on-primary: #1c1e20;
+  --market-orange-soft: #3c322d;
+  --market-yellow: #bda777;
+  --market-yellow-soft: #383327;
+  --market-success: #91b59f;
+  --market-success-soft: #2a3931;
+  --market-warning: #c5ad7f;
+  --market-danger: #d3a09f;
+  --market-danger-soft: #3e3032;
   --market-paper: var(--market-canvas);
   --market-paper-deep: var(--market-surface-soft);
   --market-card-bg: var(--market-surface);
   --market-soft-bg: var(--market-surface-soft);
-  --market-board: #415875;
-  --market-board-overlay: rgba(65, 88, 117, 0.38);
-  --market-chalk: #f8fafc;
-  --market-ticket-pink: #c97970;
-  --market-stamp-red: #fb7c5c;
+  --market-board: #383e42;
+  --market-board-overlay: rgba(56, 62, 66, 0.38);
+  --market-chalk: var(--market-heading);
+  --market-ticket-pink: #b99a91;
+  --market-stamp-red: var(--market-orange);
   --market-note-green-bg: var(--market-primary-soft);
   --market-note-yellow-bg: var(--market-yellow-soft);
-  --market-pin-border: rgba(232, 238, 247, 0.55);
-  --market-wash: rgba(96, 165, 250, 0.09);
+  --market-pin-border: var(--market-line);
+  --market-wash: rgba(164, 171, 168, 0.04);
   --market-green: var(--market-primary);
   --market-green-dark: var(--market-primary-hover);
   --market-blue: var(--market-lake);
   --market-red: var(--market-danger);
-
-  --market-body-bg: radial-gradient(
-      circle at 12% 0%,
-      rgba(96, 165, 250, 0.12),
-      transparent 32%
-    ),
-    radial-gradient(circle at 88% 4%, rgba(251, 146, 60, 0.08), transparent 24%),
-    linear-gradient(180deg, #0f1a30 0, var(--market-canvas) 42%, #09101f 100%);
-  --market-header-bg: rgba(20, 31, 51, 0.88);
-  --market-sidebar-bg: linear-gradient(
-    180deg,
-    rgba(20, 31, 51, 0.99),
-    rgba(12, 20, 38, 0.99)
-  );
-  --market-topbar-bg: rgba(20, 31, 51, 0.88);
-  --market-menu-hover-bg: rgba(96, 165, 250, 0.1);
-  --market-menu-active-bg: rgba(96, 165, 250, 0.16);
-  --market-shadow: 0 20px 48px rgba(0, 0, 0, 0.36);
-  --market-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.26);
-  --market-shadow-lift: 0 26px 56px rgba(0, 0, 0, 0.44);
-  --market-focus: 0 0 0 3px rgba(96, 165, 250, 0.32);
-  --market-grain-opacity: 0.08;
+  --market-body-bg: var(--market-canvas);
+  --market-header-bg: var(--market-canvas);
+  --market-sidebar-bg: var(--market-surface);
+  --market-topbar-bg: var(--market-canvas);
+  --market-menu-hover-bg: var(--market-surface-soft);
+  --market-menu-active-bg: var(--market-primary-soft);
+  --market-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+  --market-shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --market-shadow-lift: 0 20px 48px rgba(0, 0, 0, 0.28);
+  --market-focus: 0 0 0 2px var(--market-primary);
+  --market-grain-opacity: 0;
 
   --el-bg-color: var(--market-surface);
   --el-bg-color-page: var(--market-canvas);
   --el-bg-color-overlay: var(--market-surface-raised);
-  --el-text-color-primary: var(--market-ink);
+  --el-text-color-primary: var(--market-heading);
   --el-text-color-regular: var(--market-ink);
   --el-text-color-secondary: var(--market-muted);
   --el-text-color-placeholder: var(--market-faint);
-  --el-text-color-disabled: var(--market-faint);
+  --el-text-color-disabled: #7c8380;
   --el-color-white: #ffffff;
   --el-input-text-color: var(--market-ink);
   --el-input-placeholder-color: var(--market-faint);
   --el-input-bg-color: var(--market-surface);
-  --el-input-border-color: var(--market-line);
-  --el-input-hover-border-color: var(--market-line-strong);
+  --el-input-border-color: var(--market-control-border);
+  --el-input-hover-border-color: var(--market-muted);
   --el-input-focus-border-color: var(--market-primary);
   --el-input-icon-color: var(--market-muted);
   --el-select-input-color: var(--market-ink);
   --el-select-input-focus-border-color: var(--market-primary);
-  --el-select-border-color-hover: var(--market-line-strong);
+  --el-select-border-color-hover: var(--market-muted);
   --el-table-header-bg-color: var(--market-surface-soft);
   --el-table-header-text-color: var(--market-ink);
   --el-table-text-color: var(--market-ink);
@@ -273,18 +264,57 @@ html[data-theme="night"] {
   --el-pagination-button-color: var(--market-muted);
   --el-button-text-color: var(--market-ink);
   --el-border-color: var(--market-line);
-  --el-border-color-light: rgba(168, 181, 200, 0.16);
+  --el-border-color-light: var(--market-line);
+  --el-border-color-lighter: var(--market-line);
+  --el-border-color-extra-light: var(--market-line);
+  --el-border-color-dark: var(--market-line-strong);
+  --el-fill-color: var(--market-surface-soft);
   --el-fill-color-blank: var(--market-surface);
   --el-fill-color-light: var(--market-surface-soft);
+  --el-fill-color-lighter: var(--market-surface-raised);
+  --el-fill-color-extra-light: var(--market-surface-soft);
+  --el-fill-color-dark: var(--market-line);
+  --el-fill-color-darker: var(--market-line-strong);
+  --el-disabled-bg-color: var(--market-surface-soft);
+  --el-disabled-border-color: var(--market-line);
+  --el-disabled-text-color: #7c8380;
   --el-color-primary: var(--market-primary);
-  --el-color-primary-light-3: #7eb7fb;
-  --el-color-primary-light-5: #4b78ad;
-  --el-color-primary-light-7: #2f4e73;
-  --el-color-primary-light-9: #1b3150;
+  --el-color-primary-light-3: #a0bad9;
+  --el-color-primary-light-5: #63778f;
+  --el-color-primary-light-7: #435264;
+  --el-color-primary-light-9: #2b3949;
   --el-color-primary-dark-2: var(--market-primary-hover);
   --el-color-success: var(--market-success);
+  --el-color-success-light-3: #a8c5b2;
+  --el-color-success-light-5: #657f6e;
+  --el-color-success-light-7: #415548;
+  --el-color-success-light-8: #34453b;
+  --el-color-success-light-9: var(--market-success-soft);
+  --el-color-success-dark-2: #a8c5b2;
   --el-color-warning: var(--market-warning);
+  --el-color-warning-light-3: #d1bd97;
+  --el-color-warning-light-5: #8c7a56;
+  --el-color-warning-light-7: #5a503c;
+  --el-color-warning-light-8: #484131;
+  --el-color-warning-light-9: var(--market-yellow-soft);
+  --el-color-warning-dark-2: #d1bd97;
   --el-color-danger: var(--market-danger);
+  --el-color-danger-light-3: #dfb8b6;
+  --el-color-danger-light-5: #95706f;
+  --el-color-danger-light-7: #624b4c;
+  --el-color-danger-light-8: #4d3c3e;
+  --el-color-danger-light-9: var(--market-danger-soft);
+  --el-color-danger-dark-2: #dfb8b6;
+  --el-color-error: var(--market-danger);
+  --el-color-error-light-9: var(--market-danger-soft);
+  --el-color-info: var(--market-muted);
+  --el-color-info-light-3: #b6bcb9;
+  --el-color-info-light-5: #757d79;
+  --el-color-info-light-7: #4b534f;
+  --el-color-info-light-8: #3b423f;
+  --el-color-info-light-9: var(--market-surface-soft);
+  --el-mask-color: rgba(0, 0, 0, 0.55);
+  --el-mask-color-extra-light: rgba(36, 39, 42, 0.8);
 }
 
 // ------------------------------------------------------------

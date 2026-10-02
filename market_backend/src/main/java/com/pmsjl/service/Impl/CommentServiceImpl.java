@@ -137,6 +137,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     public List<CommentVO> getCommentsByPostId(long postId, HttpServletRequest request) {
         List<Comment> commentList = lambdaQuery().eq(Comment::getPostId, postId).list();
+        if (commentList.isEmpty()) {
+            return Collections.emptyList();
+        }
         Set<Long> userIdSet = commentList.stream().map(Comment::getUserId).collect(Collectors.toSet());
         Map<Long, User> userMap = userService.lambdaQuery().
                 in(User::getId, userIdSet).

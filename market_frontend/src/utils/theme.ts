@@ -36,14 +36,14 @@ export const THEME_ACCENTS: Record<ThemeAccentPreset, AccentDefinition> = {
       focus: "rgba(37, 99, 235, 0.24)"
     },
     night: {
-      primary: "#60a5fa",
-      hover: "#93c5fd",
-      soft: "rgba(96, 165, 250, 0.15)",
-      light3: "#7eb7fb",
-      light5: "#4b78ad",
-      light7: "#2f4e73",
-      light9: "#1b3150",
-      focus: "rgba(96, 165, 250, 0.32)"
+      primary: "#91aed2",
+      hover: "#adc2dd",
+      soft: "#2b3949",
+      light3: "#a0bad9",
+      light5: "#63778f",
+      light7: "#435264",
+      light9: "#2b3949",
+      focus: "#91aed2"
     }
   },
   indigo: {
@@ -59,14 +59,14 @@ export const THEME_ACCENTS: Record<ThemeAccentPreset, AccentDefinition> = {
       focus: "rgba(79, 70, 229, 0.24)"
     },
     night: {
-      primary: "#818cf8",
-      hover: "#a5b4fc",
-      soft: "rgba(129, 140, 248, 0.15)",
-      light3: "#9aa3fa",
-      light5: "#626aaa",
-      light7: "#414873",
-      light9: "#252a50",
-      focus: "rgba(129, 140, 248, 0.32)"
+      primary: "#aaa6cb",
+      hover: "#c0bddb",
+      soft: "#373443",
+      light3: "#b6b2d3",
+      light5: "#78748e",
+      light7: "#504c60",
+      light9: "#373443",
+      focus: "#aaa6cb"
     }
   },
   "lake-blue": {
@@ -82,14 +82,14 @@ export const THEME_ACCENTS: Record<ThemeAccentPreset, AccentDefinition> = {
       focus: "rgba(2, 132, 199, 0.24)"
     },
     night: {
-      primary: "#38bdf8",
-      hover: "#7dd3fc",
-      soft: "rgba(56, 189, 248, 0.15)",
-      light3: "#66caf9",
-      light5: "#3488ad",
-      light7: "#255b73",
-      light9: "#173648",
-      focus: "rgba(56, 189, 248, 0.32)"
+      primary: "#8cb8bd",
+      hover: "#aacbcf",
+      soft: "#2a3c3f",
+      light3: "#9cc3c8",
+      light5: "#607f83",
+      light7: "#40565a",
+      light9: "#2a3c3f",
+      focus: "#8cb8bd"
     }
   }
 };
@@ -118,7 +118,10 @@ export const applyAccentPreset = (preset: ThemeAccentPreset) => {
   html.style.setProperty("--market-primary-soft", scale.soft);
   html.style.setProperty("--market-green", scale.primary);
   html.style.setProperty("--market-green-dark", scale.hover);
-  html.style.setProperty("--market-focus", `0 0 0 3px ${scale.focus}`);
+  html.style.setProperty(
+    "--market-focus",
+    `0 0 0 ${mode === "night" ? 2 : 3}px ${scale.focus}`
+  );
   html.style.setProperty("--el-color-primary", scale.primary);
   html.style.setProperty("--el-color-primary-light-3", scale.light3);
   html.style.setProperty("--el-color-primary-light-5", scale.light5);
