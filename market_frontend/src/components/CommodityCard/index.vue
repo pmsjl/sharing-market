@@ -125,32 +125,9 @@
       </section>
     </template>
 
-    <el-dialog v-model="shareDialogVisible" title="分享此商品" width="460px">
-      <div class="share-dialog-content">
-        <div class="share-section">
-          <p>复制链接发给同学</p>
-          <div class="link-container">
-            <span>{{ currentPageUrl }}</span>
-            <el-button type="primary" @click="copyLink">复制</el-button>
-          </div>
-        </div>
-        <div class="share-section qr-section">
-          <p>或扫描二维码打开</p>
-          <QRCodeVue3
-            :value="currentPageUrl"
-            :width="200"
-            :height="200"
-            :imageOptions="{
-              hideBackgroundDots: false,
-              imageSize: 0.4,
-              margin: 0
-            }"
-          />
-        </div>
-      </div>
-    </el-dialog>
+    <ShareDialog v-model="shareDialogVisible" title="分享此商品" subject="商品详情" :url="currentPageUrl" />
 
-    <el-dialog v-model="buyDialogVisible" title="购买商品" width="520px">
+    <el-dialog v-model="buyDialogVisible" title="购买商品" width="min(520px, calc(100vw - 32px))" append-to-body align-center>
       <el-form :model="buyForm" label-width="110px">
         <el-form-item label="购买数量" prop="buyNumber">
           <el-input-number
@@ -200,12 +177,12 @@ import {
   StarFilled,
   View
 } from "@element-plus/icons-vue";
-import QRCodeVue3 from "qrcode-vue3";
+import ShareDialog from "@/components/ShareDialog/index.vue";
+import { buildPublicShareUrl } from "@/utils/shareUrl";
 import {
   getCommodityVoByIdUsingGet,
   buyCommodityUsingPost
 } from "@/api/commodityController";
-import useClipboard from "vue-clipboard3";
 import {
   addUserCommodityFavoritesUsingPost,
   editUserCommodityFavoritesUsingPost,
@@ -247,13 +224,7 @@ const alreadyRecord = ref(0);
 const id = ref();
 const shareDialogVisible = ref(false);
 const buyDialogVisible = ref(false);
-const buildShareUrl = () => {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("from");
-  url.searchParams.delete("conversationId");
-  return url.toString();
-};
-const currentPageUrl = ref(buildShareUrl());
+const currentPageUrl = computed(() => buildPublicShareUrl(window.location.href));
 const routeValue = (value: unknown) =>
   Array.isArray(value) ? String(value[0] || "") : String(value || "");
 const isAgentEntry = computed(() => routeValue(route.query.from) === "agent");
@@ -435,19 +406,6 @@ const submitBuy = async () => {
   }
 };
 
-const { toClipboard } = useClipboard();
-const copyLink = async () => {
-  try {
-    await toClipboard(currentPageUrl.value);
-    ElMessage.success({
-      message: "链接已复制到剪贴板",
-      duration: 1000
-    });
-  } catch (e) {
-    ElMessage.error("复制失败");
-  }
-};
-
 onMounted(async () => {
   await fetchCommodityDetail();
   await fetchInitFavour();
@@ -617,7 +575,13 @@ h1 {
   .seller-contact {
     background: transparent !important;
     border: 0;
-    padding-inline: 0;
+    min-width: 132px;
+    min-height: 46px;
+    flex-shrink: 0;
+    margin: 0;
+    padding-inline: 18px;
+    border-radius: 8px;
+    &:hover, &:focus-visible { background: var(--market-primary-soft) !important; transform: none; }
     .el-icon {
       margin-left: 7px;
     }
@@ -678,26 +642,7 @@ h1 {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.score-area,
-.share-dialog-content,
-.share-section {
-  display: grid;
-  gap: 18px;
-}
-.link-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-.qr-section {
-  justify-items: center;
-}
+.score-area { display: grid; gap: 18px; }
 .detail-loading {
   display: grid;
   justify-items: center;

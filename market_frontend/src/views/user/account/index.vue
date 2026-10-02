@@ -18,7 +18,7 @@
         </p>
         <div class="profile-meta">
           <span>ID：{{ user.id }}</span>
-          <span>身份：{{ user.userRole || "-" }}</span>
+          <span>{{ user.userRole === "admin" ? "管理员" : "校园用户" }}</span>
         </div>
       </div>
       <el-button

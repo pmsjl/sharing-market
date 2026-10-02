@@ -89,7 +89,7 @@
             <span
               v-for="tag in post.tagList"
               :key="tag"
-              class="handwritten-tag"
+              class="post-topic"
             >
               <b>#</b>{{ tag }}
             </span>
@@ -421,16 +421,7 @@ const truncateContent = (text: string, length: number) => {
     gap: 10px;
   }
 
-  .handwritten-tag {
-    color: var(--market-green);
-    font-family: var(--market-font-display);
-    font-size: 14px;
-    font-weight: 800;
-
-    b {
-      color: var(--market-orange-text);
-    }
-  }
+  
 }
 
 @media (max-width: 760px) {

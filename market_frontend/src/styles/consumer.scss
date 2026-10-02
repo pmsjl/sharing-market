@@ -237,12 +237,20 @@ html .market-consumer {
     background: transparent !important;
     box-shadow: none;
   }
+  .personal-home-page .avatar-editor {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
 
   .my-orders-page .orders-panel {
     padding: 0;
     border: 0;
     border-radius: 0;
     background: transparent;
+  }
+  .my-orders-page .orders-panel::before {
+    display: none;
   }
   .order-list-container {
     gap: 0;
