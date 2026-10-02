@@ -2,7 +2,7 @@
   <div class="market-page browse-market">
     <header class="browse-heading">
       <div>
-        <span class="browse-kicker">好物循环 · 校园日常</span>
+        <span class="browse-kicker">好物循环</span>
         <h1>发现你的<span>下一件好物</span></h1>
       </div>
       <el-button

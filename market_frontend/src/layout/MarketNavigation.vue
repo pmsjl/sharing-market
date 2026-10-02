@@ -19,7 +19,7 @@
       <img :src="setting.logo" alt="" width="40" height="40" />
       <span
         ><strong>校园集市<span class="brand-dot">.</span></strong
-        ><small>AFTER CLASS MARKET</small></span
+        ><small>SHARING MARKET</small></span
       >
     </router-link>
     <nav class="market-desktop-nav" aria-label="主导航">

@@ -2,7 +2,6 @@
   <div class="market-page discover-home">
     <section class="discovery-hero" aria-labelledby="discovery-title">
       <div class="discovery-copy">
-        <span class="discovery-kicker"><i></i>课间，来逛逛。</span>
         <h1 id="discovery-title">
           好物不毕业，<br /><span>陪你下一程。</span>
         </h1>
@@ -53,7 +52,7 @@
         />
         <div v-else class="scene-fallback">把喜欢，继续传下去。</div>
         <span class="scene-caption"
-          >给生活一点新鲜感 <el-icon><TopRight /></el-icon
+          >发现好物 <el-icon><TopRight /></el-icon
         ></span>
         <span class="scene-sticker"
           ><small>GOOD THINGS, AGAIN.</small>闲置好物<br /><strong
@@ -69,7 +68,7 @@
         <div>
           <span class="section-index">01 / DISCOVER</span>
           <h2 id="fresh-title">
-            下一件心动好物<span class="heading-dot"></span>
+            下一件心动好物
           </h2>
         </div>
         <router-link class="text-link" to="/user/commodity"
