@@ -96,6 +96,7 @@ import { doThumbUsingPost } from "@/api/postThumbController";
 import ShareDialog from "@/components/ShareDialog/index.vue";
 import { buildPublicShareUrl } from "@/utils/shareUrl";
 import { MdPreview } from "md-editor-v3";
+import "md-editor-v3/lib/preview.css";
 import { GET_ID } from "@/utils/token";
 import { ArrowLeft, Star, StarFilled, Share } from "@element-plus/icons-vue";
 // 获取路由参数
@@ -326,6 +327,17 @@ onMounted(async () => {
     color: var(--market-ink);
     overflow-wrap: anywhere;
     font-family: var(--market-font-body);
+  }
+  :deep(.md-editor-preview ul) {
+    list-style: disc;
+    padding-left: 1.5em;
+  }
+  :deep(.md-editor-preview ol) {
+    list-style: decimal;
+    padding-left: 1.5em;
+  }
+  :deep(.md-editor-preview li) {
+    margin: 0.35em 0;
   }
   :deep(.md-editor-preview pre) {
     overflow-x: auto;

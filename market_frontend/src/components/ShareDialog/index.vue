@@ -17,9 +17,10 @@
       <div class="share-qr">
         <QRCodeVue3
           :value="url"
-          :width="192"
-          :height="192"
-          :margin="12"
+          :width="384"
+          :height="384"
+          :margin="24"
+          imgclass="market-share-qr-image"
           :dotsOptions="{ color: '#202b3d', type: 'square' }"
           :cornersSquareOptions="{ color: '#202b3d', type: 'square' }"
           :cornersDotOptions="{ color: '#202b3d', type: 'square' }"
@@ -63,7 +64,8 @@ const copyLink = async () => {
   width: min(460px, calc(100vw - 32px)) !important;
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
-  margin: 16px auto !important;
+  margin: auto !important;
+  align-self: center;
   padding: 24px;
   overflow-y: auto;
   border-radius: 14px;
@@ -114,6 +116,11 @@ const copyLink = async () => {
       margin: 0;
       padding: 0 16px;
     }
+  }
+  .market-share-qr-image {
+    display: block;
+    width: 192px;
+    height: 192px;
   }
   .share-qr {
     display: grid;

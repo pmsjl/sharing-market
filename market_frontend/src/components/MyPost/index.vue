@@ -320,31 +320,11 @@ onMounted(() => {
 }
 
 .post-item {
-  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 20px 18px 20px 42px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  overflow: hidden;
-  @include ruled-paper(28px, 34px);
-
-  &::before {
-    position: absolute;
-    top: 18px;
-    bottom: 18px;
-    left: 11px;
-    width: 13px;
-    background: radial-gradient(
-      circle,
-      var(--market-paper-deep) 0 4px,
-      rgba(35, 49, 63, 0.2) 4.5px 5.5px,
-      transparent 6px
-    );
-    background-size: 13px 34px;
-    content: "";
-  }
+  padding: 24px 0;
+  border-bottom: 1px solid var(--market-line);
 }
 
 .post-main {
@@ -368,8 +348,8 @@ onMounted(() => {
   h3 {
     margin: 0;
     font-size: 18px;
-    font-weight: 900;
-    font-family: var(--market-font-display);
+    font-weight: 650;
+    font-family: var(--market-font-body);
   }
 
   span {
@@ -398,11 +378,11 @@ onMounted(() => {
 .post-stats {
   color: var(--market-muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .post-stats .stat-active {
-  color: var(--market-orange-text);
+  color: var(--market-primary);
 }
 
 .post-actions {
