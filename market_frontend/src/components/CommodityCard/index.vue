@@ -125,9 +125,20 @@
       </section>
     </template>
 
-    <ShareDialog v-model="shareDialogVisible" title="分享此商品" subject="商品详情" :url="currentPageUrl" />
+    <ShareDialog
+      v-model="shareDialogVisible"
+      title="分享此商品"
+      subject="商品详情"
+      :url="currentPageUrl"
+    />
 
-    <el-dialog v-model="buyDialogVisible" title="购买商品" width="min(520px, calc(100vw - 32px))" append-to-body align-center>
+    <el-dialog
+      v-model="buyDialogVisible"
+      title="购买商品"
+      width="min(520px, calc(100vw - 32px))"
+      append-to-body
+      align-center
+    >
       <el-form :model="buyForm" label-width="110px">
         <el-form-item label="购买数量" prop="buyNumber">
           <el-input-number
@@ -224,7 +235,9 @@ const alreadyRecord = ref(0);
 const id = ref();
 const shareDialogVisible = ref(false);
 const buyDialogVisible = ref(false);
-const currentPageUrl = computed(() => buildPublicShareUrl(window.location.href));
+const currentPageUrl = computed(() =>
+  buildPublicShareUrl(window.location.href)
+);
 const routeValue = (value: unknown) =>
   Array.isArray(value) ? String(value[0] || "") : String(value || "");
 const isAgentEntry = computed(() => routeValue(route.query.from) === "agent");
@@ -581,7 +594,11 @@ h1 {
     margin: 0;
     padding-inline: 18px;
     border-radius: 8px;
-    &:hover, &:focus-visible { background: var(--market-primary-soft) !important; transform: none; }
+    &:hover,
+    &:focus-visible {
+      background: var(--market-primary-soft) !important;
+      transform: none;
+    }
     .el-icon {
       margin-left: 7px;
     }
@@ -642,7 +659,10 @@ h1 {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.score-area { display: grid; gap: 18px; }
+.score-area {
+  display: grid;
+  gap: 18px;
+}
 .detail-loading {
   display: grid;
   justify-items: center;

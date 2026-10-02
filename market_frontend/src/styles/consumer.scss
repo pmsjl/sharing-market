@@ -400,3 +400,26 @@ html .market-consumer {
     transform: none;
   }
 }
+
+/* Read-only topics share one quiet treatment across browse, saved and own posts. */
+html .market-consumer .post-topic {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  margin: 0 14px 6px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--market-muted);
+  font: inherit;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  b {
+    color: var(--market-primary);
+    font-weight: 500;
+  }
+}
+html .market-consumer .post-detail .agent-return-bar {
+  background: transparent !important;
+}

@@ -93,22 +93,13 @@ onMounted(() => {
 }
 
 .comment-card {
-  position: relative;
-  padding-left: 24px;
-  border: 1px solid var(--market-line);
-  background: var(--market-surface);
-  @include ruled-paper(28px, 28px);
-
-  &::before {
-    position: absolute;
-    top: 14px;
-    left: 10px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--market-paper-deep);
-    box-shadow: 0 34px var(--market-paper-deep);
-    content: "";
+  border: 0;
+  border-bottom: 1px solid var(--market-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  :deep(.el-card__body) {
+    padding: 20px 0;
   }
 }
 
@@ -119,14 +110,14 @@ onMounted(() => {
 }
 
 .comment-link {
-  color: var(--market-green);
-  font-family: var(--market-font-display);
+  color: var(--market-primary);
+  font-family: var(--market-font-body);
   text-decoration: none;
 }
 
 .comment-update-time {
   color: var(--market-muted);
-  font-family: var(--market-font-mono);
+  font-family: var(--market-font-body);
 }
 
 .comment-content {

@@ -1,13 +1,18 @@
 <template>
   <div
     class="comment-view"
-    :class="{ 'root-comment': depth === 0, 'reply-comment': depth > 0 }"
+    :class="{
+      'root-comment': depth === 0,
+      'reply-comment': depth > 0,
+      'deep-reply': depth > 1
+    }"
   >
     <el-avatar
-      :src="comment.user?.userAvatar || '/assets/logo.png'"
+      :src="comment.user?.userAvatar"
       :size="depth === 0 ? 'default' : 'small'"
       class="avatar"
-    />
+      >{{ (comment.user?.userName || "同学").slice(0, 1) }}</el-avatar
+    >
 
     <div class="comment-content">
       <div class="comment-header">
@@ -233,19 +238,18 @@ const cancelEvent = () => {
 }
 
 .root-comment {
-  padding: 18px 20px;
-  border: 1px solid var(--market-line);
-  border-radius: 8px;
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  @include ruled-paper(28px, 28px);
+  padding: 24px 0;
+  border-bottom: 1px solid var(--market-line);
 }
-
 .reply-comment {
-  padding: 12px 0 0 16px;
-  border-left: 2px solid var(--market-ticket-pink);
+  padding: 16px 0 0 12px;
+  border-left: 1px solid var(--market-line);
 }
-
+.deep-reply {
+  margin-left: -38px;
+  padding-left: 0;
+  border-left: 0;
+}
 .avatar {
   flex: 0 0 auto;
 }
@@ -266,7 +270,7 @@ const cancelEvent = () => {
 
 .username {
   font-weight: bold;
-  color: var(--market-green);
+  color: var(--market-ink);
 }
 
 .reply-target {
@@ -276,14 +280,14 @@ const cancelEvent = () => {
 
 .create-time {
   color: var(--market-muted);
-  font-family: var(--market-font-mono);
+  font-family: var(--market-font-body);
   font-size: 0.875rem;
 }
 
 .comment-body {
   margin: 12px 0;
   line-height: 1.7;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .comment-actions {
@@ -294,7 +298,7 @@ const cancelEvent = () => {
   flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px dashed var(--market-line);
+  border-top: 0;
 }
 
 .action-buttons-inline {
@@ -305,24 +309,23 @@ const cancelEvent = () => {
 
 .action-buttons-inline :deep(.el-button) {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 4px;
 }
 
 .action-buttons-inline :deep(.el-button:hover) {
-  background: rgba(43, 110, 80, 0.1);
+  background: transparent;
+  text-decoration: underline;
 }
 
 .action-buttons-inline :deep(.delete-button:hover) {
-  background: rgba(197, 75, 66, 0.12);
+  background: transparent;
 }
 
 .reply-editor {
   margin-top: 14px;
-  padding: 14px;
-  background: var(--market-paper-deep);
-  border-radius: 8px;
+  padding: 0;
 }
 
 .reply-editor-actions {

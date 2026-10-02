@@ -39,17 +39,44 @@
       <el-divider />
 
       <div class="post-reactions" aria-label="帖子互动">
-        <button type="button" :class="{ active: initLikeStatus === 1 }" :aria-pressed="initLikeStatus === 1" :disabled="liking" @click="doThumb">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c1-1 3 0 2 3l-1 4h6a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7" /></svg>
-          <span>{{ initLikeStatus === 1 ? '已赞' : '点赞' }}</span><span class="reaction-count">{{ likeCount || 0 }}</span>
+        <button
+          type="button"
+          :class="{ active: initLikeStatus === 1 }"
+          :aria-pressed="initLikeStatus === 1"
+          :disabled="liking"
+          @click="doThumb"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M7 10v11H3V10h4Zm0 0 5-7c1-1 3 0 2 3l-1 4h6a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"
+            />
+          </svg>
+          <span>{{ initLikeStatus === 1 ? "已赞" : "点赞" }}</span
+          ><span class="reaction-count">{{ likeCount || 0 }}</span>
         </button>
-        <button type="button" :class="{ active: initCollectStatus === 1 }" :aria-pressed="initCollectStatus === 1" :disabled="collecting" @click="handleCollect">
-          <el-icon><StarFilled v-if="initCollectStatus === 1" /><Star v-else /></el-icon>
-          <span>{{ initCollectStatus === 1 ? '已收藏' : '收藏' }}</span><span class="reaction-count">{{ collectCount || 0 }}</span>
+        <button
+          type="button"
+          :class="{ active: initCollectStatus === 1 }"
+          :aria-pressed="initCollectStatus === 1"
+          :disabled="collecting"
+          @click="handleCollect"
+        >
+          <el-icon
+            ><StarFilled v-if="initCollectStatus === 1" /><Star v-else
+          /></el-icon>
+          <span>{{ initCollectStatus === 1 ? "已收藏" : "收藏" }}</span
+          ><span class="reaction-count">{{ collectCount || 0 }}</span>
         </button>
-        <button type="button" @click="handleShare"><el-icon><Share /></el-icon><span>分享</span></button>
+        <button type="button" @click="handleShare">
+          <el-icon><Share /></el-icon><span>分享</span>
+        </button>
       </div>
-      <ShareDialog v-model="shareDialogVisible" title="分享这篇攻略" subject="攻略详情" :url="currentPageUrl" />
+      <ShareDialog
+        v-model="shareDialogVisible"
+        title="分享这篇攻略"
+        subject="攻略详情"
+        :url="currentPageUrl"
+      />
     </div>
 
     <!-- 评论区 -->
@@ -87,7 +114,9 @@ const sourceConversationId = computed(() =>
 // 分享对话框的显示状态
 const shareDialogVisible = ref(false);
 // 当前页面地址
-const currentPageUrl = computed(() => buildPublicShareUrl(window.location.href));
+const currentPageUrl = computed(() =>
+  buildPublicShareUrl(window.location.href)
+);
 
 // 帖子详情数据
 const post = ref<API.PostVO>({
@@ -154,24 +183,34 @@ const doThumb = async () => {
   liking.value = true;
   try {
     const res = await doThumbUsingPost({ postId: post.value.id });
-    if (res.code !== 200) { ElMessage.error("点赞操作失败，请重试"); return; }
+    if (res.code !== 200) {
+      ElMessage.error("点赞操作失败，请重试");
+      return;
+    }
     initLikeStatus.value = res.data === -1 ? 0 : 1;
     await getPostLikeAndCollect();
   } catch {
     ElMessage.error("点赞操作失败，请重试");
-  } finally { liking.value = false; }
+  } finally {
+    liking.value = false;
+  }
 };
 const handleCollect = async () => {
   if (collecting.value) return;
   collecting.value = true;
   try {
     const res = await doPostFavourUsingPost({ postId: post.value.id });
-    if (res.code !== 200) { ElMessage.error("收藏操作失败，请重试"); return; }
+    if (res.code !== 200) {
+      ElMessage.error("收藏操作失败，请重试");
+      return;
+    }
     initCollectStatus.value = res.data === -1 ? 0 : 1;
     await getPostLikeAndCollect();
   } catch {
     ElMessage.error("收藏操作失败，请重试");
-  } finally { collecting.value = false; }
+  } finally {
+    collecting.value = false;
+  }
 };
 // 获取帖子原来的点赞量和收藏量
 const getPostLikeAndCollect = async () => {
@@ -223,37 +262,135 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.post-detail { max-width: 920px; margin: 0 auto; padding: 20px 0; }
-.agent-return-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; color: var(--market-muted); font-size: 13px; }
-.post-content { padding: 0; min-width: 0; }
-.post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-.user-details { display: grid; gap: 5px; min-width: 0; }
-.user-name { font-weight: 600; overflow-wrap: anywhere; }
-.post-time { color: var(--market-muted); font-size: 12px; }
-.chat-author-button { margin-left: auto; flex-shrink: 0; }
-.post-title { font-size: clamp(26px, 3vw, 38px); font-weight: 750; line-height: 1.4; margin: 0 0 28px; overflow-wrap: anywhere; }
+.post-detail {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+.agent-return-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--market-muted);
+  font-size: 13px;
+}
+.post-content {
+  padding: 0;
+  min-width: 0;
+}
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.user-details {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.user-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.post-time {
+  color: var(--market-muted);
+  font-size: 12px;
+}
+.chat-author-button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.post-title {
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 750;
+  line-height: 1.4;
+  margin: 0 0 28px;
+  overflow-wrap: anywhere;
+}
 .post-body {
-  color: var(--market-ink); background: transparent; font-size: 16px; line-height: 1.9;
-  --md-bk-color: transparent; --md-color: var(--market-ink); --md-border-color: var(--market-line);
-  :deep(.md-editor-preview-wrapper) { padding: 0; background: transparent; }
-  :deep(.md-editor-preview) { color: var(--market-ink); overflow-wrap: anywhere; font-family: var(--market-font-body); }
-  :deep(.md-editor-preview pre) { overflow-x: auto; }
-  :deep(.md-editor-preview img) { max-width: 100%; }
+  color: var(--market-ink);
+  background: transparent;
+  font-size: 16px;
+  line-height: 1.9;
+  --md-bk-color: transparent;
+  --md-color: var(--market-ink);
+  --md-border-color: var(--market-line);
+  :deep(.md-editor-preview-wrapper) {
+    padding: 0;
+    background: transparent;
+  }
+  :deep(.md-editor-preview) {
+    color: var(--market-ink);
+    overflow-wrap: anywhere;
+    font-family: var(--market-font-body);
+  }
+  :deep(.md-editor-preview pre) {
+    overflow-x: auto;
+  }
+  :deep(.md-editor-preview img) {
+    max-width: 100%;
+  }
 }
 .post-reactions {
-  display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center;
-  button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: var(--market-muted); font: inherit; font-size: 14px; cursor: pointer; transition: color 160ms ease;
-    &:hover, &.active { color: var(--market-primary); }
-    &:disabled { cursor: wait; opacity: .6; }
-    &:focus-visible { outline: 2px solid var(--market-primary); outline-offset: 4px; }
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  align-items: center;
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--market-muted);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition: color 160ms ease;
+    &:hover,
+    &.active {
+      color: var(--market-primary);
+    }
+    &:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--market-primary);
+      outline-offset: 4px;
+    }
   }
-  svg, .el-icon { width: 19px; height: 19px; font-size: 19px; }
-  > button > svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  .reaction-count { font-variant-numeric: tabular-nums; }
+  svg,
+  .el-icon {
+    width: 19px;
+    height: 19px;
+    font-size: 19px;
+  }
+  > button > svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .reaction-count {
+    font-variant-numeric: tabular-nums;
+  }
 }
 @media (max-width: 600px) {
-  .post-detail { padding: 8px 0; }
-  .post-header { gap: 10px; }
-  .post-reactions { gap: 10px 20px; }
+  .post-detail {
+    padding: 8px 0;
+  }
+  .post-header {
+    gap: 10px;
+  }
+  .post-reactions {
+    gap: 10px 20px;
+  }
 }
 </style>

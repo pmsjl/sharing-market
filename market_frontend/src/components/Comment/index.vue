@@ -1,53 +1,37 @@
 <template>
-  <div class="comments-page">
-    <el-card class="comments-card">
-      <template #header>
-        <div class="card-header">
-          <span>回答讨论</span>
-        </div>
-      </template>
-
-      <!-- 评论输入框 -->
-      <el-card class="comment-input-card">
-        <el-row style="display: flex; align-items: center">
-          <!-- 头像 -->
-          <el-avatar
-            :src="loginUser.userAvatar || '/assets/logo.png'"
-            size="default"
-            class="comment-avatar"
-          />
-          <span style="margin-left: 5px; font-weight: 700">{{
-            loginUser.userName
-          }}</span>
-        </el-row>
-
-        <el-input
-          v-model="commentText"
-          type="textarea"
-          :rows="4"
-          placeholder="快来和大家讨论吧"
-          class="comment-textarea"
-        />
-
-        <el-button type="success" @click="doComment" class="submit-button"
-          >评论
-        </el-button>
-      </el-card>
-
-      <!-- 评论列表 -->
-      <div v-if="comments.length > 0" class="comment-list">
-        <div v-for="comment in comments" :key="comment.id" class="comment-item">
-          <CommentView
-            :postId="postId"
-            :comment="comment"
-            :showCount="showCount"
-            @getComment="getComments"
-            @delete="handleDelete"
-          />
-        </div>
+  <section class="comments-page" aria-labelledby="comments-heading">
+    <h2 id="comments-heading">回答讨论</h2>
+    <div class="comment-composer">
+      <div class="comment-author">
+        <el-avatar :src="loginUser.userAvatar" :size="32">{{
+          (loginUser.userName || "同学").slice(0, 1)
+        }}</el-avatar>
+        <span>{{ loginUser.userName || "同学" }}</span>
       </div>
-    </el-card>
-  </div>
+      <el-input
+        v-model="commentText"
+        type="textarea"
+        :rows="3"
+        placeholder="分享你的经验，或留下想问的问题"
+        aria-label="评论内容"
+      />
+      <div class="comment-submit">
+        <el-button type="primary" @click="doComment">发表评论</el-button>
+      </div>
+    </div>
+    <div v-if="comments.length" class="comment-list">
+      <CommentView
+        v-for="comment in comments"
+        :key="comment.id"
+        :postId="postId"
+        :comment="comment"
+        :showCount="showCount"
+        @getComment="getComments"
+        @delete="handleDelete"
+      />
+    </div>
+    <p v-else class="comment-empty">还没有讨论，来分享第一条经验吧。</p>
+  </section>
 </template>
 
 <script setup>
@@ -157,60 +141,33 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .comments-page {
-  .comments-card {
-    padding: 20px;
-    position: relative; /* 用于定位头像 */
-    border: 1px solid var(--market-line);
-    background: var(--market-surface);
-    box-shadow: var(--market-shadow-soft);
-  }
-
-  .card-header {
-    font-size: 18px;
-    font-weight: bold;
-    font-family: var(--market-font-display);
-  }
-
-  /* 评论输入框的卡片 */
-  .comment-input-card {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    position: relative;
-    border: 1px dashed var(--market-line);
-    background: var(--market-paper-deep);
-
-    /* 头像区域 */
-    .avatar-container {
-      margin-bottom: 12px; /* 头像和输入框之间的间距 */
-    }
-
-    /* 评论输入框填充满卡片 */
-    .comment-textarea {
-      width: 100%;
-      height: 120px;
-      padding: 10px;
-      background: var(--market-surface);
-      border-radius: 4px;
-    }
-
-    /* 提交按钮放在卡片右下角 */
-    .submit-button {
-      margin-top: 12px;
-      align-self: flex-end; /* 按钮右对齐 */
-      border-color: var(--market-stamp-red);
-      background: var(--market-stamp-red);
-      transform: rotate(-2deg);
-    }
-  }
-
-  /* 评论列表 */
-  .comment-list {
-    margin-top: 20px;
-  }
-
-  .comment-item {
-    margin-bottom: 15px;
-  }
+  border-top: 1px solid var(--market-line);
+  padding-top: 28px;
+}
+h2 {
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 650;
+}
+.comment-composer {
+  margin-bottom: 28px;
+}
+.comment-author {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--market-ink);
+  font-size: 14px;
+}
+.comment-submit {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.comment-empty {
+  padding: 18px 0;
+  color: var(--market-muted);
+  font-size: 14px;
 }
 </style>

@@ -379,8 +379,6 @@ onMounted(() => {
   }
 }
 
-
-
 .post-footer {
   display: flex;
   gap: 12px;

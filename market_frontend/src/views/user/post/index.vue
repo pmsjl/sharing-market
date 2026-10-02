@@ -86,11 +86,7 @@
         <!-- 标签 -->
         <div class="post-footer">
           <div class="post-tags">
-            <span
-              v-for="tag in post.tagList"
-              :key="tag"
-              class="post-topic"
-            >
+            <span v-for="tag in post.tagList" :key="tag" class="post-topic">
               <b>#</b>{{ tag }}
             </span>
           </div>
@@ -420,8 +416,6 @@ const truncateContent = (text: string, length: number) => {
     flex-wrap: wrap;
     gap: 10px;
   }
-
-  
 }
 
 @media (max-width: 760px) {
