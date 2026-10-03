@@ -98,8 +98,8 @@
   display: flex;
   flex-direction: column;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
-  margin-top: max(16px, min(8vh, 60px));
   .el-dialog__body {
     min-height: 0;
     overflow-y: auto;
@@ -109,6 +109,9 @@
   .el-dialog__footer {
     flex-shrink: 0;
   }
+}
+.el-dialog:not(.is-fullscreen):not(.is-align-center) {
+  margin-top: max(16px, min(8vh, 60px));
 }
 .el-dialog.is-fullscreen {
   overflow-y: auto;
@@ -145,9 +148,32 @@ a:focus-visible {
   font-family: var(--market-font-body);
 }
 .el-message-box {
-  max-width: calc(100vw - 32px);
+  display: inline-flex;
+  flex-direction: column;
+  max-width: min(var(--el-messagebox-width, 420px), calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
-  overflow-y: auto;
+  overflow: hidden;
+  .el-message-box__header,
+  .el-message-box__btns {
+    flex-shrink: 0;
+  }
+  .el-message-box__content {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .el-message-box__container {
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .el-message-box__status {
+    flex-shrink: 0;
+  }
+  .el-message-box__message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 }
 .campus-theme-popper {
   max-width: calc(100vw - 24px);

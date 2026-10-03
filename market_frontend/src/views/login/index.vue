@@ -60,7 +60,6 @@
           创建一个账号
         </button>
       </p>
-
     </el-form>
   </AuthMarketLayout>
 </template>
