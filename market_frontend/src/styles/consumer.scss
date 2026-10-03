@@ -83,7 +83,9 @@ html .market-consumer {
     }
   }
 }
-html:not(.dark):not([data-theme="night"]) .market-consumer {
+html:not(.dark):not([data-theme="night"]) .market-consumer,
+html:not(.dark):not([data-theme="night"]) .market-admin,
+html:not(.dark):not([data-theme="night"]) .market-admin-dialog {
   --market-canvas: #faf9f6;
   --market-paper: #faf9f6;
   --market-surface-soft: #f0efea;

@@ -1,124 +1,130 @@
 <template>
-  <div class="admin-page">
+  <div class="admin-page editorial-surface">
     <header class="quiet-heading">
       <h1>用户管理</h1>
       <p>维护账户资料、角色与校园币。</p>
     </header>
-    <el-card style="margin-bottom: 20px">
-      <el-row :gutter="10">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="用户名">
-            <el-input
-              v-model="searchParams.userName"
-              placeholder="请输入用户名"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="用户简介">
-            <el-input
-              v-model="searchParams.userProfile"
-              placeholder="请输入用户简介"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item>
-            <el-button @click="resetSearchParams">重置</el-button>
-            <el-button type="primary" @click="getUserList">查询 </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
-    </el-card>
-    <el-table
-      v-loading="loading"
-      :data="userList"
-      border
-      style="width: 100%; margin-bottom: 10px"
-      :pagination="pagination"
-    >
-      <el-table-column type="index" width="48"></el-table-column>
-      <el-table-column
-        label="用户名"
-        prop="userName"
-        :copyable="true"
-        min-width="160"
-      ></el-table-column>
-      <el-table-column
-        label="用户账户"
-        prop="userAccount"
-        :copyable="true"
-        min-width="100"
-      ></el-table-column>
-      <el-table-column label="头像" prop="userAvatar" min-width="100">
-        <template #default="{ row }">
-          <el-image :src="row.userAvatar" style="width: 100px" />
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="用户简介"
-        prop="userProfile"
-        :copyable="true"
-        min-width="220"
-      ></el-table-column>
-      <el-table-column label="角色" prop="userRole" min-width="100">
-        <template #default="{ row }">
-          <el-select v-model="row.userRole" placeholder="选择角色" disabled>
-            <el-option
-              v-for="(item, value) in roleEnum"
-              :key="value"
-              :label="item.text"
-              :value="value"
-            ></el-option>
-          </el-select>
-        </template>
-      </el-table-column>
-      <el-table-column label="校园币" prop="balance" min-width="150">
-        <template #default="{ row }">{{
-          formatCampusCoin(row.balance, true)
-        }}</template>
-      </el-table-column>
-      <el-table-column
-        label="创建时间"
-        prop="createTime"
-        sortable
-        :formatter="formatDate"
-        min-width="176"
-      ></el-table-column>
-      <el-table-column
-        label="操作"
-        width="242"
-        fixed="right"
-        class-name="admin-operations"
+    <el-card class="admin-search" shadow="never">
+      <h2 class="admin-section-title">筛选条件</h2>
+      <el-form
+        label-position="top"
+        class="admin-filter-grid"
+        @submit.prevent="getUserList"
       >
-        <template #default="{ row }">
-          <el-button link @click="edit(row)">编辑</el-button>
-          <el-button link type="primary" @click="view(row)"> 查看</el-button>
-          <el-button link type="success" @click="openGrantDialog(row)"
-            >发放校园币</el-button
-          >
-          <el-popconfirm
-            title="你确定要删除该用户吗？"
-            @confirm="deleteUser(row)"
-          >
-            <template #reference>
-              <el-button link type="danger"> 删除</el-button>
-            </template>
-          </el-popconfirm>
-        </template>
-      </el-table-column>
-    </el-table>
-    <el-pagination
-      background
-      layout="total, prev, pager, next"
-      :pager-count="5"
-      :page-sizes="[5, 10, 15, 20]"
-      :current-page="pagination.currentPage"
-      :total="pagination.total"
-      :page-size="pagination.pageSize"
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
-    />
+        <el-form-item label="用户名">
+          <el-input
+            v-model="searchParams.userName"
+            placeholder="请输入用户名"
+          />
+        </el-form-item>
+        <el-form-item label="用户简介">
+          <el-input
+            v-model="searchParams.userProfile"
+            placeholder="请输入用户简介"
+          />
+        </el-form-item>
+        <div class="admin-filter-actions">
+          <el-button @click="resetSearchParams">重置</el-button>
+          <el-button native-type="submit" type="primary" plain>查询 </el-button>
+        </div>
+      </el-form>
+    </el-card>
+    <el-card class="admin-data" shadow="never">
+      <h2 class="admin-section-title">用户列表</h2>
+      <el-table
+        v-loading="loading"
+        :data="userList"
+        border
+        style="width: 100%"
+        :pagination="pagination"
+      >
+        <el-table-column type="index" width="48"></el-table-column>
+        <el-table-column
+          label="用户名"
+          prop="userName"
+          :copyable="true"
+          min-width="160"
+        ></el-table-column>
+        <el-table-column
+          label="用户账户"
+          prop="userAccount"
+          :copyable="true"
+          min-width="100"
+        ></el-table-column>
+        <el-table-column label="头像" prop="userAvatar" min-width="100">
+          <template #default="{ row }">
+            <el-image
+              :src="row.userAvatar"
+              style="width: 48px; height: 48px"
+              fit="cover"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="用户简介"
+          prop="userProfile"
+          :copyable="true"
+          min-width="220"
+        ></el-table-column>
+        <el-table-column label="角色" prop="userRole" min-width="100">
+          <template #default="{ row }">
+            <el-select v-model="row.userRole" placeholder="选择角色" disabled>
+              <el-option
+                v-for="(item, value) in roleEnum"
+                :key="value"
+                :label="item.text"
+                :value="value"
+              ></el-option>
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column label="校园币" prop="balance" min-width="150">
+          <template #default="{ row }">{{
+            formatCampusCoin(row.balance, true)
+          }}</template>
+        </el-table-column>
+        <el-table-column
+          label="创建时间"
+          prop="createTime"
+          sortable
+          :formatter="formatDate"
+          min-width="176"
+        ></el-table-column>
+        <el-table-column
+          label="操作"
+          width="242"
+          fixed="right"
+          class-name="admin-operations"
+        >
+          <template #default="{ row }">
+            <el-button link @click="edit(row)">编辑</el-button>
+            <el-button link type="primary" @click="view(row)"> 查看</el-button>
+            <el-button link type="success" @click="openGrantDialog(row)"
+              >发放校园币</el-button
+            >
+            <el-popconfirm
+              title="你确定要删除该用户吗？"
+              @confirm="deleteUser(row)"
+            >
+              <template #reference>
+                <el-button link type="danger"> 删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        background
+        layout="total, prev, pager, next"
+        :pager-count="5"
+        :page-sizes="[5, 10, 15, 20]"
+        :current-page="pagination.currentPage"
+        :total="pagination.total"
+        :page-size="pagination.pageSize"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </el-card>
 
     <!-- 编辑对话框 -->
     <el-dialog

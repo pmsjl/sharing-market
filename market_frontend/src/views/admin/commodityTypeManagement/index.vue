@@ -1,41 +1,44 @@
 <template>
-  <div class="admin-page commodity-type-admin">
+  <div class="admin-page editorial-surface commodity-type-admin">
     <header class="quiet-heading">
       <h1>商品分类</h1>
       <p>整理好物分类，方便同学查找。</p>
     </header>
     <!-- 查询区域 -->
-    <el-card class="admin-search">
-      <el-row :gutter="10">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="类别ID" label-width="80px">
-            <el-input v-model="queryParams.id" placeholder="请输入类别ID" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="类别名称" label-width="80px">
-            <el-input
-              v-model="queryParams.typeName"
-              placeholder="请输入类别名称"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label-width="20px">
-            <el-button @click="resetQuery">重置</el-button>
-            <el-button type="primary" @click="getCommodityTypeList"
-              >查询
-            </el-button>
-            <el-button type="primary" @click="showAddDialog" :icon="Promotion">
-              添加新类别
-            </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
+    <el-card class="admin-search" shadow="never">
+      <h2 class="admin-section-title">筛选条件</h2>
+      <el-form
+        label-position="top"
+        class="admin-filter-grid"
+        @submit.prevent="getCommodityTypeList"
+      >
+        <el-form-item label="类别ID">
+          <el-input v-model="queryParams.id" placeholder="请输入类别ID" />
+        </el-form-item>
+        <el-form-item label="类别名称">
+          <el-input
+            v-model="queryParams.typeName"
+            placeholder="请输入类别名称"
+          />
+        </el-form-item>
+        <div class="admin-filter-actions">
+          <el-button @click="resetQuery">重置</el-button>
+          <el-button native-type="submit" type="primary" plain>查询 </el-button>
+          <el-button
+            class="admin-create"
+            type="primary"
+            @click="showAddDialog"
+            :icon="Promotion"
+          >
+            添加新类别
+          </el-button>
+        </div>
+      </el-form>
     </el-card>
 
     <!-- 商品类别列表表格 -->
-    <el-card>
+    <el-card class="admin-data" shadow="never">
+      <h2 class="admin-section-title">分类列表</h2>
       <el-table
         :data="commodityTypeList"
         style="width: 100%"
@@ -69,7 +72,6 @@
 
       <!-- 分页 -->
       <el-pagination
-        style="margin-top: 20px"
         background
         layout="total, prev, pager, next"
         :pager-count="5"

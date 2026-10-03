@@ -1,5 +1,7 @@
-/* Content-led user pages; administrative tables keep their compact scale. */
-.market-consumer .editorial-surface {
+/* Shared form and heading rhythm for marketplace and administration. */
+.market-consumer .editorial-surface,
+.market-admin .editorial-surface,
+.market-admin-dialog {
   font-size: 15px;
   .quiet-heading {
     margin-bottom: 34px;

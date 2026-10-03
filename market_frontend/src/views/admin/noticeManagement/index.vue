@@ -1,18 +1,16 @@
 <template>
-  <div class="admin-page search_container">
+  <div class="admin-page editorial-surface search_container">
     <header class="quiet-heading">
       <h1>公告管理</h1>
       <p>发布和维护校园公告。</p>
     </header>
-    <el-card shadow="always">
-      <!-- 搜索内容和导出区域 -->
-      <el-row style="margin-bottom: 20px">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-button type="primary" @click="showAddDialog()" :icon="Promotion">
-            发布新公告
-          </el-button>
-        </el-col>
-      </el-row>
+    <el-card class="admin-data" shadow="never">
+      <div class="admin-section-header">
+        <h2 class="admin-section-title">公告列表</h2>
+        <el-button type="primary" @click="showAddDialog()" :icon="Promotion">
+          发布新公告
+        </el-button>
+      </div>
       <!-- 表格区域 -->
       <el-table
         :data="tableData"
@@ -72,7 +70,6 @@
       </el-table>
       <!-- 分页查询区域 -->
       <el-pagination
-        style="margin-top: 20px"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         :current-page="pagination.currentPage"
@@ -151,14 +148,12 @@ import { Promotion } from "@element-plus/icons-vue";
 import { onMounted, ref } from "vue";
 import {
   ElButton,
-  ElCol,
   ElDialog,
   ElForm,
   ElFormItem,
   ElInput,
   ElMessage,
   ElPagination,
-  ElRow,
   ElTable,
   ElTableColumn,
   FormInstance
@@ -372,10 +367,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.search_container {
-  padding: 20px;
-}
-
 .notice-admin-cell {
   display: inline-flex;
   align-items: center;

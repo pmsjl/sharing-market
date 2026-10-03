@@ -5,7 +5,7 @@
     </div>
     <div class="logo-copy">
       <p>{{ setting.title }}</p>
-      <span>SHARING MARKET</span>
+      <span>管理工作台</span>
     </div>
     <button
       class="fold-pin"
@@ -14,13 +14,14 @@
       :title="layoutSetting.fold ? '展开侧边栏' : '折叠侧边栏'"
       @click="layoutSetting.fold = !layoutSetting.fold"
     >
-      <span aria-hidden="true"></span>
+      <el-icon><Expand v-if="layoutSetting.fold" /><Fold v-else /></el-icon>
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import setting from "@/setting";
+import { Expand, Fold } from "@element-plus/icons-vue";
 import useLayOutSettingStore from "@/store/modules/setting";
 
 const layoutSetting = useLayOutSettingStore();
@@ -49,21 +50,8 @@ export default {
   height: 44px;
   place-items: center;
   border: 1px solid var(--market-line);
-  border-radius: 10px 14px 10px 14px;
+  border-radius: 10px;
   background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  transform: rotate(-2deg);
-  &::after {
-    position: absolute;
-    right: -3px;
-    bottom: -3px;
-    width: 11px;
-    height: 11px;
-    border: 2px solid var(--market-surface);
-    border-radius: 50%;
-    background: var(--market-yellow);
-    content: "";
-  }
   img {
     width: 32px;
     height: 32px;
@@ -77,7 +65,7 @@ export default {
     margin: 0;
     font-family: var(--market-font-display);
     font-size: $base-logo-title-fontSize;
-    font-weight: 900;
+    font-weight: 700;
     line-height: 1.12;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -85,50 +73,34 @@ export default {
   span {
     display: block;
     margin-top: 4px;
-    color: var(--market-primary);
-    font-family: var(--market-font-mono);
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 1.7px;
+    color: var(--market-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
   }
 }
 .fold-pin {
   position: absolute;
   right: 8px;
-  bottom: -8px;
+  bottom: -28px;
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   place-items: center;
-  border: 2px solid var(--market-surface);
-  border-radius: 50%;
-  color: #fff;
-  background: var(--market-orange);
-  box-shadow: 0 6px 14px rgba(249, 115, 22, 0.25);
+  border: 1px solid var(--market-line);
+  border-radius: 10px;
+  color: var(--market-muted);
+  background: var(--market-surface);
   cursor: pointer;
-  transform: rotate(-8deg);
-  transition: transform var(--market-dur-fast) var(--market-ease-spring),
-    box-shadow var(--market-dur-fast);
+  transition: color var(--market-dur-fast), background var(--market-dur-fast);
   z-index: 4;
-  &::before {
-    width: 13px;
-    height: 9px;
-    border-radius: 50% 50% 42% 42%;
-    background: currentColor;
-    content: "";
-  }
-  span {
-    position: absolute;
-    top: 16px;
-    width: 2px;
-    height: 8px;
-    border-radius: 999px;
-    background: currentColor;
+  .el-icon {
+    font-size: 18px;
   }
   &:hover {
-    box-shadow: 0 9px 18px rgba(249, 115, 22, 0.3);
-    transform: translateY(-2px) rotate(0);
+    color: var(--market-primary);
+    background: var(--market-primary-soft);
   }
 }
 :global(.layout_slider.fold) .logo {
@@ -139,7 +111,6 @@ export default {
   display: none;
 }
 :global(.layout_slider.fold) .fold-pin {
-  right: 1px;
-  transform: rotate(8deg);
+  right: 14px;
 }
 </style>

@@ -1,63 +1,60 @@
 <template>
-  <div class="admin-page commodity-order-admin">
+  <div class="admin-page editorial-surface commodity-order-admin">
     <header class="quiet-heading">
       <h1>订单管理</h1>
       <p>查看交易记录与支付状态。</p>
     </header>
     <!-- 查询区域 -->
-    <el-card class="admin-search">
-      <el-row :gutter="10">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="订单ID" label-width="80px">
-            <el-input v-model="queryParams.id" placeholder="请输入订单ID" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="商品ID" label-width="80px">
-            <el-input
-              v-model="queryParams.commodityId"
-              placeholder="请输入商品ID"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="用户ID" label-width="80px">
-            <el-input v-model="queryParams.userId" placeholder="请输入用户ID" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="备注" label-width="80px">
-            <el-input v-model="queryParams.remark" placeholder="请输入备注" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="支付状态" label-width="80px">
-            <el-select
-              v-model="queryParams.payStatus"
-              placeholder="请选择支付状态"
-            >
-              <el-option label="已过期" :value="2" />
-              <el-option label="已支付" :value="1" />
-              <el-option label="未支付" :value="0" />
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label-width="20px">
-            <el-button @click="resetQuery">重置</el-button>
-            <el-button type="primary" @click="getCommodityOrderList"
-              >查询</el-button
-            >
-            <el-button type="primary" @click="showAddDialog" :icon="Promotion">
-              添加新订单
-            </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
+    <el-card class="admin-search" shadow="never">
+      <h2 class="admin-section-title">筛选条件</h2>
+      <el-form
+        label-position="top"
+        class="admin-filter-grid"
+        @submit.prevent="getCommodityOrderList"
+      >
+        <el-form-item label="订单ID">
+          <el-input v-model="queryParams.id" placeholder="请输入订单ID" />
+        </el-form-item>
+        <el-form-item label="商品ID">
+          <el-input
+            v-model="queryParams.commodityId"
+            placeholder="请输入商品ID"
+          />
+        </el-form-item>
+        <el-form-item label="用户ID">
+          <el-input v-model="queryParams.userId" placeholder="请输入用户ID" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="queryParams.remark" placeholder="请输入备注" />
+        </el-form-item>
+        <el-form-item label="支付状态">
+          <el-select
+            v-model="queryParams.payStatus"
+            placeholder="请选择支付状态"
+          >
+            <el-option label="已过期" :value="2" />
+            <el-option label="已支付" :value="1" />
+            <el-option label="未支付" :value="0" />
+          </el-select>
+        </el-form-item>
+        <div class="admin-filter-actions">
+          <el-button @click="resetQuery">重置</el-button>
+          <el-button native-type="submit" type="primary" plain>查询</el-button>
+          <el-button
+            class="admin-create"
+            type="primary"
+            @click="showAddDialog"
+            :icon="Promotion"
+          >
+            添加新订单
+          </el-button>
+        </div>
+      </el-form>
     </el-card>
 
     <!-- 订单列表表格 -->
-    <el-card>
+    <el-card class="admin-data" shadow="never">
+      <h2 class="admin-section-title">订单列表</h2>
       <el-table
         :data="commodityOrderList"
         style="width: 100%"
@@ -111,7 +108,6 @@
 
       <!-- 分页 -->
       <el-pagination
-        style="margin-top: 20px"
         background
         layout="total, prev, pager, next"
         :pager-count="5"

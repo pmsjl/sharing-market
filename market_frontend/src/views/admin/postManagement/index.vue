@@ -1,63 +1,64 @@
 <template>
-  <div class="admin-page post-admin">
+  <div class="admin-page editorial-surface post-admin">
     <header class="quiet-heading">
       <h1>攻略管理</h1>
       <p>维护社区攻略与分享内容。</p>
     </header>
     <!-- 查询区域 -->
-    <el-card class="admin-search">
-      <el-row :gutter="10">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="标题">
-            <el-input v-model="queryParams.title" placeholder="请输入标题" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="内容">
-            <el-input v-model="queryParams.content" placeholder="请输入内容" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="标签">
-            <el-input-tag
-              v-model="queryParams.tags"
-              placeholder="请输入标签"
-              :max="5"
-              :validate="validateTag"
-            />
-            <el-select
-              v-model="tagMatchMode"
-              aria-label="标签匹配方式"
-              style="width: 100%; margin-top: 8px"
-              @change="
-                paginationConfig.current = 1;
-                getPostList();
-              "
-            >
-              <el-option label="全部匹配" value="all" />
-              <el-option label="任一匹配" value="any" />
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="用户ID">
-            <el-input v-model="queryParams.userId" placeholder="请输入用户ID" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item>
-            <el-button @click="resetQuery">重置</el-button>
-            <el-button type="primary" @click="getPostList">查询</el-button>
-            <el-button type="primary" @click="showAddDialog" :icon="Promotion">
-              添加新帖子
-            </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
+    <el-card class="admin-search" shadow="never">
+      <h2 class="admin-section-title">筛选条件</h2>
+      <el-form
+        label-position="top"
+        class="admin-filter-grid"
+        @submit.prevent="getPostList"
+      >
+        <el-form-item label="标题">
+          <el-input v-model="queryParams.title" placeholder="请输入标题" />
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input v-model="queryParams.content" placeholder="请输入内容" />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-input-tag
+            v-model="queryParams.tags"
+            placeholder="请输入标签"
+            :max="5"
+            :validate="validateTag"
+          />
+          <el-select
+            v-model="tagMatchMode"
+            aria-label="标签匹配方式"
+            style="width: 100%; margin-top: 8px"
+            @change="
+              paginationConfig.current = 1;
+              getPostList();
+            "
+          >
+            <el-option label="全部匹配" value="all" />
+            <el-option label="任一匹配" value="any" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="用户ID">
+          <el-input v-model="queryParams.userId" placeholder="请输入用户ID" />
+        </el-form-item>
+        <div class="admin-filter-actions">
+          <el-button @click="resetQuery">重置</el-button>
+          <el-button native-type="submit" type="primary" plain>查询</el-button>
+          <el-button
+            class="admin-create"
+            type="primary"
+            @click="showAddDialog"
+            :icon="Promotion"
+          >
+            添加新帖子
+          </el-button>
+        </div>
+      </el-form>
     </el-card>
 
     <!-- 帖子列表表格 -->
-    <el-card>
+    <el-card class="admin-data" shadow="never">
+      <h2 class="admin-section-title">攻略列表</h2>
       <el-table :data="postList" style="width: 100%" v-loading="loading">
         <el-table-column prop="title" label="标题" min-width="160" />
         <el-table-column
@@ -106,7 +107,6 @@
 
       <!-- 分页 -->
       <el-pagination
-        style="margin-top: 20px"
         background
         layout="total, prev, pager, next"
         :pager-count="5"

@@ -4,6 +4,7 @@
     class="layout_container"
     :class="{
       'market-consumer': isConsumer,
+      'market-admin': !isConsumer,
       'focus-mode': $route.meta.workspace && LayOutSettingStore.focusMode
     }"
   >
@@ -135,7 +136,7 @@ export default {
   }
   :deep(.el-menu) {
     border-right: none;
-    padding: 10px 11px 18px;
+    padding: 36px 11px 18px;
   }
   :deep(.el-menu-item),
   :deep(.el-sub-menu__title) {
@@ -143,24 +144,23 @@ export default {
     height: 47px;
     margin: 5px 0;
     border: 1px solid transparent;
-    border-radius: 9px 13px 9px 13px;
+    border-radius: 10px;
     color: var(--market-muted);
-    font-weight: 720;
+    font-weight: 500;
     transition: transform var(--market-dur-fast), color var(--market-dur-fast),
       background var(--market-dur-fast), border-color var(--market-dur-fast);
   }
   :deep(.el-menu-item:hover),
   :deep(.el-sub-menu__title:hover) {
-    border-color: rgba(37, 99, 235, 0.09);
+    border-color: transparent;
     color: var(--market-primary);
     background: var(--market-menu-hover-bg);
-    transform: translateX(3px);
   }
   :deep(.el-menu-item.is-active) {
-    border-color: rgba(37, 99, 235, 0.18);
+    border-color: transparent;
     color: var(--market-primary);
     background: var(--market-menu-active-bg);
-    box-shadow: 0 7px 18px rgba(37, 99, 235, 0.08);
+    font-weight: 600;
     &::after {
       position: absolute;
       top: 9px;
@@ -169,16 +169,6 @@ export default {
       width: 4px;
       border-radius: 0 5px 5px 0;
       background: var(--market-primary);
-      content: "";
-    }
-    &::before {
-      position: absolute;
-      right: 10px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--market-orange);
-      box-shadow: 0 0 0 4px var(--market-orange-soft);
       content: "";
     }
   }

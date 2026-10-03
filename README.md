@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="market_frontend/public/generated/campus-market-logo-v2.png" alt="智能 AI 校园二手交易平台" width="160" />
+  <img src="market_frontend/public/generated/logo.png" alt="智能 AI 校园二手交易平台" width="160" />
 </p>
 
 # 智能 AI 校园二手交易平台 v1.0
