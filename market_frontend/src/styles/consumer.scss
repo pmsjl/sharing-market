@@ -1,5 +1,10 @@
 /* The public marketplace has its own shell; administration keeps its workspace. */
 .market-consumer {
+  --market-action-radius: 8px;
+  --market-copy-size: 16px;
+  --market-meta-size: 13px;
+  --market-action-size: 14px;
+  --market-mobile-nav-height: calc(61px + env(safe-area-inset-bottom));
   --market-shadow-soft: 0 4px 18px rgba(31, 38, 48, 0.035);
   --market-shadow: 0 12px 36px rgba(31, 38, 48, 0.08);
   --market-shadow-lift: 0 16px 36px rgba(31, 38, 48, 0.12);
@@ -268,4 +273,39 @@ html .market-consumer .post-topic {
 }
 html .market-consumer .post-detail .agent-return-bar {
   background: transparent !important;
+}
+
+/* Text actions retain a generous hit area without a decorative button box. */
+.market-text-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--market-ink);
+  font-family: var(--market-font-body);
+  font-size: var(--market-action-size, 14px);
+  cursor: pointer;
+  text-underline-offset: 5px;
+  transition: color 160ms ease;
+  &:hover {
+    color: var(--market-primary);
+    text-decoration: underline;
+  }
+  &:active {
+    color: var(--market-primary-hover);
+  }
+  &:disabled {
+    color: var(--market-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+  }
+}
+.market-consumer .el-button--primary:not(.is-link):not(.is-text) {
+  border-radius: var(--market-action-radius);
+  box-shadow: none;
+  font-size: var(--market-action-size);
 }

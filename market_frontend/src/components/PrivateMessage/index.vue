@@ -441,7 +441,7 @@ onBeforeUnmount(() => {
     font-size: 18px;
   }
   span {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--market-muted);
   }
 }
@@ -459,10 +459,11 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 10px;
   padding: 14px 10px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   text-align: left;
   border: 0;
-  border-radius: 6px;
+  border-left: 2px solid transparent;
+  border-radius: 0;
   color: var(--market-ink);
   background: var(--market-surface);
   cursor: pointer;
@@ -470,6 +471,9 @@ onBeforeUnmount(() => {
   &:hover,
   &.selected {
     background: var(--market-primary-soft);
+  }
+  &.selected {
+    border-left-color: var(--market-primary);
   }
   .el-avatar {
     flex-shrink: 0;
@@ -492,7 +496,7 @@ onBeforeUnmount(() => {
   }
   time {
     flex-shrink: 0;
-    font-size: 11px;
+    font-size: 13px;
     color: var(--market-muted);
   }
 }
@@ -502,7 +506,7 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 7px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--market-muted);
 }
 .mail-unread {
@@ -510,7 +514,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   margin-top: 7px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--market-danger);
   &::before {
     content: "";
@@ -523,7 +527,7 @@ onBeforeUnmount(() => {
 .mail-list-note {
   padding: 10px 15px;
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--market-muted);
   border-top: 1px solid var(--market-line);
 }
@@ -546,7 +550,7 @@ onBeforeUnmount(() => {
     display: block;
     margin-top: 4px;
     color: var(--market-muted);
-    font-size: 11px;
+    font-size: 13px;
   }
 }
 .mail-welcome {
@@ -592,7 +596,7 @@ onBeforeUnmount(() => {
   }
   time {
     margin-top: 5px;
-    font-size: 10px;
+    font-size: 13px;
     color: var(--market-muted);
   }
   &.sent {
@@ -617,7 +621,7 @@ onBeforeUnmount(() => {
   span {
     margin-right: auto;
     color: var(--market-muted);
-    font-size: 11px;
+    font-size: 13px;
   }
   .el-button {
     margin-left: 0;
@@ -638,7 +642,7 @@ onBeforeUnmount(() => {
   }
 }
 .mail-status {
-  font-size: 12px;
+  font-size: 13px;
   padding: 10px 16px;
   margin: 0;
   background: var(--market-yellow-soft);
@@ -722,7 +726,7 @@ button:focus-visible {
     padding: 12px 12px max(12px, env(safe-area-inset-bottom));
   }
   .mail-compose-actions > span {
-    font-size: 10px;
+    font-size: 13px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

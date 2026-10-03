@@ -15,13 +15,13 @@ Java Backend ──POST /agent/v1/runs──→  FastAPI Agent
 
 - Java 负责会话流程、鉴权以及商品和 Post 的有效性校验；Python 只负责**模型调用流程与 RAG**。
 - Python 不直接连接业务 MySQL，商品/偏好/Post 数据全部通过 Java 内部只读接口获取。
-- 一次 `/agent/v1/runs` 是**同步**调用，返回结构化 JSON（回答 + 引用 + 工具调用记录）。
+- Java 已将浏览器提交与生成解耦：保存 `PENDING` 后由专用后台线程调用 Python，完成后回写消息，前端轮询获取结果。Python 的 `/agent/v1/runs` 仍在同一次请求中等待生成完成，返回完整结构化 JSON（回答＋引用＋工具调用记录）；FastAPI 内部使用 `async/await`，但不提供异步任务 ID、任务轮询或流式输出。
 
 ## 服务接口
 
 | 接口 | 用途 |
 | --- | --- |
-| `POST /agent/v1/runs` | 接收 Java 整理好的会话上下文，返回同步导购结果 |
+| `POST /agent/v1/runs` | 接收 Java 后台线程整理好的会话上下文，等待生成完成后返回完整结果 |
 | `GET /live` | 进程存活检查 |
 | `GET /ready` | 必要配置和可选 RAG 索引的就绪检查 |
 | `GET /health` | 运行状态摘要 |

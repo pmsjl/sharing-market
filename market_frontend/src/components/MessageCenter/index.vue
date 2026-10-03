@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
   span {
     margin-left: 12px;
     font-family: var(--market-font-body);
-    font-size: 12px;
+    font-size: var(--market-meta-size, 13px);
     color: var(--market-muted);
   }
 }

@@ -410,28 +410,41 @@
               "
               class="source-block"
             >
-              <div class="recommendation-heading">
-                <strong>回答参考来源</strong>
-                <span>{{ guideSources(message).length }} 条</span>
-              </div>
               <button
-                v-for="source in guideSources(message)"
-                :key="`${source.sourceType}-${source.sourceId}`"
                 type="button"
-                class="source-link"
-                aria-haspopup="dialog"
-                :aria-label="`查看来源详情：${source.title}`"
-                @click="openSource(source)"
+                class="market-text-action disclosure-toggle"
+                :aria-expanded="isDisclosureOpen(message.id, 'sources')"
+                :aria-controls="`sources-${message.id}`"
+                @click="toggleDisclosure(message.id, 'sources')"
               >
-                <span>{{
-                  source.sourceType === "GUIDE" ? "指南" : "参考"
+                参考来源 · {{ guideSources(message).length }} 条
+                <span aria-hidden="true">{{
+                  isDisclosureOpen(message.id, "sources") ? "−" : "＋"
                 }}</span>
-                <div>
-                  <strong>{{ source.title }}</strong>
-                  <p>{{ sourcePreview(source) }}</p>
-                </div>
-                <b aria-hidden="true">查看</b>
               </button>
+              <div
+                v-show="isDisclosureOpen(message.id, 'sources')"
+                :id="`sources-${message.id}`"
+              >
+                <button
+                  v-for="source in guideSources(message)"
+                  :key="`${source.sourceType}-${source.sourceId}`"
+                  type="button"
+                  class="source-link"
+                  aria-haspopup="dialog"
+                  :aria-label="`查看来源详情：${source.title}`"
+                  @click="openSource(source)"
+                >
+                  <span>{{
+                    source.sourceType === "GUIDE" ? "指南" : "参考"
+                  }}</span>
+                  <div>
+                    <strong>{{ source.title }}</strong>
+                    <p>{{ sourcePreview(source) }}</p>
+                  </div>
+                  <b aria-hidden="true">查看</b>
+                </button>
+              </div>
             </div>
 
             <div
@@ -441,13 +454,24 @@
               "
               class="related-post-block"
             >
-              <div class="recommendation-heading">
-                <strong>相关帖子</strong>
-                <span
-                  >{{ message.structuredContent.relatedPosts.length }} 篇</span
-                >
-              </div>
-              <div class="related-post-grid">
+              <button
+                type="button"
+                class="market-text-action disclosure-toggle"
+                :aria-expanded="isDisclosureOpen(message.id, 'posts')"
+                :aria-controls="`posts-${message.id}`"
+                @click="toggleDisclosure(message.id, 'posts')"
+              >
+                相关攻略 ·
+                {{ message.structuredContent.relatedPosts.length }} 篇
+                <span aria-hidden="true">{{
+                  isDisclosureOpen(message.id, "posts") ? "−" : "＋"
+                }}</span>
+              </button>
+              <div
+                v-show="isDisclosureOpen(message.id, 'posts')"
+                :id="`posts-${message.id}`"
+                class="related-post-grid"
+              >
                 <button
                   v-for="post in orderedRelatedPosts(message)"
                   :key="post.postId"
@@ -816,6 +840,16 @@ const composerFocused = ref(false);
 const conversationLoading = ref(false);
 const conversationLoadFailed = ref(false);
 const historyDrawerOpen = ref(false);
+const disclosureState = reactive<Record<string, boolean>>({});
+const disclosureKey = (id: string, kind: "sources" | "posts") =>
+  `${activeConversationId.value || draftKey.value}:${id}:${kind}`;
+const isDisclosureOpen = (id: string, kind: "sources" | "posts") =>
+  Boolean(disclosureState[disclosureKey(id, kind)]);
+const toggleDisclosure = (id: string, kind: "sources" | "posts") => {
+  const key = disclosureKey(id, kind);
+  disclosureState[key] = !disclosureState[key];
+};
+
 const showArchived = computed(() => route.query.history === "archived");
 const setHistory = (archived: boolean) =>
   router.replace({

@@ -1,9 +1,9 @@
 <template>
   <div class="market-page commodity-detail" ref="pageRef">
     <div v-if="isAgentEntry" class="agent-return-bar">
-      <el-button :icon="ArrowLeft" plain @click="returnToAgent">
-        返回智能导购
-      </el-button>
+      <button type="button" class="market-text-action" @click="returnToAgent">
+        <el-icon><ArrowLeft /></el-icon>返回智能导购
+      </button>
       <span>继续查看刚才的咨询与推荐理由</span>
     </div>
 
@@ -66,29 +66,23 @@
               <small>这件好物的主人</small
               ><strong>{{ commodity.adminName || "同学" }}</strong>
             </div>
+            <button
+              v-if="canContactSeller"
+              type="button"
+              class="market-text-action seller-contact"
+              @click="handleContactSeller"
+            >
+              聊聊这件好物 <span aria-hidden="true">↗</span>
+            </button>
           </div>
           <div class="item-purchase">
             <el-button
               type="primary"
-              :disabled="
-                commodity.isListed !== 1 || commodity.commodityInventory <= 0
-              "
+              :disabled="!canPurchase || buying"
               @click="handleBuy"
               :icon="Coin"
-              >{{
-                commodity.isListed !== 1
-                  ? "暂不可购买"
-                  : commodity.commodityInventory <= 0
-                  ? "已售罄"
-                  : "购买商品"
-              }}</el-button
-            ><el-button
-              v-if="canContactSeller"
-              class="seller-contact"
-              text
-              @click="handleContactSeller"
-              >联系卖家 <el-icon><ArrowRight /></el-icon
-            ></el-button>
+              >{{ purchaseLabel }}</el-button
+            >
           </div>
           <div class="item-social">
             <button
@@ -109,6 +103,22 @@
           </div>
         </div>
       </section>
+      <div class="mobile-purchase" aria-label="商品交易操作">
+        <button
+          v-if="canContactSeller"
+          type="button"
+          class="market-text-action"
+          @click="handleContactSeller"
+        >
+          联系卖家 <span aria-hidden="true">↗</span>
+        </button>
+        <el-button
+          type="primary"
+          :disabled="!canPurchase || buying"
+          @click="handleBuy"
+          >{{ purchaseLabel }}</el-button
+        >
+      </div>
       <section class="item-details" aria-label="商品说明与评价">
         <el-tabs v-model="detailActiveName"
           ><el-tab-pane label="关于这件好物" name="first"
@@ -180,7 +190,6 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import {
   ArrowLeft,
-  ArrowRight,
   Picture,
   Coin,
   Share,
@@ -249,6 +258,16 @@ const canContactSeller = computed(
   () => Boolean(sellerId.value) && sellerId.value !== currentUserId
 );
 
+const canPurchase = computed(
+  () => commodity.value.isListed === 1 && commodity.value.commodityInventory > 0
+);
+const purchaseLabel = computed(() =>
+  commodity.value.isListed !== 1
+    ? "暂不可购买"
+    : commodity.value.commodityInventory <= 0
+    ? "已售罄"
+    : "购买商品"
+);
 const buyForm = ref({
   buyNumber: 1,
   paymentAmount: 0,
@@ -380,6 +399,7 @@ const handleContactSeller = () => {
 };
 
 const handleBuy = () => {
+  if (!canPurchase.value || buying.value) return;
   if (commodity.value.commodityInventory <= 0) {
     return ElMessage.error({
       message: "商品库存不够，无法完成购买",
@@ -432,7 +452,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   color: var(--market-muted);
-  font-size: 12px;
+  font-size: 13px;
   .el-button {
     padding-left: 0;
     border: 0;
@@ -491,7 +511,7 @@ onMounted(async () => {
 }
 .item-category {
   color: var(--market-muted);
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 2px;
 }
 h1 {
@@ -537,13 +557,13 @@ h1 {
     font-variant-numeric: tabular-nums;
   }
   span {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--market-muted);
   }
 }
 .item-price-note {
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .item-seller {
   display: flex;
@@ -555,13 +575,24 @@ h1 {
   small {
     display: block;
     color: var(--market-muted);
-    font-size: 11px;
+    font-size: 13px;
     margin-bottom: 3px;
   }
   strong {
     font-size: 14px;
     font-weight: 600;
   }
+}
+.seller-contact {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.item-seller > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mobile-purchase {
+  display: none;
 }
 .seller-initial {
   display: grid;
@@ -582,24 +613,6 @@ h1 {
     border-radius: 10px;
     box-shadow: none;
   }
-  .seller-contact {
-    background: transparent !important;
-    border: 0;
-    min-width: 132px;
-    min-height: 46px;
-    flex-shrink: 0;
-    margin: 0;
-    padding-inline: 18px;
-    border-radius: 8px;
-    &:hover,
-    &:focus-visible {
-      background: var(--market-primary-soft) !important;
-      transform: none;
-    }
-    .el-icon {
-      margin-left: 7px;
-    }
-  }
 }
 .item-social {
   display: flex;
@@ -608,7 +621,7 @@ h1 {
   flex-wrap: wrap;
   margin-top: 14px;
   color: var(--market-muted);
-  font-size: 12px;
+  font-size: 13px;
   button {
     display: inline-flex;
     align-items: center;
@@ -633,7 +646,7 @@ h1 {
   gap: 6px;
   align-items: center;
   margin-left: auto;
-  font-size: 11px;
+  font-size: 13px;
 }
 .item-details {
   padding-top: 4px;
@@ -669,6 +682,27 @@ h1 {
 @media (max-width: 760px) {
   .commodity-detail {
     gap: 24px;
+    padding-bottom: 88px;
+  }
+  .mobile-purchase {
+    position: fixed;
+    inset: auto 0 var(--market-mobile-nav-height);
+    z-index: 18;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--market-line);
+    background: var(--market-surface);
+    .el-button {
+      flex: 1;
+      min-height: 46px;
+      margin: 0;
+      border-radius: var(--market-action-radius);
+    }
+    .market-text-action {
+      flex-shrink: 0;
+    }
   }
   .item-feature {
     grid-template-columns: 1fr;
@@ -701,11 +735,13 @@ h1 {
     padding: 16px 0;
   }
   .item-purchase {
-    gap: 14px;
-    .el-button--primary {
-      flex: 1;
-      min-width: 0;
-    }
+    display: none;
+  }
+  .item-seller {
+    flex-wrap: wrap;
+  }
+  .seller-contact {
+    margin-left: 50px;
   }
   .agent-return-bar {
     flex-wrap: wrap;

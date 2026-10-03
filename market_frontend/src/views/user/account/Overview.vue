@@ -184,7 +184,7 @@ const orderDate = (value?: string) =>
   padding: 3px 9px;
   background: var(--market-yellow-soft);
   color: var(--market-ink);
-  font-size: 12px;
+  font-size: var(--market-meta-size, 13px);
   transform: rotate(-5deg);
 }
 .profile-copy {
@@ -260,7 +260,7 @@ const orderDate = (value?: string) =>
   overflow-wrap: anywhere;
   small {
     display: block;
-    font-size: 12px;
+    font-size: var(--market-meta-size, 13px);
     letter-spacing: 0;
     color: var(--market-muted);
     margin-top: 5px;
@@ -312,7 +312,7 @@ const orderDate = (value?: string) =>
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  font-size: 12px;
+  font-size: var(--market-meta-size, 13px);
   color: var(--market-muted);
 }
 .order-status {
@@ -333,7 +333,7 @@ const orderDate = (value?: string) =>
   small {
     display: block;
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--market-meta-size, 13px);
     font-weight: 400;
     color: var(--market-muted);
   }
@@ -395,7 +395,7 @@ const orderDate = (value?: string) =>
   }
   .portrait-note {
     left: 0;
-    font-size: 11px;
+    font-size: var(--market-meta-size, 13px);
   }
   .profile-copy h1 {
     font-size: 32px;

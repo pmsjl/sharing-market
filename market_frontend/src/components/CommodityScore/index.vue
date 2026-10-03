@@ -129,16 +129,11 @@ onMounted(() => {
   align-items: center;
   gap: 20px;
   justify-content: space-between;
-  padding: 20px 24px;
-  border: 1px solid var(--market-line);
+  padding: 20px 0;
+  border: 0;
   border-radius: 8px;
   color: var(--market-ink);
-  background: repeating-linear-gradient(
-      -45deg,
-      rgba(43, 110, 80, 0.05) 0 5px,
-      transparent 5px 10px
-    ),
-    var(--market-surface);
+  background: transparent;
 }
 
 .rating-left {
@@ -160,8 +155,8 @@ onMounted(() => {
   gap: 4px;
   cursor: pointer;
   padding: 7px 12px;
-  border-radius: 999px;
-  background: var(--market-paper-deep);
+  border-radius: 0;
+  background: transparent;
 }
 
 .rating-right {
@@ -169,13 +164,12 @@ onMounted(() => {
   width: 96px;
   height: 72px;
   place-items: center;
-  border: 3px double var(--market-green);
-  border-radius: 50%;
+  border: 0;
+  border-radius: 0;
   font-size: 16px;
   font-weight: bold;
   color: var(--market-green);
   font-family: var(--market-font-display);
-  transform: rotate(-5deg);
 }
 
 .average-rating {

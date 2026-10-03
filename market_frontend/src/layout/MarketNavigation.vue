@@ -166,7 +166,7 @@ const focusMain = () => document.getElementById("market-main")?.focus();
   gap: 6px;
   min-height: 42px;
   padding: 0 17px;
-  border-radius: 999px;
+  border-radius: var(--market-action-radius);
   color: var(--market-on-primary);
   background: var(--market-primary);
   font-size: 13px;
@@ -229,6 +229,8 @@ const focusMain = () => document.getElementById("market-main")?.focus();
   .market-bottom-nav {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: var(--market-mobile-nav-height);
+    box-sizing: border-box;
     border-top: 1px solid var(--market-line);
     background: var(--market-surface);
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));

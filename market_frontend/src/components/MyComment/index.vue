@@ -60,7 +60,7 @@ onMounted(() => void comments.load());
   time {
     display: block;
     color: var(--market-muted);
-    font-size: 12px;
+    font-size: var(--market-meta-size, 13px);
     margin-top: 14px;
   }
 }

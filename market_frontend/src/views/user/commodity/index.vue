@@ -5,7 +5,7 @@
         <span class="browse-kicker">好物循环</span>
         <h1>发现你的<span>下一件好物</span></h1>
       </div>
-      <el-button type="primary" :icon="Plus" round @click="publish"
+      <el-button type="primary" :icon="Plus" @click="publish"
         >发布闲置</el-button
       >
     </header>
@@ -360,14 +360,14 @@ h1 {
   }
   :deep(.el-input__wrapper) {
     min-height: 46px;
-    border-radius: 999px;
+    border-radius: var(--market-action-radius);
     padding: 0 18px;
     box-shadow: 0 0 0 1px var(--market-line) inset;
   }
   .el-button {
     min-height: 44px;
     padding-inline: 24px;
-    border-radius: 999px;
+    border-radius: var(--market-action-radius);
   }
 }
 .more-filters {
@@ -376,11 +376,11 @@ h1 {
   gap: 7px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid var(--market-line);
-  border-radius: 999px;
-  background: var(--market-surface);
+  border: 0;
+  border-radius: var(--market-action-radius);
+  background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
   .el-icon {
     font-size: 17px;
@@ -414,29 +414,29 @@ h1 {
 }
 .category-chips {
   display: flex;
-  gap: 8px;
+  gap: 22px;
   overflow-x: auto;
-  padding: 20px 0 18px;
+  padding: 16px 0 0;
   border-bottom: 1px solid var(--market-line);
   scrollbar-width: thin;
   button {
     flex-shrink: 0;
-    min-height: 38px;
-    padding: 0 18px;
-    border: 1px solid transparent;
-    border-radius: 999px;
+    min-height: 46px;
+    padding: 0 2px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
     color: var(--market-muted);
     background: transparent;
-    font-size: 12px;
+    font-size: 14px;
     cursor: pointer;
-    transition: background 180ms, color 180ms;
+    transition: color 160ms;
     &:hover {
-      background: var(--market-surface-soft);
-      color: var(--market-ink);
+      color: var(--market-primary);
     }
     &.selected {
-      background: var(--market-ink);
-      color: var(--market-canvas);
+      color: var(--market-primary);
+      border-bottom-color: currentColor;
     }
   }
 }
@@ -535,12 +535,12 @@ h1 {
     gap: 4px;
   }
   .category-chips {
-    padding: 14px 0 12px;
-    gap: 4px;
+    padding: 10px 0 0;
+    gap: 18px;
     button {
       min-height: 38px;
-      padding-inline: 14px;
-      font-size: 11px;
+      padding-inline: 2px;
+      font-size: 14px;
     }
   }
   .browse-results-heading {

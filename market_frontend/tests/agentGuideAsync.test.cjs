@@ -15,7 +15,7 @@ const polling = compile(read("utils/aiMessagePolling.ts"));
 const componentCode = compile(component + `
 export const __test = { submitContent, loadMessages, selectConversation, startNewChat,
   activeConversationId, chatStates, activeChat, typingMessageId,
-  selectedRecommendationId, selectionOpen, selectionMessage, selectionPrompt, openSelection, restoreRequestedConversation };
+  selectedRecommendationId, selectionOpen, selectionMessage, selectionPrompt, openSelection, restoreRequestedConversation, isDisclosureOpen, toggleDisclosure };
 `);
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const message = (id, status = "PENDING", sequenceNo = 2, role = "ASSISTANT") => ({
@@ -265,4 +265,24 @@ test('same-page conversation query restores the requested chat without replacing
     h.route.query.conversationId='c1'; await h.entry.restoreRequestedConversation();
     assert.equal(h.entry.activeChat.value.messages[0].id,'c1-reply');
   } finally { h.dispose(); }
+});
+
+
+test("reference disclosures are isolated by answer, type and conversation, and reset on remount", (t) => {
+  const f = fixture(); t.after(f.dispose);
+  f.entry.activeConversationId.value = "c1";
+  assert.equal(f.entry.isDisclosureOpen("answer", "sources"), false);
+  f.entry.toggleDisclosure("answer", "sources");
+  assert.equal(f.entry.isDisclosureOpen("answer", "sources"), true);
+  assert.equal(f.entry.isDisclosureOpen("answer", "posts"), false);
+  assert.equal(f.entry.isDisclosureOpen("answer2", "sources"), false);
+  f.entry.activeConversationId.value = "c2";
+  assert.equal(f.entry.isDisclosureOpen("answer", "sources"), false);
+  f.entry.activeConversationId.value = "c1";
+  assert.equal(f.entry.isDisclosureOpen("answer", "sources"), true);
+  f.entry.toggleDisclosure("answer", "sources");
+  assert.equal(f.entry.isDisclosureOpen("answer", "sources"), false);
+  const fresh = fixture(); t.after(fresh.dispose);
+  fresh.entry.activeConversationId.value = "c1";
+  assert.equal(fresh.entry.isDisclosureOpen("answer", "sources"), false);
 });

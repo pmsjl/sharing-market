@@ -135,7 +135,7 @@ watch(
     margin: 0 0 26px;
     padding: 0 12px;
     color: var(--market-muted);
-    font-size: 12px;
+    font-size: var(--market-meta-size, 13px);
   }
   nav {
     display: grid;

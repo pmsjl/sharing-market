@@ -97,7 +97,7 @@ h2 {
   line-height: 1.45;
   overflow-wrap: anywhere;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   a {
@@ -135,7 +135,7 @@ h2 {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 18px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--market-muted);
   time {
     margin-left: 6px;
@@ -147,7 +147,7 @@ h2 {
   align-items: baseline;
   gap: 16px;
   margin-top: 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--market-muted);
 }
 .entry-topics {
@@ -198,12 +198,12 @@ h2 {
     height: 72px;
   }
   h2 {
-    font-size: 19px;
+    font-size: 22px;
     margin-bottom: 8px;
   }
   .entry-summary {
-    font-size: 14px;
-    -webkit-line-clamp: 2;
+    font-size: 15px;
+    -webkit-line-clamp: 3;
   }
   .entry-footer {
     flex-wrap: wrap;

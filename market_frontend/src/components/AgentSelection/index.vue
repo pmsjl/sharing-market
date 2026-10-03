@@ -93,7 +93,7 @@ const timeLabel = computed(
   padding-bottom: 20px;
   > div > span {
     display: block;
-    font-size: 10px;
+    font-size: var(--market-meta-size, 13px);
     letter-spacing: 1px;
     color: var(--market-muted);
   }
@@ -121,9 +121,9 @@ const timeLabel = computed(
 .selection-context {
   padding: 0 0 18px;
   border-bottom: 1px solid var(--market-line);
-  font-size: 12px;
+  font-size: var(--market-meta-size, 13px);
   > span {
-    font-size: 10px;
+    font-size: var(--market-meta-size, 13px);
     color: var(--market-muted);
   }
   p {
@@ -141,7 +141,7 @@ const timeLabel = computed(
     padding: 0;
     color: var(--market-primary);
     background: transparent;
-    font-size: 11px;
+    font-size: var(--market-meta-size, 13px);
     cursor: pointer;
   }
 }
@@ -191,7 +191,7 @@ const timeLabel = computed(
   gap: 5px;
   flex: 1;
   small {
-    font-size: 10px;
+    font-size: var(--market-meta-size, 13px);
     color: var(--market-muted);
   }
   strong {
@@ -201,7 +201,7 @@ const timeLabel = computed(
     overflow-wrap: anywhere;
   }
   > span {
-    font-size: 10px;
+    font-size: var(--market-meta-size, 13px);
     color: var(--market-muted);
   }
   b {
@@ -216,7 +216,7 @@ const timeLabel = computed(
 }
 .selection-reason {
   margin-top: 14px;
-  font-size: 12px;
+  font-size: var(--market-meta-size, 13px);
   line-height: 1.85;
   color: var(--market-muted);
 }
@@ -227,7 +227,7 @@ const timeLabel = computed(
   padding-left: 10px;
   border-left: 2px solid var(--market-warning);
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: var(--market-meta-size, 13px);
   line-height: 1.75;
   > span {
     color: var(--market-warning);
@@ -237,6 +237,6 @@ const timeLabel = computed(
 .selection-note {
   padding-top: 16px;
   color: var(--market-muted);
-  font-size: 10px;
+  font-size: var(--market-meta-size, 13px);
 }
 </style>

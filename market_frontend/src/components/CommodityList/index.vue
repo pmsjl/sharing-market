@@ -125,7 +125,7 @@ const failedCovers = ref<Record<string, boolean>>({});
   border-radius: 5px;
   background: var(--market-surface);
   color: var(--market-ink);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
 }
 .listing-placeholder {
@@ -136,7 +136,7 @@ const failedCovers = ref<Record<string, boolean>>({});
   justify-content: center;
   gap: 10px;
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 13px;
   .el-icon {
     font-size: 32px;
     opacity: 0.7;
@@ -148,7 +148,7 @@ const failedCovers = ref<Record<string, boolean>>({});
 .listing-category {
   display: block;
   color: var(--market-muted);
-  font-size: 10px;
+  font-size: 13px;
   margin-bottom: 4px;
 }
 h3 {
@@ -176,7 +176,7 @@ h3 {
   }
   > span {
     color: var(--market-muted);
-    font-size: 10px;
+    font-size: 13px;
   }
   .listing-sold {
     margin-left: auto;
@@ -191,7 +191,7 @@ h3 {
   margin-top: 10px;
   border-top: 1px solid var(--market-line);
   color: var(--market-muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .listing-seller {
   display: inline-flex;
@@ -209,7 +209,7 @@ h3 {
     background: var(--market-primary-soft);
     color: var(--market-primary);
     border-radius: 50%;
-    font-size: 9px;
+    font-size: 13px;
     font-style: normal;
   }
 }
@@ -271,7 +271,7 @@ h3 {
   .listing-condition {
     top: 8px;
     left: 8px;
-    font-size: 9px;
+    font-size: 13px;
     padding: 2px 6px;
   }
   h3 {
@@ -281,7 +281,7 @@ h3 {
     font-size: 21px;
   }
   .listing-footer {
-    font-size: 10px;
+    font-size: 13px;
   }
 }
 </style>
