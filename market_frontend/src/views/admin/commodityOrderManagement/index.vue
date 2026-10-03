@@ -60,9 +60,24 @@
         style="width: 100%"
         v-loading="loading"
       >
-        <el-table-column prop="id" label="订单ID" min-width="172" />
-        <el-table-column prop="commodityId" label="商品ID" min-width="172" />
-        <el-table-column prop="userId" label="用户ID" min-width="172" />
+        <el-table-column
+          show-overflow-tooltip
+          prop="id"
+          label="订单ID"
+          min-width="200"
+        />
+        <el-table-column
+          show-overflow-tooltip
+          prop="commodityId"
+          label="商品ID"
+          min-width="200"
+        />
+        <el-table-column
+          show-overflow-tooltip
+          prop="userId"
+          label="用户ID"
+          min-width="200"
+        />
         <el-table-column prop="userName" label="用户名" min-width="160" />
         <el-table-column prop="userPhone" label="用户电话" min-width="140" />
         <el-table-column prop="buyNumber" label="购买数量" min-width="100" />

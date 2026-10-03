@@ -12,7 +12,7 @@
       <span class="auth-form-kicker">校园账户登录</span>
       <div class="auth-form-heading">
         <h2>欢迎回来</h2>
-        <p>登录你的校园账户，继续发现同校好物。</p>
+        <p>继续逛逛，下一件心动好物就在同学之间。</p>
       </div>
 
       <el-form-item label="账号" prop="userAccount">

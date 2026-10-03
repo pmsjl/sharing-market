@@ -87,7 +87,7 @@
           prop="commodityTypeId"
           label="分类ID"
           show-overflow-tooltip
-          min-width="172"
+          min-width="200"
         />
         <el-table-column
           prop="commodityTypeName"

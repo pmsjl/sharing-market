@@ -1,7 +1,7 @@
 <template>
   <div class="logo" v-if="setting.logoHidden">
     <div class="logo-mark">
-      <img :src="setting.logo" alt="校园二手平台" />
+      <img :src="setting.logo" alt="校园二手平台" width="48" height="48" />
     </div>
     <div class="logo-copy">
       <p>{{ setting.title }}</p>
@@ -36,25 +36,22 @@ export default {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: var(--market-logo-gap);
   width: 100%;
   height: $base-menu-logo-height;
-  padding: 13px 14px;
+  padding: 12px 14px;
   color: var(--market-ink);
 }
 .logo-mark {
   position: relative;
   display: grid;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
+  flex: 0 0 var(--market-logo-size);
+  width: var(--market-logo-size);
+  height: var(--market-logo-size);
   place-items: center;
-  border: 1px solid var(--market-line);
-  border-radius: 10px;
-  background: var(--market-surface);
   img {
-    width: 32px;
-    height: 32px;
+    width: var(--market-logo-size);
+    height: var(--market-logo-size);
     object-fit: contain;
   }
 }
@@ -103,14 +100,15 @@ export default {
     background: var(--market-primary-soft);
   }
 }
-:global(.layout_slider.fold) .logo {
+:global(.layout_slider.fold .logo) {
+  --market-logo-size: var(--market-logo-size-desktop);
   justify-content: center;
   padding-inline: 10px;
 }
-:global(.layout_slider.fold) .logo-copy {
+:global(.layout_slider.fold .logo-copy) {
   display: none;
 }
-:global(.layout_slider.fold) .fold-pin {
+:global(.layout_slider.fold .fold-pin) {
   right: 14px;
 }
 </style>

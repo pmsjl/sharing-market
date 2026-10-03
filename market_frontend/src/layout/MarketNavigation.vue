@@ -16,7 +16,7 @@
       >跳到主要内容</a
     >
     <router-link to="/user/home" class="market-brand" aria-label="校园集市首页">
-      <img :src="setting.logo" alt="" width="40" height="40" />
+      <img :src="setting.logo" alt="" width="48" height="48" />
       <span
         ><strong>校园集市<span class="brand-dot">.</span></strong
         ><small>SHARING MARKET</small></span
@@ -91,11 +91,12 @@ const focusMain = () => document.getElementById("market-main")?.focus();
 .market-brand {
   display: flex;
   flex-shrink: 0;
-  gap: 10px;
+  gap: var(--market-logo-gap);
   align-items: center;
   img {
+    width: var(--market-logo-size);
+    height: var(--market-logo-size);
     object-fit: contain;
-    border-radius: 12px;
   }
   strong {
     display: block;
@@ -210,11 +211,6 @@ const focusMain = () => document.getElementById("market-main")?.focus();
     gap: 8px;
   }
   .market-brand {
-    gap: 7px;
-    img {
-      width: 32px;
-      height: 32px;
-    }
     strong {
       font-size: 18px;
     }

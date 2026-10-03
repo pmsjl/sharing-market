@@ -47,6 +47,7 @@ html .market-admin {
   > .el-card > .el-card__body {
     padding: 24px;
     min-width: 0;
+    background: transparent;
   }
   .admin-section-title {
     margin: 0 0 20px;
@@ -72,7 +73,7 @@ html .market-admin {
     align-items: start;
     gap: 20px 24px;
   }
-  .admin-filter-grid .el-form-item {
+  &.editorial-surface .admin-filter-grid .el-form-item {
     min-width: 0;
     margin: 0;
   }
@@ -183,6 +184,13 @@ html .market-admin {
   }
 }
 
+.el-dialog.market-admin-dialog:not(.is-fullscreen):not(.is-align-center) {
+  margin-block: 16px;
+}
+.market-admin-dialog.is-fullscreen {
+  padding: 0;
+}
+
 @media (max-width: 768px) {
   html .market-admin .layout_main {
     padding: 24px 18px 32px;
@@ -212,6 +220,14 @@ html .market-admin {
     }
     .el-pagination__total {
       flex-basis: 100%;
+    }
+  }
+  .admin-page .el-table .el-table__cell.el-table-fixed-column--right {
+    // Element Plus fixes these cells with an important declaration.
+    position: static !important;
+    &::before,
+    &::after {
+      display: none;
     }
   }
   .market-admin-dialog {

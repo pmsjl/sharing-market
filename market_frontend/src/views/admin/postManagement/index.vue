@@ -78,7 +78,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="userId" label="用户ID" min-width="172" />
+        <el-table-column
+          show-overflow-tooltip
+          prop="userId"
+          label="用户ID"
+          min-width="200"
+        />
         <el-table-column prop="thumbNum" label="点赞数" min-width="100" />
         <el-table-column prop="favourNum" label="收藏数" min-width="100" />
         <el-table-column prop="createTime" label="创建时间" min-width="176" />

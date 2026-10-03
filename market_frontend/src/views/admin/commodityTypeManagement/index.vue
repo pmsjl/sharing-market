@@ -44,7 +44,12 @@
         style="width: 100%"
         v-loading="loading"
       >
-        <el-table-column prop="id" label="类别ID" min-width="172" />
+        <el-table-column
+          show-overflow-tooltip
+          prop="id"
+          label="类别ID"
+          min-width="200"
+        />
         <el-table-column prop="typeName" label="类别名称" min-width="160" />
         <el-table-column prop="createTime" label="创建时间" min-width="176" />
         <el-table-column prop="updateTime" label="更新时间" min-width="176" />

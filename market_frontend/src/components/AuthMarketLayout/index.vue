@@ -1,65 +1,126 @@
 <template>
-  <div class="auth-market-page" ref="layoutRoot">
+  <div ref="layoutRoot" class="auth-market-page">
     <header class="auth-market-header">
       <div class="auth-market-brand">
-        <img :src="setting.logo" alt="校园集市标识" />
+        <img :src="setting.logo" alt="校园集市标识" width="48" height="48" />
         <div>
-          <strong>{{ setting.title }}</strong>
-          <span>SHARING MARKET</span>
+          <strong>{{ setting.title }}</strong
+          ><span>SHARING MARKET</span>
         </div>
       </div>
+      <span class="auth-header-note"
+        ><i aria-hidden="true"></i>就在同学之间</span
+      >
     </header>
 
     <section class="auth-market-shell">
       <main class="auth-market-panel" aria-label="账号通行证">
-        <slot></slot>
+        <div class="auth-panel-content">
+          <slot></slot>
+          <div class="auth-panel-footer">
+            <span class="auth-footer-mark" aria-hidden="true">SM /</span>
+            <span>把闲置分享，让喜欢延续。</span>
+          </div>
+        </div>
       </main>
-
       <aside class="auth-market-showcase" aria-labelledby="showcase-title">
         <div class="showcase-copy">
-          <h1 id="showcase-title">校园好物橱窗，总有一件正合适</h1>
-          <p>登录后解锁发布、收藏、私信和个性化推荐。</p>
-        </div>
-
-        <div class="showcase-grid">
-          <article
-            v-for="(item, index) in showcaseItems"
-            :key="item.id"
-            class="showcase-card"
-            :class="{ 'is-featured': index === 0 }"
+          <span class="showcase-eyebrow"
+            ><span aria-hidden="true">01 /</span> 校园生活，循环上新</span
           >
-            <div class="showcase-media">
-              <img
-                v-if="!failedImages[item.id]"
-                :src="item.image"
-                :alt="item.name"
-                width="800"
-                height="600"
-                loading="eager"
-                @error="markImageFailed(item.id)"
-              />
+          <h1 id="showcase-title">
+            好物换个主人，<br /><span>喜欢继续发生。</span>
+          </h1>
+          <p>分享闲置，也遇见新的喜欢。</p>
+        </div>
+        <div class="poster-stage" aria-label="校园生活灵感海报">
+          <div class="poster-entrance">
+            <div class="poster-tilt">
               <div
-                v-else
-                class="image-fallback"
-                role="img"
-                :aria-label="item.name"
+                v-for="(row, rowIndex) in posterRows"
+                :key="rowIndex"
+                class="poster-row"
+                :class="{ 'poster-row-reverse': rowIndex === 1 }"
+                :data-speed="rowIndex === 0 ? 12 : 9"
+                :data-reverse="rowIndex === 1"
               >
-                <span aria-hidden="true">{{ item.name.slice(0, 1) }}</span>
-                <small>图片暂不可用</small>
+                <div class="poster-track">
+                  <div
+                    v-for="copy in 2"
+                    :key="copy"
+                    class="poster-group"
+                    :aria-hidden="copy === 2 ? 'true' : undefined"
+                  >
+                    <article
+                      v-for="tile in row"
+                      :key="tile.id"
+                      class="poster-tile"
+                      :class="[
+                        'poster-tile-' + tile.kind,
+                        'poster-tile-' + tile.tone,
+                        'poster-tile-' + tile.id
+                      ]"
+                    >
+                      <template v-if="tile.kind === 'photo'">
+                        <img
+                          v-if="!failedImages[tile.id]"
+                          :src="tile.image"
+                          :alt="tile.name"
+                          width="800"
+                          height="600"
+                          decoding="async"
+                          @error="failedImages[tile.id] = true"
+                        />
+                        <div v-else class="poster-image-fallback">
+                          <el-icon aria-hidden="true"
+                            ><component :is="tile.icon"
+                          /></el-icon>
+                          <span>{{ tile.name }}</span>
+                        </div>
+                        <span class="poster-photo-label" aria-hidden="true">{{
+                          tile.name
+                        }}</span>
+                      </template>
+                      <template v-else-if="tile.kind === 'text'">
+                        <span class="poster-tile-kicker">{{
+                          tile.caption
+                        }}</span>
+                        <strong>{{ tile.name }}</strong>
+                        <span class="poster-tile-sign" aria-hidden="true"
+                          >↗</span
+                        >
+                      </template>
+                      <template v-else>
+                        <el-icon class="poster-object" aria-hidden="true"
+                          ><component :is="tile.icon"
+                        /></el-icon>
+                        <span class="poster-object-label">{{ tile.name }}</span>
+                        <span
+                          class="poster-object-dot"
+                          aria-hidden="true"
+                        ></span>
+                      </template>
+                    </article>
+                  </div>
+                </div>
               </div>
-              <span class="condition-badge">{{ item.degree }}</span>
             </div>
-
-            <div class="showcase-card-copy">
-              <div class="showcase-meta">
-                <span>{{ formatDate(item.createTime) }} 上架</span>
-                <strong>{{ formatPrice(item.price) }}</strong>
-              </div>
-              <h2>{{ item.name }}</h2>
-              <p>{{ item.description }}</p>
-              <span class="inventory">库存 {{ item.inventory }} 件</span>
-            </div>
-          </article>
+          </div>
+        </div>
+        <div class="showcase-bottom">
+          <span><i aria-hidden="true">↗</i> 好物灵感 · 让闲置有下一站</span>
+          <button
+            v-if="canAnimate"
+            type="button"
+            class="poster-motion-toggle"
+            :aria-pressed="isPaused"
+            @click="togglePaused"
+          >
+            <el-icon aria-hidden="true"
+              ><VideoPlay v-if="isPaused" /><VideoPause v-else
+            /></el-icon>
+            {{ isPaused ? "播放动效" : "暂停动效" }}
+          </button>
         </div>
       </aside>
     </section>
@@ -67,784 +128,720 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { reactive, ref } from "vue";
+import {
+  Headset,
+  Notebook,
+  ShoppingBag,
+  VideoPause,
+  VideoPlay,
+  Basketball
+} from "@element-plus/icons-vue";
 import setting from "@/setting";
-import { formatCampusCoin } from "@/utils/marketNavigation";
-import { animateIn } from "@/utils/motion";
+import { useAuthShowcaseMotion } from "@/composables/useAuthShowcaseMotion";
 
-interface ShowcaseItem {
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  degree: string;
-  price: number;
-  inventory: number;
-  createTime: string;
-}
-
-const showcaseItems: ShowcaseItem[] = [
-  {
-    id: "2060023541910327297",
-    name: "耐克 Air Zoom 跑步鞋",
-    description: "专业缓震跑步鞋，透气网面设计，适合日常训练和长跑使用。",
-    image:
-      "https://img.pmsjl.com/2026/05/c654905adae77bb51e5727e62c44a46a.avif",
-    degree: "95新",
-    price: 96,
-    inventory: 6,
-    createTime: "2026-05-28 23:41:00"
-  },
-  {
-    id: "2060034286219800578",
-    name: "索尼 WH-1000XM5 降噪耳机",
-    description: "头戴式无线降噪耳机，30 小时续航并支持快充，日常使用正常。",
-    image: "https://img.pmsjl.com/2026/05/49ea38ade3208fc869bb4822526330a2.png",
-    degree: "八五新",
-    price: 1899,
-    inventory: 1,
-    createTime: "2026-05-29 00:23:42"
-  },
-  {
-    id: "2064027734698377217",
-    name: "瓦尔登湖",
-    description: "基本全新，没有明显勾画痕迹，适合收藏或日常阅读。",
-    image:
-      "https://pmsjl-01.oss-cn-shenzhen.aliyuncs.com/commodity_avatar/2058864659104120834/T3dWoD8W-MTYxMzk4NjA3MDI0Nl_kuIrlnJYuanBn.jpg",
-    degree: "九九新",
-    price: 10,
-    inventory: 4,
-    createTime: "2026-06-09 00:52:14"
-  }
+const posterRows = [
+  [
+    {
+      id: "shoes",
+      kind: "photo",
+      tone: "paper",
+      name: "耐克跑步鞋",
+      icon: Basketball,
+      image:
+        "https://img.pmsjl.com/2026/05/c654905adae77bb51e5727e62c44a46a.avif"
+    },
+    {
+      id: "reading",
+      kind: "text",
+      tone: "blue",
+      name: "书里\n有答案",
+      caption: "A NEW CHAPTER"
+    },
+    {
+      id: "headphones",
+      kind: "photo",
+      tone: "paper",
+      name: "索尼降噪耳机",
+      icon: Headset,
+      image:
+        "https://img.pmsjl.com/2026/05/49ea38ade3208fc869bb4822526330a2.png"
+    },
+    {
+      id: "book-icon",
+      kind: "graphic",
+      tone: "soft",
+      name: "翻开下一页",
+      icon: Notebook
+    }
+  ],
+  [
+    {
+      id: "sports",
+      kind: "text",
+      tone: "yellow",
+      name: "运动\n一下",
+      caption: "MOVE & REPEAT"
+    },
+    {
+      id: "book",
+      kind: "photo",
+      tone: "paper",
+      name: "瓦尔登湖",
+      icon: Notebook,
+      image:
+        "https://pmsjl-01.oss-cn-shenzhen.aliyuncs.com/commodity_avatar/2058864659104120834/T3dWoD8W-MTYxMzk4NjA3MDI0Nl_kuIrlnJYuanBn.jpg"
+    },
+    {
+      id: "bag-icon",
+      kind: "graphic",
+      tone: "blue",
+      name: "装下新喜欢",
+      icon: ShoppingBag
+    },
+    {
+      id: "digital",
+      kind: "text",
+      tone: "paper",
+      name: "数码\n新搭子",
+      caption: "FIND YOUR MATCH"
+    }
+  ]
 ];
-
 const layoutRoot = ref<HTMLElement | null>(null);
 const failedImages = reactive<Record<string, boolean>>({});
-
-const markImageFailed = (id: string) => {
-  failedImages[id] = true;
-};
-
-const formatPrice = (price: number) => `${formatCampusCoin(price)} 校园币`;
-
-const formatDate = (dateTime: string) =>
-  dateTime.slice(0, 10).replaceAll("-", ".");
-
-onMounted(() => {
-  animateIn(
-    layoutRoot.value?.querySelectorAll(
-      ".auth-market-showcase, .auth-market-panel"
-    ) || []
-  );
-});
+const { canAnimate, isPaused, togglePaused } =
+  useAuthShowcaseMotion(layoutRoot);
 </script>
 
 <style scoped lang="scss">
 .auth-market-page {
+  --auth-paper: var(--market-canvas);
+  --auth-yellow: var(--market-yellow-soft);
+  --auth-yellow-ink: var(--market-ink);
   display: flex;
   min-height: 100dvh;
-  padding: 28px clamp(24px, 4vw, 64px);
+  padding: 28px clamp(24px, 4vw, 64px) 32px;
   flex-direction: column;
-  overflow-x: hidden;
   color: var(--market-ink);
-  background: var(--market-body-bg);
+  background: var(--auth-paper);
 }
-
+html:not(.dark):not([data-theme="night"]) .auth-market-page {
+  --auth-paper: #faf9f6;
+  --auth-yellow: #ffe58b;
+  --auth-yellow-ink: #253348;
+  --market-line: #e5e5df;
+  --market-line-strong: #c8cbc9;
+  --market-ink: #202b3d;
+  --market-muted: #626b78;
+}
 .auth-market-header {
   display: flex;
+  width: min(1280px, 100%);
+  margin: 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  width: min(1460px, 100%);
-  margin: 0 auto;
 }
-
 .auth-market-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-
+  gap: var(--market-logo-gap);
   img {
-    width: 46px;
-    height: 46px;
-    border: 1px solid var(--market-line);
-    border-radius: 14px;
+    width: var(--market-logo-size);
+    height: var(--market-logo-size);
     object-fit: contain;
-    background: var(--market-surface);
-    box-shadow: var(--market-shadow-soft);
   }
-
   div {
     display: grid;
-    gap: 1px;
+    gap: 3px;
   }
-
   strong {
-    font-family: var(--market-font-display);
     font-size: 18px;
-    font-weight: 900;
+    font-weight: 750;
     line-height: 1.3;
   }
-
   span {
     color: var(--market-muted);
-    font-family: var(--market-font-mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
+    font-size: 10px;
+    letter-spacing: 0.16em;
   }
 }
-
+.auth-header-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--market-muted);
+  font-size: 12px;
+  i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--market-primary);
+  }
+}
 .auth-market-shell {
   display: grid;
   grid-template-areas: "showcase panel";
-  grid-template-columns: minmax(0, 1.64fr) minmax(410px, 0.95fr);
-  width: min(1460px, 100%);
-  height: calc(100dvh - 124px);
-  min-height: 680px;
-  max-height: 900px;
-  margin: 22px auto 0;
-  overflow: hidden;
-  border: 1px solid var(--market-line);
-  border-radius: 28px;
-  background: var(--market-surface);
-  box-shadow: var(--market-shadow-lift);
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  width: min(1280px, 100%);
+  margin: auto;
+  padding-block: 32px 12px;
+  align-items: center;
+  gap: 24px;
 }
-
 .auth-market-panel {
-  display: grid;
   grid-area: panel;
-  padding: clamp(28px, 4vw, 56px);
-  place-items: center;
-  border-left: 1px solid var(--market-line);
-  background: var(--market-surface);
-}
-
-.auth-market-showcase {
-  position: relative;
-  display: flex;
-  grid-area: showcase;
   min-width: 0;
-  padding: clamp(30px, 4vw, 54px);
-  flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
-  background: radial-gradient(
-      circle at 88% 8%,
-      var(--market-yellow-soft),
-      transparent 28%
-    ),
-    linear-gradient(
-      135deg,
-      var(--market-primary-soft),
-      var(--market-surface-soft)
-    );
-
-  &::before {
-    position: absolute;
-    right: -70px;
-    bottom: -105px;
-    width: 310px;
-    height: 310px;
-    border: 42px solid var(--market-wash);
-    border-radius: 50%;
-    content: "";
-  }
-
-  &::after {
-    position: absolute;
-    top: 44%;
-    right: -44px;
-    color: var(--market-wash);
-    font-family: var(--market-font-display);
-    font-size: clamp(72px, 8vw, 130px);
-    font-weight: 900;
-    line-height: 1;
-    content: "MARKET";
-    transform: rotate(-90deg);
-    pointer-events: none;
-  }
-}
-
-.showcase-copy,
-.showcase-grid {
-  position: relative;
-  z-index: 1;
-}
-
-.showcase-copy {
-  h1 {
-    max-width: 680px;
-    margin: 16px 0 10px;
-    font-family: var(--market-font-display);
-    font-size: clamp(34px, 3.7vw, 52px);
-    font-weight: 900;
-    letter-spacing: -0.035em;
-    line-height: 1.08;
-  }
-
-  p {
-    margin: 0;
-    color: var(--market-muted);
-    font-size: 15px;
-    line-height: 1.7;
-  }
-}
-
-.showcase-grid {
-  display: grid;
-  grid-template-areas:
-    "featured secondary-a"
-    "featured secondary-b";
-  grid-template-columns: minmax(250px, 1.08fr) minmax(230px, 0.92fr);
-  grid-template-rows: repeat(2, minmax(150px, 1fr));
-  gap: 16px;
-  min-height: 382px;
-  margin-top: 28px;
-}
-
-.showcase-card {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  overflow: hidden;
+  padding: 32px;
   border: 1px solid var(--market-line);
-  border-radius: 20px;
+  border-radius: 24px;
   background: var(--market-surface);
   box-shadow: var(--market-shadow-soft);
-
-  &:nth-child(2) {
-    grid-area: secondary-a;
-  }
-
-  &:nth-child(3) {
-    grid-area: secondary-b;
-  }
-
-  &:not(.is-featured) {
-    grid-template-columns: minmax(112px, 42%) minmax(0, 1fr);
-
-    .showcase-media {
-      min-height: 100%;
-      border-radius: 0;
-    }
-
-    .showcase-card-copy {
-      padding: 17px;
-    }
-
-    .showcase-meta {
-      display: block;
-
-      span {
-        display: none;
-      }
-
-      strong {
-        display: block;
-        margin-bottom: 7px;
-        font-size: 18px;
-      }
-    }
-
-    h2 {
-      display: -webkit-box;
-      margin-bottom: 7px;
-      overflow: hidden;
-      font-size: 16px;
-      line-height: 1.35;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-    }
-
-    p {
-      display: none;
-    }
-  }
 }
-
-.showcase-card.is-featured {
-  grid-area: featured;
-  color: #fff;
-  background: #153e98;
-
-  .showcase-media {
-    position: absolute;
-    inset: 0;
-
-    &::after {
-      position: absolute;
-      inset: 30% 0 0;
-      background: linear-gradient(180deg, transparent, rgba(7, 22, 53, 0.94));
-      content: "";
-    }
-  }
-
-  .showcase-card-copy {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    padding: 24px;
-    align-self: end;
-    flex-direction: column;
-    justify-content: flex-end;
-  }
-
-  .showcase-meta span,
-  p,
-  .inventory {
-    color: rgba(255, 255, 255, 0.78);
-  }
-
-  .showcase-meta strong {
-    color: var(--market-yellow);
-  }
-
-  h2 {
-    margin: 8px 0;
-    font-size: clamp(22px, 2vw, 29px);
-  }
-
-  p {
-    display: -webkit-box;
-    margin: 0 0 14px;
-    overflow: hidden;
-    font-size: 13px;
-    line-height: 1.65;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
+.auth-panel-content {
+  width: min(380px, 100%);
+  margin: 0 auto;
 }
-
-.showcase-media {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  background: var(--market-primary-soft);
-
-  img,
-  .image-fallback {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+.auth-panel-footer {
+  display: flex;
+  margin-top: 22px;
+  padding-top: 18px;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--market-line);
+  color: var(--market-muted);
+  font-size: 12px;
 }
-
-.image-fallback {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
+.auth-footer-mark {
   color: var(--market-primary);
-  background: linear-gradient(
-    145deg,
-    var(--market-primary-soft),
-    var(--market-yellow-soft)
-  );
-
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.auth-market-showcase {
+  grid-area: showcase;
+  min-width: 0;
+}
+.showcase-copy {
+  padding: 12px 24px 0 8px;
+}
+.showcase-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--market-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
   span {
-    display: grid;
-    width: 52px;
-    height: 52px;
-    place-items: center;
-    border: 2px solid currentColor;
-    border-radius: 16px;
-    font-family: var(--market-font-display);
-    font-size: 25px;
-    font-weight: 900;
-  }
-
-  small {
-    font-size: 12px;
+    color: var(--market-primary);
+    font-family: var(--market-font-mono);
     font-weight: 700;
   }
 }
-
-.condition-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 2;
-  padding: 5px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 999px;
-  color: #10213a;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 5px 12px rgba(19, 44, 91, 0.16);
-}
-
-.showcase-card-copy {
-  min-width: 0;
-}
-
-.showcase-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-
-  span {
-    color: var(--market-muted);
-    font-family: var(--market-font-mono);
-    font-size: 11px;
-  }
-
-  strong {
-    color: var(--market-orange-text);
-    font-family: var(--market-font-mono);
-    font-size: 20px;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.showcase-card h2 {
-  color: inherit;
-  font-family: var(--market-font-display);
-  font-weight: 900;
-}
-
-.inventory {
-  color: var(--market-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-:deep(.auth-entry-form) {
-  width: min(410px, 100%);
-}
-
-:deep(.auth-form-kicker) {
-  display: inline-flex;
-  min-height: 30px;
-  margin-bottom: 18px;
-  padding: 4px 11px;
-  align-items: center;
-  gap: 7px;
-  border-radius: 999px;
-  color: var(--market-primary);
-  font-size: 13px;
+.showcase-copy h1 {
+  margin: 18px 0 14px;
+  font-size: clamp(40px, 4vw, 56px);
   font-weight: 800;
-  background: var(--market-primary-soft);
+  letter-spacing: -0.05em;
+  line-height: 1.22;
+  span {
+    position: relative;
+    z-index: 0;
+    color: var(--market-primary);
+    &::after {
+      position: absolute;
+      z-index: -1;
+      right: 0;
+      bottom: 0.06em;
+      left: 0;
+      height: 0.15em;
+      border-radius: 2px;
+      background: var(--auth-yellow);
+      content: "";
+      transform: rotate(-1.2deg);
+    }
+  }
 }
-
-:deep(.auth-form-kicker::before) {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  content: "";
-}
-
-:deep(.auth-form-heading) {
-  margin-bottom: 28px;
-}
-
-:deep(.auth-form-heading h2) {
+.showcase-copy p {
   margin: 0;
-  color: var(--market-ink);
-  font-family: var(--market-font-display);
-  font-size: clamp(29px, 3vw, 36px);
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-}
-
-:deep(.auth-form-heading p) {
-  margin: 9px 0 0;
   color: var(--market-muted);
   font-size: 14px;
   line-height: 1.7;
 }
-
-:deep(.auth-entry-form .el-form-item) {
-  margin-bottom: 20px;
+.poster-stage {
+  position: relative;
+  height: 360px;
+  margin-top: 12px;
+  overflow: hidden;
+  isolation: isolate;
+  // Clip the mural locally so it never crosses into the form.
+  &::after {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      var(--auth-paper),
+      transparent 5%,
+      transparent 87%,
+      var(--auth-paper)
+    );
+    content: "";
+    pointer-events: none;
+  }
 }
-
+.poster-entrance {
+  position: absolute;
+  inset: 0;
+}
+.poster-tilt {
+  position: absolute;
+  top: 10px;
+  left: -30px;
+  width: calc(100% + 160px);
+  transform: rotate(-6deg);
+  transform-origin: 50% 50%;
+}
+.poster-row {
+  height: 148px;
+}
+.poster-row-reverse {
+  position: relative;
+  left: 30px;
+  margin-top: 16px;
+}
+.poster-track,
+.poster-group {
+  display: flex;
+  width: max-content;
+}
+.poster-group {
+  padding-right: 16px;
+  flex: 0 0 auto;
+  gap: 16px;
+}
+.poster-tile {
+  position: relative;
+  width: 204px;
+  height: 148px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--market-line);
+  border-radius: 16px;
+  color: var(--market-ink);
+  background: var(--market-surface);
+  transition: transform 240ms ease-out, box-shadow 240ms ease-out;
+}
+.poster-tile-blue {
+  border-color: transparent;
+  color: var(--market-on-primary);
+  background: var(--market-primary);
+}
+.poster-tile-yellow {
+  border-color: transparent;
+  color: var(--auth-yellow-ink);
+  background: var(--auth-yellow);
+}
+.poster-tile-soft {
+  border-color: transparent;
+  color: var(--market-primary);
+  background: var(--market-primary-soft);
+}
+.poster-tile-photo {
+  width: 240px;
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+.poster-tile-shoes {
+  width: 272px;
+}
+.poster-tile-book {
+  width: 224px;
+}
+.poster-photo-label {
+  position: absolute;
+  bottom: 9px;
+  left: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--market-line);
+  border-radius: 6px;
+  color: var(--market-ink);
+  font-size: 10px;
+  background: var(--market-surface);
+}
+.poster-tile-text {
+  display: flex;
+  padding: 18px 20px;
+  flex-direction: column;
+  justify-content: space-between;
+  strong {
+    font-family: "Smiley Sans", var(--market-font-body);
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.13;
+    white-space: pre-line;
+  }
+}
+.poster-tile-digital {
+  width: 224px;
+}
+.poster-tile-kicker {
+  font-family: var(--market-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+.poster-tile-sign {
+  position: absolute;
+  right: 17px;
+  bottom: 17px;
+  font-size: 31px;
+  line-height: 1;
+}
+.poster-tile-graphic {
+  display: flex;
+  width: 176px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+}
+.poster-object {
+  font-size: 74px;
+  transform: rotate(12deg);
+}
+.poster-object-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.poster-object-dot {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--auth-yellow);
+}
+.poster-image-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--market-primary);
+  background: var(--market-primary-soft);
+  .el-icon {
+    font-size: 56px;
+  }
+  span {
+    font-size: 12px;
+  }
+}
+.showcase-bottom {
+  display: flex;
+  min-height: 44px;
+  padding: 0 12px 0 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--market-muted);
+  font-size: 11px;
+  i {
+    margin-right: 6px;
+    color: var(--market-primary);
+    font-size: 17px;
+    font-style: normal;
+  }
+}
+.poster-motion-toggle {
+  display: inline-flex;
+  min-height: 44px;
+  padding: 0 8px;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--market-muted);
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+  &:hover {
+    color: var(--market-primary);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--market-primary);
+    outline-offset: 2px;
+  }
+}
+:deep(.auth-entry-form) {
+  width: 100%;
+}
+:deep(.auth-form-kicker) {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--market-primary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+:deep(.auth-form-heading) {
+  margin-bottom: 26px;
+}
+:deep(.auth-form-heading h2) {
+  margin: 0;
+  color: var(--market-ink);
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -1px;
+  line-height: 1.3;
+}
+:deep(.auth-form-heading p) {
+  margin: 9px 0 0;
+  color: var(--market-muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+:deep(.auth-entry-form .el-form-item) {
+  margin-bottom: 24px;
+}
 :deep(.auth-entry-form .el-form-item__label) {
   padding-bottom: 8px;
   color: var(--market-ink);
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
 }
-
 :deep(.auth-entry-form .el-input__wrapper) {
-  min-height: 50px;
-  padding: 1px 15px;
-  border-radius: 12px;
+  min-height: 48px;
+  padding: 1px 14px;
+  border-radius: 10px;
+  background: var(--auth-paper);
   box-shadow: 0 0 0 1px var(--market-line) inset;
-  transition: box-shadow var(--market-dur-fast) var(--market-ease-standard),
-    background var(--market-dur-fast) var(--market-ease-standard);
+  transition: box-shadow 200ms ease-out;
 }
-
 :deep(.auth-entry-form .el-input__wrapper:hover) {
   box-shadow: 0 0 0 1px var(--market-line-strong) inset;
 }
-
 :deep(.auth-entry-form .el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px var(--market-primary) inset, var(--market-focus);
 }
-
 :deep(.auth-entry-form .el-input__inner) {
   min-width: 0;
-  font-size: 15px;
+  font-size: 16px;
 }
-
 :deep(.auth-submit) {
   width: 100%;
-  min-height: 50px;
-  margin-top: 4px;
-  border-radius: 12px;
+  min-height: 48px;
+  margin-top: 3px;
+  border-radius: 10px;
   font-size: 15px;
-  font-weight: 900;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+  font-weight: 650;
 }
-
 :deep(.auth-switch) {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: var(--market-muted);
-  font-size: 14px;
+  font-size: 13px;
   text-align: center;
 }
-
 :deep(.auth-switch-link) {
   min-height: 44px;
   padding: 0 6px;
   border: 0;
+  border-radius: 4px;
   color: var(--market-primary);
-  font-weight: 800;
+  font: inherit;
+  font-weight: 600;
   background: transparent;
   cursor: pointer;
+  &:focus-visible {
+    outline: 2px solid var(--market-primary);
+    outline-offset: 2px;
+  }
 }
-
 :deep(.auth-switch-link:hover) {
   color: var(--market-primary-hover);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
 }
-
 :deep(.auth-switch-link:disabled) {
   opacity: 0.45;
   cursor: not-allowed;
 }
-
 :deep(.auth-security) {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 18px;
-  color: var(--market-faint);
+  margin-top: 8px;
+  color: var(--market-muted);
   font-size: 12px;
+  text-align: center;
 }
-
-:deep(.auth-security::before),
-:deep(.auth-security::after) {
-  height: 1px;
-  flex: 1;
-  background: var(--market-line);
-  content: "";
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .poster-tile:hover {
+    transform: translateY(-6px) scale(1.025);
+    box-shadow: var(--market-shadow-lift);
+  }
 }
-
 @media (min-width: 1024px) and (max-width: 1199px) {
   .auth-market-page {
-    padding-right: 24px;
-    padding-left: 24px;
+    padding-inline: 24px;
   }
-
-  .auth-market-shell {
-    grid-template-columns: minmax(0, 1fr) minmax(390px, 0.72fr);
+  .auth-market-panel {
+    padding: 28px 22px;
   }
-
-  .auth-market-showcase {
-    padding: 30px;
-  }
-
-  .showcase-copy h1 {
-    font-size: 34px;
-  }
-
-  .showcase-grid {
-    grid-template-columns: minmax(220px, 1fr) minmax(200px, 0.9fr);
-  }
-
-  .showcase-card:not(.is-featured) {
-    grid-template-columns: minmax(92px, 40%) minmax(0, 1fr);
-
-    .showcase-card-copy {
-      padding: 13px;
-    }
-
-    .inventory {
-      display: none;
-    }
+  :deep(.auth-form-heading h2) {
+    font-size: 28px;
   }
 }
-
 @media (max-width: 1023px) {
   .auth-market-page {
-    padding: 20px;
+    padding: 20px 24px 24px;
   }
-
   .auth-market-shell {
-    grid-template-areas:
-      "panel"
-      "showcase";
+    grid-template-areas: "panel" "showcase";
     grid-template-columns: minmax(0, 1fr);
-    height: auto;
-    min-height: 0;
-    max-height: none;
+    width: min(560px, 100%);
+    margin: 0 auto;
+    padding-top: 24px;
+    gap: 24px;
   }
-
   .auth-market-panel {
-    min-height: 560px;
-    padding: 48px;
-    border-bottom: 1px solid var(--market-line);
-    border-left: 0;
+    padding: 28px 32px;
   }
-
   .auth-market-showcase {
-    min-height: 660px;
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+    border-radius: 18px;
+    background: var(--market-primary-soft);
   }
-
-  .showcase-grid {
-    min-height: 380px;
+  .showcase-copy {
+    position: relative;
+    z-index: 3;
+    padding: 18px 20px 0;
+  }
+  .showcase-eyebrow,
+  .showcase-copy p,
+  .showcase-bottom {
+    display: none;
+  }
+  .showcase-copy h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+  .poster-stage {
+    height: 152px;
+    margin-top: 0;
+    &::after {
+      background: linear-gradient(
+        90deg,
+        var(--market-primary-soft),
+        transparent 4%,
+        transparent 92%,
+        var(--market-primary-soft)
+      );
+    }
+  }
+  .poster-tilt {
+    top: 12px;
+    left: -20px;
+    width: 100%;
+  }
+  .poster-row,
+  .poster-tile {
+    height: 60px;
+  }
+  .poster-group {
+    padding-right: 8px;
+    gap: 8px;
+  }
+  .poster-row-reverse {
+    left: 24px;
+    margin-top: 8px;
+  }
+  .poster-tile {
+    width: 100px;
+    border-radius: 10px;
+  }
+  .poster-tile-photo {
+    width: 112px;
+  }
+  .poster-tile-graphic {
+    width: 92px;
+    gap: 4px;
+  }
+  .poster-tile-text {
+    padding: 7px 10px;
+    strong {
+      font-size: 19px;
+    }
+  }
+  .poster-tile-kicker {
+    display: none;
+  }
+  .poster-tile-sign {
+    right: 9px;
+    bottom: 8px;
+    font-size: 18px;
+  }
+  .poster-photo-label {
+    bottom: 4px;
+    left: 5px;
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+  .poster-object {
+    font-size: 26px;
+  }
+  .poster-object-label {
+    font-size: 7px;
+  }
+  .poster-object-dot {
+    top: 8px;
+    right: 8px;
+    width: 5px;
+    height: 5px;
+  }
+  .poster-image-fallback {
+    gap: 4px;
+    .el-icon {
+      font-size: 28px;
+    }
+    span {
+      font-size: 8px;
+    }
   }
 }
-
-@media (max-width: 767px) {
+@media (max-width: 480px) {
   .auth-market-page {
-    padding: 14px 12px 20px;
+    padding: 18px 16px 24px;
   }
-
-  .auth-market-header {
-    padding: 0 4px;
-  }
-
-  .auth-market-brand img {
-    width: 42px;
-    height: 42px;
-  }
-
-  .auth-market-brand strong {
-    font-size: 16px;
-  }
-
-  .auth-market-brand span {
+  .auth-header-note {
     display: none;
   }
-
   .auth-market-shell {
-    margin-top: 14px;
-    border-radius: 20px;
+    padding-top: 22px;
+    gap: 18px;
   }
-
   .auth-market-panel {
-    min-height: 0;
-    padding: 30px 20px 34px;
+    padding: 24px 20px;
+    border-radius: 18px;
   }
-
-  .auth-market-showcase {
-    min-height: 0;
-    padding: 28px 20px 30px;
-  }
-
-  .auth-market-showcase::after {
-    display: none;
-  }
-
-  .showcase-copy h1 {
-    margin-top: 12px;
-    font-size: 30px;
-  }
-
-  .showcase-copy p {
-    font-size: 14px;
-  }
-
-  .showcase-grid {
-    display: grid;
-    grid-template-areas: none;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-    gap: 12px;
-    min-height: 0;
-    margin-top: 22px;
-  }
-
-  .showcase-card,
-  .showcase-card.is-featured,
-  .showcase-card:not(.is-featured) {
-    display: grid;
-    grid-area: auto;
-    grid-template-columns: 104px minmax(0, 1fr);
-    min-height: 112px;
-    color: var(--market-ink);
-    background: var(--market-surface);
-
-    .showcase-media {
-      position: relative;
-      inset: auto;
-      min-height: 112px;
-    }
-
-    .showcase-media::after {
-      display: none;
-    }
-
-    .showcase-card-copy {
-      position: relative;
-      display: block;
-      padding: 14px;
-      align-self: auto;
-    }
-
-    .showcase-meta {
-      display: block;
-    }
-
-    .showcase-meta span {
-      display: none;
-    }
-
-    .showcase-meta strong {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--market-orange-text);
-      font-size: 17px;
-    }
-
-    h2 {
-      display: -webkit-box;
-      margin: 0 0 7px;
-      overflow: hidden;
-      color: var(--market-ink);
-      font-size: 15px;
-      line-height: 1.35;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-    }
-
-    p {
-      display: none;
-    }
-
-    .inventory {
-      display: inline;
-      color: var(--market-muted);
-    }
-  }
-
-  :deep(.auth-form-heading) {
-    margin-bottom: 24px;
-  }
-
   :deep(.auth-form-heading h2) {
-    font-size: 30px;
+    font-size: 27px;
   }
-
-  :deep(.auth-entry-form .el-input__wrapper) {
-    min-height: 48px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
   }
 }
 </style>

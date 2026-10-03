@@ -21,7 +21,12 @@
         element-loading-text="正在加载"
         element-loading-spinner="el-icon-loading"
       >
-        <el-table-column prop="id" label="ID" min-width="172"></el-table-column>
+        <el-table-column
+          show-overflow-tooltip
+          prop="id"
+          label="ID"
+          min-width="200"
+        ></el-table-column>
         <el-table-column
           prop="noticeTitle"
           label="标题"
