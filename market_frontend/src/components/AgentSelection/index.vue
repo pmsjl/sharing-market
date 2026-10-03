@@ -44,7 +44,7 @@
             ><small>{{ item.commodity.degree || "成色待确认" }}</small
             ><strong>{{ item.commodity.commodityName }}</strong
             ><span
-              ><b>{{ item.commodity.price }}</b> 校园币</span
+              ><b>{{ formatCampusCoin(item.commodity.price) }}</b> 校园币</span
             ></span
           >
           <span class="selection-arrow" aria-hidden="true">↗</span>
@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCampusCoin } from "@/utils/marketNavigation";
 import { computed, ref } from "vue";
 import type { AiMessageVO } from "@/api/aiController";
 const props = defineProps<{ message: AiMessageVO; prompt: string }>();

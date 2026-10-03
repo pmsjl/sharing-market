@@ -7,7 +7,7 @@
       <div class="entry-copy">
         <h2>
           <router-link
-            v-if="post.id"
+            v-if="post.id && linkable"
             :to="{ name: 'PostDetail', params: { id: post.id } }"
             >{{ post.title || "未命名攻略" }}</router-link
           ><span v-else>{{ post.title || "未命名攻略" }}</span>
@@ -61,7 +61,10 @@
 import { computed, ref, watch } from "vue";
 import { Star } from "@element-plus/icons-vue";
 import { buildPostPreview } from "@/utils/postPreview";
-const props = defineProps<{ post: API.PostVO }>();
+const props = withDefaults(
+  defineProps<{ post: API.PostVO; linkable?: boolean }>(),
+  { linkable: true }
+);
 const preview = computed(() => buildPostPreview(props.post.content));
 const imageFailed = ref(false);
 watch(

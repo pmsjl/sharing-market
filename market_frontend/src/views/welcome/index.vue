@@ -1,9 +1,9 @@
 <template>
   <div class="market-page welcome-page" ref="pageRef">
-    <section class="welcome-hero market-board">
+    <section class="welcome-hero">
       <div>
-        <span class="market-eyebrow">CAMPUS FLEA MARKET</span>
-        <h1>欢迎来到课间开放的校园跳蚤市场</h1>
+        <span class="market-eyebrow">SHARING MARKET</span>
+        <h1>欢迎来到校园集市</h1>
         <p>
           教材、数码和宿舍闲置在这里继续流转：同学轻松逛摊，卖家管理自己的小摊位，运营同学维护交易秩序。
         </p>
@@ -27,7 +27,7 @@
     </section>
 
     <section class="role-grid">
-      <div class="role-note market-note">
+      <div class="role-note">
         <h2>普通用户</h2>
         <p>
           浏览商品、发布闲置、收藏攻略、管理订单、查看购物日历，并用智能导购整理购买思路。
@@ -44,9 +44,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import { animateIn } from "@/utils/motion";
 import { GET_ROLE } from "@/utils/token";
 import { getRoleHomePath } from "@/utils/roleHome";
 import illDiscover from "@/assets/illustrations/textbook.svg";
@@ -125,14 +124,6 @@ const adminFeatures = [
 ];
 
 const features = computed(() => (isAdmin.value ? adminFeatures : userFeatures));
-
-onMounted(() => {
-  animateIn(
-    pageRef.value?.querySelectorAll(
-      ".welcome-hero, .feature-card, .role-note"
-    ) || []
-  );
-});
 </script>
 
 <style scoped lang="scss">
@@ -146,8 +137,9 @@ onMounted(() => {
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  padding: 38px;
-  background: var(--market-card-bg);
+  padding: 20px 0 32px;
+  border-bottom: 1px solid var(--market-line);
+  background: transparent;
 
   h1 {
     max-width: 760px;
@@ -155,7 +147,7 @@ onMounted(() => {
     font-family: var(--market-font-display);
     font-size: clamp(32px, 5vw, 52px);
     font-weight: 900;
-    line-height: 1.08;
+    line-height: 1.3;
   }
 
   p {
@@ -179,17 +171,10 @@ onMounted(() => {
 
 .feature-card {
   min-height: 220px;
-  border: 1px solid var(--market-line);
+  border: 0;
   border-radius: 8px;
   background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  transition: transform var(--market-dur-fast) ease,
-    box-shadow var(--market-dur-fast) ease;
-
-  &:hover {
-    box-shadow: var(--market-shadow);
-    transform: translateY(-3px);
-  }
+  box-shadow: none;
 
   .feature-illustration {
     width: 46px;
@@ -226,8 +211,8 @@ onMounted(() => {
 }
 
 .role-note {
-  @include ruled-paper(30px, 40px);
-  padding-left: 58px !important;
+  border-top: 1px solid var(--market-line);
+  background: transparent;
 
   h2 {
     margin-bottom: 10px;
@@ -256,7 +241,7 @@ onMounted(() => {
 
 @media (max-width: 560px) {
   .welcome-hero {
-    padding: 28px 20px;
+    padding: 16px 0 24px;
   }
 
   .feature-grid,

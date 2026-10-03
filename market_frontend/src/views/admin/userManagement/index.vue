@@ -1,8 +1,12 @@
 <template>
   <div class="admin-page">
+    <header class="quiet-heading">
+      <h1>用户管理</h1>
+      <p>维护账户资料、角色与校园币。</p>
+    </header>
     <el-card style="margin-bottom: 20px">
       <el-row :gutter="10">
-        <el-col :span="8">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="用户名">
             <el-input
               v-model="searchParams.userName"
@@ -10,7 +14,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="8">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="用户简介">
             <el-input
               v-model="searchParams.userProfile"
@@ -18,7 +22,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="3" :offset="5">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item>
             <el-button @click="resetSearchParams">重置</el-button>
             <el-button type="primary" @click="getUserList">查询 </el-button>
@@ -38,13 +42,15 @@
         label="用户名"
         prop="userName"
         :copyable="true"
+        min-width="160"
       ></el-table-column>
       <el-table-column
         label="用户账户"
         prop="userAccount"
         :copyable="true"
+        min-width="100"
       ></el-table-column>
-      <el-table-column label="头像" prop="userAvatar" width="150px">
+      <el-table-column label="头像" prop="userAvatar" min-width="100">
         <template #default="{ row }">
           <el-image :src="row.userAvatar" style="width: 100px" />
         </template>
@@ -53,8 +59,9 @@
         label="用户简介"
         prop="userProfile"
         :copyable="true"
+        min-width="220"
       ></el-table-column>
-      <el-table-column label="角色" prop="userRole">
+      <el-table-column label="角色" prop="userRole" min-width="100">
         <template #default="{ row }">
           <el-select v-model="row.userRole" placeholder="选择角色" disabled>
             <el-option
@@ -66,9 +73,9 @@
           </el-select>
         </template>
       </el-table-column>
-      <el-table-column label="校园币" prop="balance" width="110">
+      <el-table-column label="校园币" prop="balance" min-width="150">
         <template #default="{ row }">{{
-          Number(row.balance || 0).toFixed(2)
+          formatCampusCoin(row.balance, true)
         }}</template>
       </el-table-column>
       <el-table-column
@@ -76,21 +83,26 @@
         prop="createTime"
         sortable
         :formatter="formatDate"
+        min-width="176"
       ></el-table-column>
-      <el-table-column label="操作" width="350px">
+      <el-table-column
+        label="操作"
+        width="242"
+        fixed="right"
+        class-name="admin-operations"
+      >
         <template #default="{ row }">
-          <el-button @click="edit(row)">编辑</el-button>
-          <el-button type="primary" @click="view(row)"> 查看</el-button>
-          <el-button type="success" @click="openGrantDialog(row)"
+          <el-button link @click="edit(row)">编辑</el-button>
+          <el-button link type="primary" @click="view(row)"> 查看</el-button>
+          <el-button link type="success" @click="openGrantDialog(row)"
             >发放校园币</el-button
           >
           <el-popconfirm
             title="你确定要删除该用户吗？"
             @confirm="deleteUser(row)"
-            @cancel="cancelEvent"
           >
             <template #reference>
-              <el-button type="danger"> 删除</el-button>
+              <el-button link type="danger"> 删除</el-button>
             </template>
           </el-popconfirm>
         </template>
@@ -98,7 +110,8 @@
     </el-table>
     <el-pagination
       background
-      layout="total, sizes, prev, pager, next, jumper"
+      layout="total, prev, pager, next"
+      :pager-count="5"
       :page-sizes="[5, 10, 15, 20]"
       :current-page="pagination.currentPage"
       :total="pagination.total"
@@ -109,12 +122,14 @@
 
     <!-- 编辑对话框 -->
     <el-dialog
+      append-to-body
       title="编辑用户"
       v-model="editDialogVisible"
-      width="50%"
+      width="680px"
       @close="resetEditField(editFormRef)"
+      class="market-admin-dialog"
     >
-      <el-form :model="editForm" ref="editFormRef">
+      <el-form label-position="top" :model="editForm" ref="editFormRef">
         <el-form-item
           label="用户名"
           :label-width="formLabelWidth"
@@ -164,8 +179,14 @@
       </span>
     </el-dialog>
 
-    <el-dialog title="发放校园币" v-model="grantDialogVisible" width="420px">
-      <el-form :model="grantForm" label-width="90px">
+    <el-dialog
+      append-to-body
+      title="发放校园币"
+      v-model="grantDialogVisible"
+      width="420px"
+      class="market-admin-dialog"
+    >
+      <el-form label-position="top" :model="grantForm">
         <el-form-item label="接收用户">
           <el-input :model-value="grantUserName" disabled />
         </el-form-item>
@@ -198,8 +219,19 @@
     </el-dialog>
 
     <!-- 查看对话框 -->
-    <el-dialog title="查看用户" v-model="viewDialogVisible" width="50%">
-      <el-form :model="viewForm" ref="viewFormRef" disabled>
+    <el-dialog
+      append-to-body
+      title="查看用户"
+      v-model="viewDialogVisible"
+      width="680px"
+      class="market-admin-dialog"
+    >
+      <el-form
+        label-position="top"
+        :model="viewForm"
+        ref="viewFormRef"
+        disabled
+      >
         <el-form-item label="用户名" :label-width="formLabelWidth">
           <el-input v-model="viewForm.userName" readonly />
         </el-form-item>
@@ -235,6 +267,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCampusCoin } from "@/utils/marketNavigation";
 import { onMounted, ref } from "vue";
 import {
   ElButton,
@@ -401,12 +434,6 @@ const deleteUser = async (row) => {
 const handleCurrentChange = (page) => {
   pagination.value.currentPage = page;
   getUserList();
-};
-const cancelEvent = () => {
-  ElMessage.success({
-    duration: 1000,
-    message: "取消删除成功"
-  });
 };
 const resetSearchParams = () => {
   searchParams.value.userName = "";

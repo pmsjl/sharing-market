@@ -5,7 +5,7 @@
     </div>
     <div class="logo-copy">
       <p>{{ setting.title }}</p>
-      <span>Campus Market</span>
+      <span>SHARING MARKET</span>
     </div>
     <button
       class="fold-pin"

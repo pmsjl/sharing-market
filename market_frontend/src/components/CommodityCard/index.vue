@@ -54,7 +54,7 @@
             ><span>剩余 {{ commodity.commodityInventory }} 件</span>
           </div>
           <div class="item-price">
-            <strong>{{ commodity.price }}</strong
+            <strong>{{ formatCampusCoin(commodity.price) }}</strong
             ><span>校园币</span>
           </div>
           <p class="item-price-note">站内模拟币交易</p>
@@ -139,7 +139,7 @@
       append-to-body
       align-center
     >
-      <el-form :model="buyForm" label-width="110px">
+      <el-form :model="buyForm" label-position="top" :disabled="buying">
         <el-form-item label="购买数量" prop="buyNumber">
           <el-input-number
             v-model="buyForm.buyNumber"
@@ -149,12 +149,7 @@
           />
         </el-form-item>
         <el-form-item label="支付校园币" prop="paymentAmount">
-          <el-input-number
-            v-model="buyForm.paymentAmount"
-            :min="0"
-            :precision="2"
-            readonly
-          />
+          <strong>{{ formatCampusCoin(buyForm.paymentAmount) }} 校园币</strong>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input
@@ -166,14 +161,19 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="buyDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitBuy">提交订单</el-button>
+        <el-button :disabled="buying" @click="buyDialogVisible = false"
+          >取消</el-button
+        >
+        <el-button type="primary" :loading="buying" @click="submitBuy"
+          >提交订单</el-button
+        >
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { formatCampusCoin } from "@/utils/marketNavigation";
 import usePrivateMessageStore from "@/store/modules/privateMessage";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -335,10 +335,6 @@ const handleCollect = async () => {
         message: "添加收藏失败"
       });
     }
-    ElMessage.success({
-      duration: 1000,
-      message: "添加收藏成功"
-    });
   } else {
     const res3 = await editUserCommodityFavoritesUsingPost({
       id: id.value,
@@ -350,10 +346,6 @@ const handleCollect = async () => {
         message: `${initStatus.value === 1 ? "取消" : "添加"}收藏失败`
       });
     }
-    ElMessage.success({
-      duration: 1000,
-      message: `${initStatus.value === 1 ? "取消" : "添加"}收藏成功`
-    });
   }
   syncFavourCount(!hadRecord || previousStatus !== 1 ? 1 : -1);
   await fetchInitFavour();
@@ -397,7 +389,10 @@ const handleBuy = () => {
   buyDialogVisible.value = true;
 };
 
+const buying = ref(false);
 const submitBuy = async () => {
+  if (buying.value) return;
+  buying.value = true;
   try {
     const res = await buyCommodityUsingPost({
       ...buyForm.value,
@@ -416,6 +411,8 @@ const submitBuy = async () => {
     }
   } catch (error) {
     ElMessage.error("购买失败");
+  } finally {
+    buying.value = false;
   }
 };
 

@@ -1,3 +1,4 @@
+import { ACCOUNT_PATHS } from "./marketNavigation";
 export const ADMIN_HOME_PATH = "/admin/userManagement";
 export const USER_HOME_PATH = "/user/home";
 
@@ -12,6 +13,7 @@ export const getRoleHomePath = (role?: string | null) => {
 };
 
 export const isPathAllowedForRole = (path: string, role?: string | null) => {
+  path = path.split(/[?#]/)[0];
   if (!role || path === "/login" || path === "/register" || path === "/404") {
     return true;
   }
@@ -21,11 +23,15 @@ export const isPathAllowedForRole = (path: string, role?: string | null) => {
   }
 
   if (role === "admin") {
-    return path.startsWith("/admin") || path === "/user/account";
+    return (
+      path === "/admin" ||
+      path.startsWith("/admin/") ||
+      ACCOUNT_PATHS.includes(path)
+    );
   }
 
   if (role === "user") {
-    return path.startsWith("/user");
+    return path === "/user" || path.startsWith("/user/");
   }
 
   return false;

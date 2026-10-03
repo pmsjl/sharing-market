@@ -1,3 +1,16 @@
+import { ACCOUNT_PATHS } from "@/utils/marketNavigation";
+const accountRoutes = () =>
+  ACCOUNT_PATHS.map((path, index) => ({
+    path,
+    component: () => import("@/views/user/account/index.vue"),
+    name: `account-${index}`,
+    meta: {
+      title: ["个人概览", "我的交易", "我的内容", "校园币", "资料设置"][index],
+      icon: "UserFilled",
+      hidden: true
+    }
+  }));
+
 //对外暴露配置路由(常量路由):全部用户都可以访问到的路由
 export const constantRoute = [
   {
@@ -84,16 +97,7 @@ export const asnycAdminRoute = [
       icon: "Tools"
     },
     children: [
-      {
-        path: "/user/account",
-        component: () => import("@/views/user/account/index.vue"),
-        name: "account",
-        meta: {
-          title: "个人主页",
-          icon: "UserFilled",
-          hidden: true
-        }
-      },
+      ...accountRoutes(),
       {
         //用户管理
         path: "/admin/userManagement",
@@ -177,19 +181,13 @@ export const asnycUserRoute = [
       icon: "Tools"
     },
     children: [
-      {
-        path: "/user/account",
-        component: () => import("@/views/user/account/index.vue"),
-        name: "account",
-        meta: {
-          title: "个人主页",
-          icon: "UserFilled",
-          hidden: true
-        }
-      },
+      ...accountRoutes(),
       {
         path: "/user/orders",
-        component: () => import("@/views/user/orders/index.vue"),
+        redirect: (to: { query: Record<string, unknown> }) => ({
+          path: "/user/account/trade",
+          query: { ...to.query, view: "orders" }
+        }),
         name: "orders",
         meta: {
           title: "我的订单",
@@ -258,6 +256,24 @@ export const asnycUserRoute = [
           icon: "Postcard",
           hidden: false
         }
+      },
+      {
+        path: "/user/publish",
+        component: () => import("@/views/user/commodity/Publish.vue"),
+        name: "publish",
+        meta: { title: "发布闲置", hidden: true }
+      },
+      {
+        path: "/user/post/new",
+        component: () => import("@/views/user/post/Editor.vue"),
+        name: "postNew",
+        meta: { title: "编写攻略", hidden: true }
+      },
+      {
+        path: "/user/post/:id/edit",
+        component: () => import("@/views/user/post/Editor.vue"),
+        name: "postEdit",
+        meta: { title: "编辑攻略", hidden: true }
       },
       {
         path: "/user/post/:id",

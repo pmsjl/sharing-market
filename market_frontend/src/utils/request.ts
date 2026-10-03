@@ -13,9 +13,8 @@ request.interceptors.request.use((config) => {
   const userStore = useUserStore();
   if (userStore.token) {
     config.headers.satoken = userStore.token;
+    config.headers.Authorization = "Bearer " + userStore.token;
   }
-  config.headers.Authorization =
-    "Bearer " + window.localStorage.getItem("TOKEN");
   return config;
 });
 //响应拦截器
@@ -29,6 +28,17 @@ request.interceptors.response.use(
       | { code?: number; message?: string }
       | undefined;
     const status = error.response?.status;
+    const requestAuthorization = error.config?.headers?.Authorization;
+    // A response from the session we left must not report expiry on the login
+    // page or in a newly signed-in session. Keep rejecting for callers to stop.
+    if (
+      status === 401 &&
+      requestAuthorization &&
+      requestAuthorization !== `Bearer ${useUserStore().token}`
+    ) {
+      error.requestMessageShown = true;
+      return Promise.reject(error);
+    }
     let msg: string;
     if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
       msg = "请求超时，请稍后重试";
@@ -37,7 +47,9 @@ request.interceptors.response.use(
     } else {
       switch (status) {
         case 401:
-          msg = "token过期";
+          msg = useUserStore().token
+            ? "登录状态已失效，请重新登录"
+            : "请先登录";
           break;
         case 403:
           msg = "无权访问";

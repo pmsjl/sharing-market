@@ -5,11 +5,12 @@
         v-model="searchText"
         clearable
         placeholder="搜索我的攻略"
+        aria-label="搜索我的攻略"
         @clear="handleSearch"
         @keyup.enter="handleSearch"
       >
         <template #append>
-          <el-button :icon="Search" @click="handleSearch" />
+          <el-button :icon="Search" aria-label="搜索" @click="handleSearch" />
         </template>
       </el-input>
       <el-button class="toolbar-button" @click="loadMyPosts">刷新</el-button>
@@ -22,8 +23,11 @@
       @change="handleSearch"
     />
 
+    <div v-if="loadError" class="quiet-state" role="alert">
+      {{ loadError }}<el-button @click="loadMyPosts">重试</el-button>
+    </div>
     <el-empty
-      v-if="!loading && postList.length === 0"
+      v-else-if="!loading && postList.length === 0"
       :description="
         searchText || filterTags.length
           ? '没有符合筛选条件的攻略'
@@ -32,10 +36,16 @@
     />
 
     <div v-else class="post-list" v-loading="loading">
-      <PostPreview v-for="post in postList" :key="post.id" :post="post"
+      <PostPreview
+        v-for="post in postList"
+        :key="post.id"
+        :post="post"
+        :linkable="!isAdmin"
         ><template #actions>
           <el-button
+            v-if="!isAdmin"
             class="action-button"
+            link
             size="small"
             type="primary"
             @click="openEditDialog(post)"
@@ -47,7 +57,7 @@
             @confirm="deleteMyPost(post.id)"
           >
             <template #reference>
-              <el-button class="action-button" size="small" type="danger">
+              <el-button class="action-button" link size="small" type="danger">
                 删除
               </el-button>
             </template>
@@ -64,86 +74,48 @@
         :total="total"
         layout="total, prev, pager, next"
         :pager-count="5"
-        @current-change="loadMyPosts"
-        @size-change="loadMyPosts"
+        @current-change="syncQuery"
+        @size-change="handleSearch"
       />
     </div>
-
-    <el-dialog
-      v-model="editDialogVisible"
-      title="编辑我的攻略"
-      fullscreen
-      class="post-edit-dialog"
-      @closed="resetEditForm"
-    >
-      <el-form :model="editForm" label-width="80px" class="post-edit-form">
-        <el-form-item label="标题">
-          <el-input v-model="editForm.title" maxlength="80" show-word-limit />
-        </el-form-item>
-        <el-form-item label="标签">
-          <el-input-tag
-            v-model="editForm.tags"
-            :max="5"
-            :validate="validateTag"
-            placeholder="请输入标签"
-          />
-        </el-form-item>
-        <el-form-item label="内容">
-          <MdEditor
-            class="post-edit-md"
-            :modelValue="editForm.content"
-            previewTheme="github"
-            showCodeRowNumber
-            @on-change="handleContentChange"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitEdit">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import "md-editor-v3/lib/style.css";
-import { onMounted, ref } from "vue";
+import { ref, watch } from "vue";
 import PostPreview from "@/components/PostPreview/index.vue";
 import PostTagFilter from "@/components/PostTagFilter/index.vue";
 import { Search } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import { MdEditor } from "md-editor-v3";
 import {
   deletePostUsingPost,
-  editPostUsingPost,
   listMyPostVoByPageUsingPost
 } from "@/api/postController";
 
+import { useRoute, useRouter } from "vue-router";
+import { queryPage, queryText } from "@/utils/marketNavigation";
+import { GET_ROLE } from "@/utils/token";
+const isAdmin = GET_ROLE() === "admin";
+const route = useRoute(),
+  router = useRouter();
 const loading = ref(false);
+const loadError = ref("");
 const postList = ref<API.PostVO[]>([]);
 const total = ref(0);
 const searchText = ref("");
 const filterTags = ref<string[]>([]);
 const tagMatchMode = ref<"all" | "any">("all");
 let querySequence = 0;
-const editDialogVisible = ref(false);
 
 const queryParams = ref({
   current: 1,
   pageSize: 10
 });
 
-const editForm = ref<API.PostEditRequest>({
-  id: undefined,
-  title: "",
-  content: "",
-  tags: []
-});
-
 const loadMyPosts = async () => {
   const sequence = ++querySequence;
   loading.value = true;
+  loadError.value = "";
   try {
     const res = await listMyPostVoByPageUsingPost({
       searchText: searchText.value,
@@ -160,57 +132,33 @@ const loadMyPosts = async () => {
     }
     postList.value = [];
     total.value = 0;
-    ElMessage.error("获取我的攻略失败");
+    loadError.value = "获取我的攻略失败";
   } catch (error) {
-    if (sequence === querySequence) ElMessage.error("获取我的攻略失败");
+    if (sequence === querySequence) loadError.value = "获取我的攻略失败";
   } finally {
     if (sequence === querySequence) loading.value = false;
   }
 };
 
+const syncQuery = () =>
+  router.push({
+    query: {
+      ...route.query,
+      q: searchText.value || undefined,
+      tags: filterTags.value,
+      mode: tagMatchMode.value,
+      page: queryParams.value.current
+    }
+  });
 const handleSearch = () => {
   queryParams.value.current = 1;
-  loadMyPosts();
+  void syncQuery();
 };
-
-const openEditDialog = (post: API.PostVO) => {
-  editForm.value = {
-    id: post.id,
-    title: post.title || "",
-    content: post.content || "",
-    tags: [...(post.tagList || [])]
-  };
-  editDialogVisible.value = true;
-};
-
-const handleContentChange = (content: string) => {
-  editForm.value.content = content;
-};
-
-const submitEdit = async () => {
-  if (!editForm.value.title || !editForm.value.content) {
-    ElMessage.warning("标题和内容不能为空");
-    return;
-  }
-  try {
-    const res = await editPostUsingPost({
-      id: editForm.value.id,
-      title: editForm.value.title,
-      content: editForm.value.content,
-      tags: editForm.value.tags
-    });
-    if (res.code !== 200) {
-      ElMessage.error("编辑攻略失败");
-      return;
-    }
-    ElMessage.success("编辑攻略成功");
-    editDialogVisible.value = false;
-    await loadMyPosts();
-  } catch (error) {
-    ElMessage.error("编辑攻略失败");
-  }
-};
-
+const openEditDialog = (post: API.PostVO) =>
+  router.push({
+    path: isAdmin ? "/admin/postManagement" : `/user/post/${post.id}/edit`,
+    query: { returnTo: route.fullPath }
+  });
 const deleteMyPost = async (postId?: string) => {
   if (!postId) return;
   try {
@@ -222,32 +170,28 @@ const deleteMyPost = async (postId?: string) => {
     ElMessage.success("删除攻略成功");
     if (postList.value.length === 1 && queryParams.value.current > 1) {
       queryParams.value.current -= 1;
+      await syncQuery();
+    } else {
+      await loadMyPosts();
     }
-    await loadMyPosts();
   } catch (error) {
     ElMessage.error("删除攻略失败");
   }
 };
 
-const resetEditForm = () => {
-  editForm.value = {
-    id: undefined,
-    title: "",
-    content: "",
-    tags: []
-  };
-};
-
-const validateTag = (tag: string) => {
-  if (tag.length > 10) {
-    return "标签长度不能超过 10 个字符";
-  }
-  return true;
-};
-
-onMounted(() => {
-  loadMyPosts();
-});
+watch(
+  () => route.query,
+  (query) => {
+    searchText.value = queryText(query.q);
+    filterTags.value = (
+      Array.isArray(query.tags) ? query.tags : query.tags ? [query.tags] : []
+    ).filter((item): item is string => typeof item === "string");
+    tagMatchMode.value = query.mode === "any" ? "any" : "all";
+    queryParams.value.current = queryPage(query.page);
+    void loadMyPosts();
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped lang="scss">
@@ -276,44 +220,9 @@ onMounted(() => {
   min-height: 120px;
 }
 
-:deep(.post-edit-dialog) {
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.post-edit-dialog .el-dialog__body) {
-  flex: 1;
-  min-height: 0;
-  padding: 18px 24px;
-}
-
-.post-edit-form {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.post-edit-md {
-  height: calc(100vh - 260px);
-  min-height: 420px;
-  width: 100%;
-  border: 1px solid var(--market-line);
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent 27px,
-    var(--market-line) 27px,
-    var(--market-line) 28px
-  );
-}
-
 @media (max-width: 760px) {
   .my-posts-toolbar {
     grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .post-edit-md {
-    height: calc(100vh - 300px);
-    min-height: 320px;
   }
 }
 </style>

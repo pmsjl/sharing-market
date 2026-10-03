@@ -1,135 +1,67 @@
 <template>
-  <div class="my-comments-container">
-    <el-card
-      title="我的评论"
-      class="my-comments-card"
-      :body-style="{ padding: '20px' }"
+  <AsyncState
+    :loading="comments.loading.value"
+    :error="comments.error.value"
+    @retry="comments.load"
+  >
+    <p v-if="!comments.data.value.length" class="quiet-empty">
+      还没有留下评论，去和同学聊聊经验吧。
+    </p>
+    <article
+      v-for="item in comments.data.value"
+      :key="item.id"
+      class="comment-activity"
     >
-      <div :data="myComments" class="comment-list">
-        <div v-for="item in myComments" :key="item.id" class="my-comments-item">
-          <el-card class="comment-card" :body-style="{ padding: '20px' }">
-            <div class="comment-heading">
-              <slot name="header">
-                <el-text strong>
-                  <router-link
-                    :to="`/user/post/${item.postId}`"
-                    class="comment-link"
-                  >
-                    攻略标题：{{ item.postTitle }}
-                  </router-link>
-                </el-text>
-                <el-text class="comment-update-time">
-                  更新时间：{{ formatDate(item.updateTime) }}
-                </el-text>
-              </slot>
-            </div>
-
-            <div class="comment-content">
-              <strong>评论内容：</strong> {{ item.content }}
-            </div>
-          </el-card>
-        </div>
-      </div>
-    </el-card>
-  </div>
+      <p>{{ item.content }}</p>
+      <router-link v-if="!isAdmin" :to="`/user/post/${item.postId}`"
+        >回应「{{ item.postTitle || "原攻略" }}」 ↗</router-link
+      ><span v-else class="comment-reference"
+        >回应「{{ item.postTitle || "原攻略" }}」</span
+      ><time>{{ formatDate(item.updateTime) }}</time>
+    </article>
+  </AsyncState>
 </template>
-
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { listMyCommentsUsingPost } from "@/api/commentController"; // API 请求函数
-import { ElMessage } from "element-plus";
+import { GET_ROLE } from "@/utils/token";
+const isAdmin = GET_ROLE() === "admin";
+import { onMounted } from "vue";
 import dayjs from "dayjs";
-
-// 定义评论类型
-interface MyComment {
-  id: string;
-  postId: string;
-  postTitle: string;
-  updateTime: string;
-  content: string;
-}
-
-// 定义 myComments 的状态
-const myComments = ref<MyComment[]>([]);
-
-// 获取评论的函数
-const getComments = async () => {
-  try {
-    const res = await listMyCommentsUsingPost();
-    myComments.value = res.data || [];
-  } catch (e) {
-    ElMessage.error(`获取我的评论失败，${e.message}`);
-  }
-};
-
-// 格式化时间的函数
-const formatDate = (date: string) => {
-  return dayjs(date).format("YYYY-MM-DD HH:mm:ss");
-};
-
-// 在组件挂载时获取评论数据
-onMounted(() => {
-  getComments();
-});
+import AsyncState from "@/components/AsyncState/index.vue";
+import { useRemote, responseData } from "@/composables/useRemote";
+import { listMyCommentsUsingPost } from "@/api/commentController";
+const comments = useRemote<any[]>([], async () =>
+  responseData(await listMyCommentsUsingPost())
+);
+const formatDate = (value: string) => dayjs(value).format("YYYY-MM-DD HH:mm");
+onMounted(() => void comments.load());
 </script>
-
 <style scoped lang="scss">
-.my-comments-container {
-  margin: 0;
-}
-
-.my-comments-card {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.comment-list {
-  margin-top: 20px;
-}
-
-.my-comments-item {
-  margin-bottom: 16px;
-}
-
-.comment-card {
-  border: 0;
-  border-bottom: 1px solid var(--market-line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  :deep(.el-card__body) {
-    padding: 20px 0;
+.comment-activity {
+  padding: 24px 0;
+  & + & {
+    margin-top: 8px;
   }
-}
-
-.comment-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.comment-link {
-  color: var(--market-primary);
-  font-family: var(--market-font-body);
-  text-decoration: none;
-}
-
-.comment-update-time {
-  color: var(--market-muted);
-  font-family: var(--market-font-body);
-}
-
-.comment-content {
-  margin-top: 10px;
-  color: var(--market-ink);
-  line-height: 28px;
-}
-
-@media (max-width: 600px) {
-  .comment-heading {
-    align-items: flex-start;
-    flex-direction: column;
+  p {
+    font-size: 16px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin: 0 0 12px;
+  }
+  a,
+  .comment-reference {
+    display: block;
+    color: var(--market-muted);
+    font-size: 13px;
+    border-left: 2px solid var(--market-line);
+    padding-left: 12px;
+    line-height: 1.7;
+  }
+  time {
+    display: block;
+    color: var(--market-muted);
+    font-size: 12px;
+    margin-top: 14px;
   }
 }
 </style>

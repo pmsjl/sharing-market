@@ -1,0 +1,99 @@
+.admin-page {
+  width: min(1380px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+  > .el-card {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    margin-bottom: 24px;
+  }
+  > .el-card > .el-card__body {
+    padding: 0;
+    background: transparent;
+  }
+  .admin-search {
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--market-line);
+  }
+  .el-form-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 16px;
+  }
+  .el-form-item__label {
+    justify-content: flex-start;
+    height: auto;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .el-form-item__content {
+    gap: 8px;
+    min-width: 0;
+    .el-button {
+      margin: 0;
+    }
+  }
+  .el-select {
+    width: 100%;
+  }
+  .el-table {
+    border-radius: 8px;
+    width: 100%;
+    max-width: 100%;
+  }
+  .el-table .cell {
+    overflow-wrap: anywhere;
+  }
+  .el-table th .cell {
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .admin-operations .cell {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .admin-operations .el-button {
+    margin: 0;
+    min-height: 36px;
+  }
+  .el-pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 22px;
+  }
+}
+.market-admin-dialog {
+  .el-form {
+    min-width: 0;
+  }
+  .el-select,
+  .el-input-number {
+    width: 100%;
+  }
+  .el-dialog__footer {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .el-dialog__footer .el-button {
+    margin: 0;
+  }
+}
+@media (max-width: 600px) {
+  .admin-page .el-pagination {
+    --el-pagination-button-width: 28px;
+    --el-pagination-button-height: 32px;
+  }
+  .admin-page .el-pagination__total {
+    flex-basis: 100%;
+  }
+  .admin-page .quiet-heading h1 {
+    font-size: 26px;
+  }
+}

@@ -15,7 +15,7 @@ const polling = compile(read("utils/aiMessagePolling.ts"));
 const componentCode = compile(component + `
 export const __test = { submitContent, loadMessages, selectConversation, startNewChat,
   activeConversationId, chatStates, activeChat, typingMessageId,
-  selectedRecommendationId, selectionOpen, selectionMessage, selectionPrompt, openSelection };
+  selectedRecommendationId, selectionOpen, selectionMessage, selectionPrompt, openSelection, restoreRequestedConversation };
 `);
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const message = (id, status = "PENDING", sequenceNo = 2, role = "ASSISTANT") => ({
@@ -31,6 +31,7 @@ const snapshot = (records, total = records.length) => ({ code: 200,
   data: { records, current: 1, pageSize: 20, total } });
 
 function fixture(overrides = {}) {
+  const route = vue.reactive({ query: {} });
   const timers = new Map();
   let timerId = 0;
   const lifecycle = [];
@@ -64,7 +65,7 @@ function fixture(overrides = {}) {
   sandbox.require = (name) => {
     if (name === "vue") return { ...vue, onMounted: () => {}, onBeforeUnmount: (fn) => lifecycle.push(fn) };
     if (name === "vue-router") return {
-      useRoute: () => ({ query: {} }), useRouter: () => ({ replace: async () => {} })
+      useRoute: () => route, useRouter: () => ({ replace: async () => {} })
     };
     if (name === "element-plus") return { ElMessage: {
       error: (text) => notifications.push(text), warning: (text) => notifications.push(text), success: () => {}
@@ -80,7 +81,7 @@ function fixture(overrides = {}) {
   scope.run(() => vm.runInContext(componentCode, sandbox));
   const entry = sandbox.exports.__test;
   return {
-    entry, api, timers, notifications, posts: () => posts,
+    entry, api, timers, notifications, route, posts: () => posts,
     tick: async () => {
       const [id, timer] = timers.entries().next().value;
       timers.delete(id);
@@ -251,4 +252,17 @@ test("expired login stops polling and requires a reload", async (t) => {
   assert.equal(f.entry.activeChat.value.loadFailed, true);
   assert.equal(f.timers.size, 0);
   assert.ok(f.notifications.length);
+});
+
+test('same-page conversation query restores the requested chat without replacing another chat state', async () => {
+  const h = fixture({listAiConversationMessages: async id => snapshot([message(id+'-reply','SUCCESS')])});
+  try {
+    h.route.query.conversationId='c1'; await h.entry.restoreRequestedConversation();
+    assert.equal(h.entry.activeConversationId.value,'c1');
+    h.route.query.conversationId='c2'; await h.entry.restoreRequestedConversation();
+    assert.equal(h.entry.activeConversationId.value,'c2');
+    assert.equal(h.entry.activeChat.value.messages[0].id,'c2-reply');
+    h.route.query.conversationId='c1'; await h.entry.restoreRequestedConversation();
+    assert.equal(h.entry.activeChat.value.messages[0].id,'c1-reply');
+  } finally { h.dispose(); }
 });

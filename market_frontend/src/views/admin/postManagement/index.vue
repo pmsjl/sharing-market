@@ -1,19 +1,23 @@
 <template>
   <div class="admin-page post-admin">
+    <header class="quiet-heading">
+      <h1>攻略管理</h1>
+      <p>维护社区攻略与分享内容。</p>
+    </header>
     <!-- 查询区域 -->
-    <el-card style="margin-bottom: 10px">
+    <el-card class="admin-search">
       <el-row :gutter="10">
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="标题">
             <el-input v-model="queryParams.title" placeholder="请输入标题" />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="内容">
             <el-input v-model="queryParams.content" placeholder="请输入内容" />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="标签">
             <el-input-tag
               v-model="queryParams.tags"
@@ -35,12 +39,12 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="用户ID">
             <el-input v-model="queryParams.userId" placeholder="请输入用户ID" />
           </el-form-item>
         </el-col>
-        <el-col :span="8">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item>
             <el-button @click="resetQuery">重置</el-button>
             <el-button type="primary" @click="getPostList">查询</el-button>
@@ -54,15 +58,15 @@
 
     <!-- 帖子列表表格 -->
     <el-card>
-      <el-table :data="postList" style="width: 100%" :loading="loading">
-        <el-table-column prop="title" label="标题" />
+      <el-table :data="postList" style="width: 100%" v-loading="loading">
+        <el-table-column prop="title" label="标题" min-width="160" />
         <el-table-column
           prop="content"
           label="内容"
-          width="200px"
           show-overflow-tooltip
+          min-width="220"
         />
-        <el-table-column prop="tags" label="标签" width="200px">
+        <el-table-column prop="tags" label="标签" min-width="100">
           <template #default="{ row }">
             <el-tag
               v-for="tag in row.tags"
@@ -73,23 +77,27 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="userId" label="用户ID" />
-        <el-table-column prop="thumbNum" label="点赞数" />
-        <el-table-column prop="favourNum" label="收藏数" />
-        <el-table-column prop="createTime" label="创建时间" />
-        <el-table-column prop="updateTime" label="更新时间" />
-        <el-table-column label="操作" width="200px">
+        <el-table-column prop="userId" label="用户ID" min-width="172" />
+        <el-table-column prop="thumbNum" label="点赞数" min-width="100" />
+        <el-table-column prop="favourNum" label="收藏数" min-width="100" />
+        <el-table-column prop="createTime" label="创建时间" min-width="176" />
+        <el-table-column prop="updateTime" label="更新时间" min-width="176" />
+        <el-table-column
+          label="操作"
+          width="124"
+          fixed="right"
+          class-name="admin-operations"
+        >
           <template #default="{ row }">
-            <el-button type="primary" @click="showEditDialog(row.id)"
+            <el-button link type="primary" @click="showEditDialog(row.id)"
               >修改
             </el-button>
             <el-popconfirm
               title="你确定要删除该帖子吗？"
               @confirm="deletePost(row)"
-              @cancel="cancelEvent"
             >
               <template #reference>
-                <el-button type="danger">删除</el-button>
+                <el-button link type="danger">删除</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -100,7 +108,8 @@
       <el-pagination
         style="margin-top: 20px"
         background
-        layout="total, sizes, prev, pager, next, jumper"
+        layout="total, prev, pager, next"
+        :pager-count="5"
         :page-sizes="[5, 10, 15, 20]"
         :current-page="paginationConfig.current"
         :total="paginationConfig.total"
@@ -112,12 +121,13 @@
 
     <!-- 修改帖子：全屏编辑工作区 -->
     <el-dialog
+      append-to-body
       v-model="editDialogVisible"
       title="修改帖子"
       fullscreen
-      class="admin-post-edit-dialog"
       :close-on-click-modal="false"
       @closed="resetEditField(editFormRef)"
+      class="market-admin-dialog admin-post-edit-dialog"
     >
       <div class="post-edit-workspace">
         <div class="post-edit-intro">
@@ -172,12 +182,14 @@
 
     <!-- 添加帖子的对话框 -->
     <el-dialog
+      append-to-body
       title="添加帖子"
       v-model="addDialogVisible"
-      width="50%"
+      width="680px"
       @close="addDialogClosed"
+      class="market-admin-dialog"
     >
-      <el-form :model="addForm" ref="addFormRef" label-width="100px">
+      <el-form label-position="top" :model="addForm" ref="addFormRef">
         <el-form-item label="标题" prop="title">
           <el-input v-model="addForm.title" />
         </el-form-item>
@@ -198,12 +210,10 @@
           />
         </el-form-item>
       </el-form>
-      <span class="dialog-footer" style="margin-left: 100px">
-        <slot name="footer">
-          <el-button @click="addDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="addPost">添加</el-button>
-        </slot>
-      </span>
+      <template #footer>
+        <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="addPost">添加</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -427,9 +437,6 @@ const validateTag = (tag: string) => {
 };
 
 // 取消删除
-const cancelEvent = () => {
-  ElMessage.success("取消删除成功");
-};
 
 // 显示添加对话框
 const showAddDialog = () => {
@@ -443,14 +450,9 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.post-admin {
-  padding: 20px;
-}
-
 .post-edit-workspace {
   display: flex;
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
   flex-direction: column;
 }
 
@@ -556,7 +558,7 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   padding: 18px 24px;
-  overflow: hidden;
+  overflow: auto;
   color: var(--market-ink);
 }
 
@@ -568,10 +570,6 @@ onMounted(() => {
 }
 
 @media (max-width: 760px) {
-  .post-admin {
-    padding: 12px;
-  }
-
   .post-edit-intro {
     align-items: flex-start;
     flex-direction: column;

@@ -1,9 +1,13 @@
 <template>
   <div class="admin-page commodity-admin">
+    <header class="quiet-heading">
+      <h1>商品管理</h1>
+      <p>维护商品信息、库存与上架状态。</p>
+    </header>
     <!-- 查询区域 -->
-    <el-card style="margin-bottom: 10px">
+    <el-card class="admin-search">
       <el-row :gutter="10">
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="商品名称">
             <el-input
               v-model="queryParams.commodityName"
@@ -11,7 +15,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="商品简介">
             <el-input
               v-model="queryParams.commodityDescription"
@@ -19,7 +23,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="新旧程度">
             <el-input
               v-model="queryParams.degree"
@@ -27,7 +31,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="分类ID">
             <el-input
               v-model="queryParams.commodityTypeId"
@@ -35,7 +39,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="是否上架">
             <el-select
               v-model="queryParams.isListed"
@@ -47,7 +51,7 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="8">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item>
             <el-button @click="resetQuery">重置</el-button>
             <el-button type="primary" @click="getCommodityList">查询</el-button>
@@ -61,54 +65,75 @@
 
     <!-- 商品列表表格 -->
     <el-card>
-      <el-table :data="commodityList" style="width: 100%" :loading="loading">
-        <el-table-column prop="commodityName" label="商品名称" />
+      <el-table :data="commodityList" style="width: 100%" v-loading="loading">
+        <el-table-column
+          prop="commodityName"
+          label="商品名称"
+          min-width="160"
+        />
         <el-table-column
           prop="commodityDescription"
           label="商品简介"
-          width="150px"
           show-overflow-tooltip
+          min-width="220"
         />
-        <el-table-column label="商品封面" prop="commodityAvatar" width="100px">
+        <el-table-column
+          label="商品封面"
+          prop="commodityAvatar"
+          min-width="100"
+        >
           <template #default="{ row }">
             <el-image :src="row.commodityAvatar" style="width: 64px" />
           </template>
         </el-table-column>
-        <el-table-column prop="degree" label="新旧程度" />
+        <el-table-column prop="degree" label="新旧程度" min-width="100" />
         <el-table-column
           prop="commodityTypeId"
           label="分类ID"
           show-overflow-tooltip
+          min-width="172"
         />
-        <el-table-column prop="commodityTypeName" label="分类名称" />
-        <el-table-column prop="isListed" label="是否上架">
+        <el-table-column
+          prop="commodityTypeName"
+          label="分类名称"
+          min-width="160"
+        />
+        <el-table-column prop="isListed" label="是否上架" min-width="100">
           <template #default="{ row }">
             <el-tag :type="row.isListed === 1 ? 'success' : 'danger'">
               {{ row.isListed === 1 ? "已上架" : "未上架" }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="price" label="价格" />
+        <el-table-column prop="price" label="价格（校园币）" min-width="170"
+          ><template #default="{ row }"
+            >{{ formatCampusCoin(row.price) }} 校园币</template
+          ></el-table-column
+        >
         <el-table-column
           prop="commodityInventory"
           label="商品库存"
-          width="60px"
+          min-width="100"
         />
-        <el-table-column prop="favourNum" label="收藏数" width="50px" />
-        <el-table-column prop="viewNum" label="浏览量" width="50px" />
-        <el-table-column prop="updateTime" label="更新时间" />
-        <el-table-column label="操作" width="180px">
+        <el-table-column prop="favourNum" label="收藏数" min-width="100" />
+        <el-table-column prop="viewNum" label="浏览量" min-width="100" />
+        <el-table-column prop="updateTime" label="更新时间" min-width="176" />
+        <el-table-column
+          label="操作"
+          width="124"
+          fixed="right"
+          class-name="admin-operations"
+        >
           <template #default="{ row }">
-            <el-button type="primary" @click="showEditDialog(row.id)"
+            <el-button link type="primary" @click="showEditDialog(row.id)"
               >修改
             </el-button>
             <el-popconfirm
               title="你确定要删除该商品吗？"
               @confirm="deleteCommodity(row)"
-              @cancel="cancelEvent"
             >
               <template #reference>
-                <el-button type="danger">删除</el-button>
+                <el-button link type="danger">删除</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -119,7 +144,8 @@
       <el-pagination
         style="margin-top: 20px"
         background
-        layout="total, sizes, prev, pager, next, jumper"
+        layout="total, prev, pager, next"
+        :pager-count="5"
         :page-sizes="[5, 10, 15, 20]"
         :current-page="paginationConfig.current"
         :total="paginationConfig.total"
@@ -131,12 +157,14 @@
 
     <!-- 修改商品的对话框 -->
     <el-dialog
+      append-to-body
       title="修改商品"
       v-model="editDialogVisible"
-      width="50%"
+      width="680px"
       @close="resetEditField(editFormRef)"
+      class="market-admin-dialog"
     >
-      <el-form :model="editForm" ref="editFormRef" label-width="100px">
+      <el-form label-position="top" :model="editForm" ref="editFormRef">
         <el-form-item label="商品名称" prop="commodityName">
           <el-input v-model="editForm.commodityName" />
         </el-form-item>
@@ -178,7 +206,7 @@
             <el-option label="已上架" :value="1" />
           </el-select>
         </el-form-item>
-        <el-form-item label="价格" prop="price">
+        <el-form-item label="价格（校园币）" prop="price">
           <el-input v-model="editForm.price" />
         </el-form-item>
         <el-form-item label="商品库存" prop="commodityInventory">
@@ -190,22 +218,22 @@
           />
         </el-form-item>
       </el-form>
-      <span class="dialog-footer">
-        <slot name="footer">
-          <el-button @click="resetEditField(editFormRef)">取消</el-button>
-          <el-button type="primary" @click="editCommodity">确定</el-button>
-        </slot>
-      </span>
+      <template #footer>
+        <el-button @click="resetEditField(editFormRef)">取消</el-button>
+        <el-button type="primary" @click="editCommodity">确定</el-button>
+      </template>
     </el-dialog>
 
     <!-- 添加商品的对话框 -->
     <el-dialog
+      append-to-body
       title="添加商品"
       v-model="addDialogVisible"
-      width="50%"
+      width="680px"
       @close="addDialogClosed"
+      class="market-admin-dialog"
     >
-      <el-form :model="addForm" ref="addFormRef" label-width="100px">
+      <el-form label-position="top" :model="addForm" ref="addFormRef">
         <el-form-item label="商品名称" prop="commodityName">
           <el-input v-model="addForm.commodityName" />
         </el-form-item>
@@ -259,17 +287,16 @@
           />
         </el-form-item>
       </el-form>
-      <span class="dialog-footer" style="margin-left: 100px">
-        <slot name="footer">
-          <el-button @click="addDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="addCommodity">添加</el-button>
-        </slot>
-      </span>
+      <template #footer>
+        <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="addCommodity">添加</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { formatCampusCoin } from "@/utils/marketNavigation";
 import { onMounted, ref } from "vue";
 import {
   ElButton,
@@ -519,9 +546,6 @@ const handleCurrentChange = (page: number) => {
 };
 
 // 取消删除
-const cancelEvent = () => {
-  ElMessage.success("取消删除成功");
-};
 
 // 显示添加对话框
 const showAddDialog = () => {
@@ -535,8 +559,4 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.commodity-admin {
-  padding: 20px;
-}
-</style>
+<style scoped></style>

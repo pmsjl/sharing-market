@@ -1,9 +1,13 @@
 <template>
   <div class="admin-page search_container">
+    <header class="quiet-heading">
+      <h1>公告管理</h1>
+      <p>发布和维护校园公告。</p>
+    </header>
     <el-card shadow="always">
       <!-- 搜索内容和导出区域 -->
       <el-row style="margin-bottom: 20px">
-        <el-col :span="4">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-button type="primary" @click="showAddDialog()" :icon="Promotion">
             发布新公告
           </el-button>
@@ -16,14 +20,21 @@
         style="width: 100%"
         stripe
         v-loading="loading"
-        element-loading-text="拼命加载中"
+        element-loading-text="正在加载"
         element-loading-spinner="el-icon-loading"
-        element-loading-background="rgba(0, 0, 0, 0.8)"
       >
-        <el-table-column prop="id" label="ID"></el-table-column>
-        <el-table-column prop="noticeTitle" label="标题"></el-table-column>
-        <el-table-column prop="noticeContent" label="公告"></el-table-column>
-        <el-table-column label="发布人" width="160">
+        <el-table-column prop="id" label="ID" min-width="172"></el-table-column>
+        <el-table-column
+          prop="noticeTitle"
+          label="标题"
+          min-width="160"
+        ></el-table-column>
+        <el-table-column
+          prop="noticeContent"
+          label="公告"
+          min-width="220"
+        ></el-table-column>
+        <el-table-column label="发布人" min-width="100">
           <template #default="{ row }">
             <div class="notice-admin-cell">
               <el-avatar :size="28" :src="getNoticePublisherAvatar(row)">
@@ -33,19 +44,27 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="发布日期"></el-table-column>
-        <el-table-column label="操作">
+        <el-table-column
+          prop="createTime"
+          label="发布日期"
+          min-width="176"
+        ></el-table-column>
+        <el-table-column
+          label="操作"
+          width="124"
+          fixed="right"
+          class-name="admin-operations"
+        >
           <template #default="{ row }">
-            <el-button type="primary" @click="showEditDialog(row.id)">
+            <el-button link type="primary" @click="showEditDialog(row.id)">
               修改
             </el-button>
             <el-popconfirm
               title="你确定要删除该公告吗？"
               @confirm="deleteNotice(row)"
-              @cancel="cancelEvent"
             >
               <template #reference>
-                <el-button type="danger"> 删除</el-button>
+                <el-button link type="danger"> 删除</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -59,21 +78,24 @@
         :current-page="pagination.currentPage"
         :page-sizes="[1, 2, 3, 4, 5]"
         :page-size="pagination.pageSize"
-        layout="total, sizes, prev, pager, next, jumper"
+        layout="total, prev, pager, next"
+        :pager-count="5"
         :total="total"
       />
       <!-- 修改公告的对话框 -->
       <el-dialog
+        append-to-body
         title="修改公告"
         v-model="editDialogVisible"
-        width="50%"
+        width="680px"
         @close="resetEditField(editFormRef)"
+        class="market-admin-dialog"
       >
         <el-form
+          label-position="top"
           :model="editForm"
           ref="editFormRef"
           :rules="editFormRules"
-          label-width="100px"
         >
           <el-form-item label="公告标题" prop="noticeTitle">
             <el-input v-model="editForm.noticeTitle"></el-input>
@@ -85,25 +107,25 @@
             ></el-input>
           </el-form-item>
         </el-form>
-        <span class="dialog-footer">
-          <slot name="footer">
-            <el-button @click="resetEditField(editFormRef)">取 消</el-button>
-            <el-button type="primary" @click="editNoticeById">确 定</el-button>
-          </slot>
-        </span>
+        <template #footer>
+          <el-button @click="resetEditField(editFormRef)">取 消</el-button>
+          <el-button type="primary" @click="editNoticeById">确 定</el-button>
+        </template>
       </el-dialog>
       <!-- 添加公告的对话框 -->
       <el-dialog
+        append-to-body
         title="添加公告"
         v-model="addDialogVisible"
-        width="50%"
+        width="680px"
         @close="addDialogClosed"
+        class="market-admin-dialog"
       >
         <el-form
+          label-position="top"
           :model="addForm"
           ref="addFormRef"
           :rules="addFormRules"
-          label-width="100px"
         >
           <el-form-item label="公告标题" prop="noticeTitle">
             <el-input v-model="addForm.noticeTitle"></el-input>
@@ -115,12 +137,10 @@
             ></el-input>
           </el-form-item>
         </el-form>
-        <span class="dialog-footer">
-          <slot name="footer">
-            <el-button @click="addDialogVisible = false">取 消</el-button>
-            <el-button type="primary" @click="addNotice">添加公告</el-button>
-          </slot>
-        </span>
+        <template #footer>
+          <el-button @click="addDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="addNotice">添加公告</el-button>
+        </template>
       </el-dialog>
     </el-card>
   </div>
@@ -344,12 +364,6 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   pagination.value.currentPage = val;
   getNoticeList();
-};
-const cancelEvent = () => {
-  ElMessage.success({
-    duration: 1000,
-    message: "取消删除成功"
-  });
 };
 // 页面挂载时初始化
 onMounted(() => {

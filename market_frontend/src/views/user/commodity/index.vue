@@ -5,11 +5,7 @@
         <span class="browse-kicker">好物循环</span>
         <h1>发现你的<span>下一件好物</span></h1>
       </div>
-      <el-button
-        type="primary"
-        :icon="Plus"
-        round
-        @click="addDialogVisible = true"
+      <el-button type="primary" :icon="Plus" round @click="publish"
         >发布闲置</el-button
       >
     </header>
@@ -142,97 +138,19 @@
         @current-change="handlePageChange"
       />
     </div>
-    <el-dialog
-      title="发布商品"
-      v-model="addDialogVisible"
-      width="560px"
-      @close="resetAddForm"
-    >
-      <el-form :model="addForm" ref="addFormRef" label-width="100px">
-        <el-form-item label="商品名称" prop="commodityName">
-          <el-input
-            v-model="addForm.commodityName"
-            placeholder="请输入商品名称"
-          />
-        </el-form-item>
-        <el-form-item label="商品简介" prop="commodityDescription">
-          <el-input
-            type="textarea"
-            v-model="addForm.commodityDescription"
-            placeholder="写清品牌、成色、适用场景"
-            :rows="4"
-          />
-        </el-form-item>
-        <el-form-item label="商品封面" prop="commodityAvatar">
-          <div class="upload-row">
-            <el-input
-              v-model="addForm.commodityAvatar"
-              placeholder="请输入图片 URL 或上传本地封面"
-            />
-            <el-upload
-              :http-request="handleCommodityAvatarUpload"
-              :show-file-list="false"
-              accept="image/*"
-            >
-              <el-button type="primary">上传封面</el-button>
-            </el-upload>
-          </div>
-          <el-image
-            v-if="addForm.commodityAvatar"
-            :src="addForm.commodityAvatar"
-            class="preview-image"
-            :preview-src-list="[addForm.commodityAvatar]"
-          />
-        </el-form-item>
-        <el-form-item label="新旧程度" prop="degree">
-          <el-input v-model="addForm.degree" placeholder="例如：九成新" />
-        </el-form-item>
-        <el-form-item label="商品分类" prop="commodityTypeId">
-          <el-select
-            v-model="addForm.commodityTypeId"
-            placeholder="请选择商品分类"
-          >
-            <el-option
-              v-for="type in commodityTypeList"
-              :key="type.id"
-              :label="type.typeName"
-              :value="type.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="价格（校园币）" prop="price">
-          <el-input v-model="addForm.price" placeholder="请输入价格" />
-        </el-form-item>
-        <el-form-item label="商品库存" prop="commodityInventory">
-          <el-input-number
-            v-model="addForm.commodityInventory"
-            :min="1"
-            :step="1"
-            controls-position="right"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="addDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleAddCommodity">发布</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import {
-  addCommodityUsingPost,
-  listCommodityVoByPageUsingPost
-} from "@/api/commodityController";
-import { uploadFileUsingPost } from "@/api/fileController";
+import { listCommodityVoByPageUsingPost } from "@/api/commodityController";
 import { listCommodityTypeVoByPageUsingPost } from "@/api/commodityTypeController";
 import CommodityList from "@/components/CommodityList/index.vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
 import { Search, Operation, Plus } from "@element-plus/icons-vue";
 
+import { queryText, queryPage } from "@/utils/marketNavigation";
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
@@ -254,16 +172,26 @@ const advancedFilterCount = computed(
       queryParams.value.commodityInventory
     ].filter(Boolean).length
 );
+const syncQuery = () => {
+  const query = {
+    q: queryParams.value.commodityName.trim() || undefined,
+    description: queryParams.value.commodityDescription || undefined,
+    degree: queryParams.value.degree || undefined,
+    inventory: queryParams.value.commodityInventory || undefined,
+    category: queryParams.value.commodityTypeId || undefined,
+    sort: sortMode.value,
+    page: String(currentPage.value)
+  };
+  if (router.resolve({ path: route.path, query }).fullPath === route.fullPath)
+    void getCommodityList();
+  else void router.push({ query });
+};
 const searchCommodities = () => {
   currentPage.value = 1;
-  const q = queryParams.value.commodityName.trim();
-  queryParams.value.commodityName = q;
-  if (q !== (route.query.q || "")) {
-    void router.replace({ query: { ...route.query, q: q || undefined } });
-  } else {
-    void getCommodityList();
-  }
+  syncQuery();
 };
+const publish = () =>
+  router.push({ path: "/user/publish", query: { returnTo: route.fullPath } });
 const selectCategory = (id = "") => {
   queryParams.value.commodityTypeId = id;
   searchCommodities();
@@ -347,90 +275,42 @@ const resetQuery = () => {
 
 const handlePageChange = (page: number) => {
   currentPage.value = page;
-  getCommodityList();
+  syncQuery();
 };
 
 onMounted(() => {
-  void getCommodityList();
   void getCommodityTypeList();
 });
 onUnmounted(() => {
   requestVersion += 1;
 });
 watch(
-  () => route.query.q,
-  (q) => {
-    queryParams.value.commodityName = typeof q === "string" ? q : "";
-    currentPage.value = 1;
+  () => route.query,
+  (query) => {
+    if (query.publish === "1") {
+      const returnTo = router.resolve({
+        path: "/user/commodity",
+        query: { ...query, publish: undefined }
+      }).fullPath;
+      void router.replace({ path: "/user/publish", query: { returnTo } });
+      return;
+    }
+    queryParams.value = {
+      commodityName: queryText(query.q),
+      commodityDescription: queryText(query.description),
+      degree: queryText(query.degree),
+      commodityInventory: queryText(query.inventory),
+      commodityTypeId: queryText(query.category)
+    };
+    currentPage.value = queryPage(query.page);
+    sortMode.value = ["priceAsc", "priceDesc"].includes(queryText(query.sort))
+      ? queryText(query.sort)
+      : "latest";
+    advancedFiltersOpen.value = Boolean(advancedFilterCount.value);
     void getCommodityList();
-  }
-);
-
-const addDialogVisible = ref(false);
-watch(
-  () => route.query.publish,
-  (publish) => {
-    if (publish !== "1") return;
-    addDialogVisible.value = true;
-    void router.replace({ query: { ...route.query, publish: undefined } });
   },
   { immediate: true }
 );
-
-const addForm = ref({
-  commodityName: "",
-  commodityDescription: "",
-  degree: "",
-  commodityTypeId: "",
-  price: 0,
-  commodityAvatar: "",
-  commodityInventory: 1
-});
-
-const handleAddCommodity = async () => {
-  try {
-    const res = await addCommodityUsingPost(addForm.value);
-    if (res.code === 200) {
-      ElMessage.success("发布成功");
-      addDialogVisible.value = false;
-      resetAddForm();
-      await getCommodityList();
-    } else {
-      ElMessage.error("发布失败");
-    }
-  } catch (error) {
-    ElMessage.error("发布失败");
-  }
-};
-
-const handleCommodityAvatarUpload = async (options: any) => {
-  try {
-    const res = await uploadFileUsingPost(
-      { biz: "commodity_avatar" },
-      {},
-      options.file
-    );
-    if (res.code !== 200) {
-      return ElMessage.error("上传封面失败");
-    }
-    addForm.value.commodityAvatar = res.data || "";
-    ElMessage.success("上传封面成功");
-  } catch (error) {
-    ElMessage.error("上传封面失败");
-  }
-};
-
-const resetAddForm = () => {
-  addForm.value = {
-    commodityName: "",
-    commodityDescription: "",
-    degree: "",
-    commodityTypeId: "",
-    price: 0,
-    commodityAvatar: "",
-    commodityInventory: 1
-  };
-};
 </script>
 
 <style scoped lang="scss">
@@ -613,18 +493,6 @@ h1 {
   justify-content: center;
   margin-top: 36px;
 }
-.upload-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  width: 100%;
-}
-.preview-image {
-  width: 150px;
-  height: 150px;
-  margin-top: 12px;
-  border-radius: 8px;
-}
 @media (max-width: 760px) {
   .browse-heading {
     margin: 0 0 18px;
@@ -684,9 +552,6 @@ h1 {
   .browse-skeleton {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
-  }
-  .upload-row {
-    grid-template-columns: 1fr;
   }
 }
 </style>

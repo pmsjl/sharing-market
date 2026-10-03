@@ -1,6 +1,6 @@
 <template>
   <div class="journal-browse">
-    <div class="journal-toolbar" v-if="!addPost">
+    <div class="journal-toolbar">
       <el-input
         v-model="searchText"
         placeholder="搜索同学的经验"
@@ -15,20 +15,22 @@
             @click="handleSearch" /></template
       ></el-input>
     </div>
-    <el-button v-else text @click="addPost = false">返回同学攻略</el-button>
     <PostTagFilter
-      v-if="!addPost"
       v-model="filterTags"
       v-model:mode="tagMatchMode"
       input-id="favourite-post-tags"
       @change="handleSearch"
     />
-    <AddPost v-if="addPost" /><template v-else
+    <div v-if="loadError" class="quiet-state" role="alert">
+      {{ loadError }}<el-button @click="getPostList">重试</el-button>
+    </div>
+    <template v-else
       ><div class="journal-list" v-loading="loading">
         <PostPreview
           v-for="post in postList"
           :key="post.id"
           :post="post"
+          :linkable="!isAdmin"
         /><el-empty
           v-if="!loading && !postList.length"
           description="还没有符合条件的攻略，换个关键词试试"
@@ -48,16 +50,22 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { ref, watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
-import { ElButton, ElMessage, ElPagination } from "element-plus";
-import AddPost from "@/components/AddPost/index.vue";
+import { ElButton, ElPagination } from "element-plus";
 
 import PostTagFilter from "@/components/PostTagFilter/index.vue";
 import PostPreview from "@/components/PostPreview/index.vue";
 import { listMyFavourPostByPageUsingPost } from "@/api/postFavourController";
 
 // 搜索文本
+import { useRoute, useRouter } from "vue-router";
+import { queryPage, queryText } from "@/utils/marketNavigation";
+import { GET_ROLE } from "@/utils/token";
+const isAdmin = GET_ROLE() === "admin";
+const route = useRoute(),
+  router = useRouter();
+const loadError = ref("");
 const searchText = ref("");
 const filterTags = ref<string[]>([]);
 const tagMatchMode = ref<"all" | "any">("all");
@@ -66,7 +74,6 @@ let querySequence = 0;
 
 // 帖子列表
 const postList = ref<API.PostVO[]>([]);
-const addPost = ref(false);
 
 // 分页配置
 const paginationConfig = ref({
@@ -79,6 +86,7 @@ const paginationConfig = ref({
 const getPostList = async () => {
   const sequence = ++querySequence;
   loading.value = true;
+  loadError.value = "";
   try {
     const res = await listMyFavourPostByPageUsingPost({
       title: searchText.value,
@@ -92,10 +100,10 @@ const getPostList = async () => {
       postList.value = res.data.records || [];
       paginationConfig.value.total = parseInt(res.data.total);
     } else {
-      ElMessage.error("获取帖子列表失败");
+      loadError.value = "获取攻略失败，请重试";
     }
   } catch (error) {
-    if (sequence === querySequence) ElMessage.error("获取帖子列表失败");
+    if (sequence === querySequence) loadError.value = "获取攻略失败，请重试";
   } finally {
     if (sequence === querySequence) loading.value = false;
   }
@@ -104,18 +112,37 @@ const getPostList = async () => {
 // 处理搜索
 const handleSearch = () => {
   paginationConfig.value.current = 1;
-  getPostList();
+  void syncQuery();
 };
 
 // 处理分页
 const handlePageChange = (page: number) => {
   paginationConfig.value.current = page;
-  getPostList();
+  void syncQuery();
 };
 
-// 初始化加载帖子列表
-onMounted(() => {
-  getPostList();
-});
+const syncQuery = () =>
+  router.push({
+    query: {
+      ...route.query,
+      q: searchText.value || undefined,
+      tags: filterTags.value,
+      mode: tagMatchMode.value,
+      page: paginationConfig.value.current
+    }
+  });
+watch(
+  () => route.query,
+  (query) => {
+    searchText.value = queryText(query.q);
+    filterTags.value = (
+      Array.isArray(query.tags) ? query.tags : query.tags ? [query.tags] : []
+    ).filter((item): item is string => typeof item === "string");
+    tagMatchMode.value = query.mode === "any" ? "any" : "all";
+    paginationConfig.value.current = queryPage(query.page);
+    void getPostList();
+  },
+  { immediate: true }
+);
 </script>
 <style scoped lang="scss" src="@/styles/journal.scss"></style>

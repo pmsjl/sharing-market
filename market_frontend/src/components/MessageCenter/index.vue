@@ -10,7 +10,6 @@
   >
     <template #header
       ><div class="message-drawer-heading">
-        <span class="market-eyebrow">CAMPUS MAIL</span>
         <h2>校园私信 <span>同学之间，随时聊聊</span></h2>
       </div></template
     >
@@ -53,7 +52,7 @@ onBeforeUnmount(() => {
   .el-drawer__header {
     margin: 0;
     padding: 20px 22px;
-    border-bottom: 1px dashed var(--market-line-strong);
+    border-bottom: 1px solid var(--market-line-strong);
     color: var(--market-ink);
     background: var(--market-surface);
   }
@@ -68,8 +67,8 @@ onBeforeUnmount(() => {
 }
 .message-drawer-heading h2 {
   margin: 5px 0 0;
-  font-family: var(--market-font-display);
-  font-size: 25px;
+  font-family: var(--market-font-body);
+  font-size: 22px;
   span {
     margin-left: 12px;
     font-family: var(--market-font-body);

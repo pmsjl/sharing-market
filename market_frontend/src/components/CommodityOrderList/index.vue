@@ -1,65 +1,74 @@
 <template>
   <div class="order-list-container">
-    <el-empty v-if="!props.commodityOrderList.length" description="暂无订单" />
-
+    <div v-if="!props.commodityOrderList.length" class="editorial-empty">
+      <h3>还没有交易记录</h3>
+      <p>遇见喜欢的好物后，订单会保存在这里。</p>
+    </div>
     <article
       v-for="order in props.commodityOrderList"
       :key="order.id"
       class="order-item"
       :class="`status-${order.payStatus}`"
     >
-      <i class="ticket-punch" aria-hidden="true"></i>
-      <i class="order-stamp" :class="`stamp-${order.payStatus}`">{{
-        getPayStatusText(order.payStatus)
-      }}</i>
-      <div class="order-header">
-        <div>
-          <span class="order-kicker">ORDER #{{ order.id }}</span>
+      <div class="order-main">
+        <div class="order-copy">
+          <div class="order-context">
+            <span
+              class="order-state"
+              :class="{ pending: order.payStatus === 0 }"
+              >{{ getPayStatusText(order.payStatus) }}</span
+            ><time>{{ formatTime(order.createTime) }}</time>
+          </div>
           <h3>{{ order.commodityName || "未命名商品" }}</h3>
+          <p class="order-quantity">购买数量 {{ order.buyNumber }}</p>
         </div>
+        <p class="order-price">
+          {{ formatCampusCoin(order.paymentAmount) }}<small>校园币</small>
+        </p>
       </div>
-
-      <div class="order-body">
-        <div class="order-field">
-          <span class="field-label">购买数量</span>
-          <span class="field-value">{{ order.buyNumber }}</span>
+      <div class="order-bottom">
+        <details class="order-details">
+          <summary>订单信息</summary>
+          <dl>
+            <div>
+              <dt>订单号</dt>
+              <dd>{{ order.id }}</dd>
+            </div>
+            <div>
+              <dt>联系人</dt>
+              <dd>{{ order.userName || "未填写" }}</dd>
+            </div>
+            <div>
+              <dt>联系电话</dt>
+              <dd>{{ order.userPhone || "未填写" }}</dd>
+            </div>
+            <div v-if="order.remark">
+              <dt>备注</dt>
+              <dd>{{ order.remark }}</dd>
+            </div>
+          </dl>
+        </details>
+        <div v-if="order.payStatus === 0" class="order-payment">
+          <span>{{ remainingTimes[order.id] || "计算中…" }}</span
+          ><el-button type="primary" @click="showPayDialog(order)"
+            >立即支付</el-button
+          >
         </div>
-        <div class="order-field">
-          <span class="field-label">支付金额</span>
-          <span class="field-value price">￥{{ order.paymentAmount }}</span>
-        </div>
-        <div class="order-field">
-          <span class="field-label">联系人</span>
-          <span class="field-value">{{ order.userName || "-" }}</span>
-        </div>
-        <div class="order-field">
-          <span class="field-label">联系电话</span>
-          <span class="field-value">{{ order.userPhone || "-" }}</span>
-        </div>
-        <div class="order-field">
-          <span class="field-label">创建时间</span>
-          <span class="field-value">{{ formatTime(order.createTime) }}</span>
-        </div>
-        <div class="order-field" v-if="order.payStatus === 0">
-          <span class="field-label">剩余支付</span>
-          <span class="field-value countdown">
-            {{ remainingTimes[order.id] || "计算中..." }}
-          </span>
-        </div>
-      </div>
-
-      <div v-if="order.payStatus === 0" class="order-footer">
-        <el-button type="warning" @click="showPayDialog(order)">
-          立即支付
-        </el-button>
       </div>
     </article>
-
-    <el-dialog v-model="dialogVisible" title="支付订单" width="420px">
+    <el-dialog
+      append-to-body
+      v-model="dialogVisible"
+      title="支付订单"
+      width="420px"
+    >
       <div class="dialog-content">
         <p><span>订单号</span>{{ currentOrder?.id }}</p>
         <p><span>商品</span>{{ currentOrder?.commodityName }}</p>
-        <p><span>金额</span>￥{{ currentOrder?.paymentAmount }}</p>
+        <p>
+          <span>金额</span
+          >{{ formatCampusCoin(currentOrder?.paymentAmount) }} 校园币
+        </p>
       </div>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -68,10 +77,10 @@
     </el-dialog>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import dayjs from "dayjs";
+import { formatCampusCoin } from "@/utils/marketNavigation";
 
 type CommodityOrderItem = API.CommodityOrderVO & {
   id?: string;
@@ -164,164 +173,141 @@ watch(
   { immediate: true, deep: true }
 );
 </script>
-
 <style scoped lang="scss">
 .order-list-container {
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
-
-// 票根订单卡：左右半圆缺口 + 打孔
 .order-item {
-  position: relative;
-  padding: 18px 26px;
-  border: 1px solid var(--market-line);
-  border-radius: var(--market-radius-ticket);
+  min-width: 0;
+  padding: 28px;
   background: var(--market-surface);
-  box-shadow: var(--market-shadow-soft);
-  @include ticket-notch(var(--market-paper));
+  border-radius: 14px;
 }
-
-// 左侧打孔
-.ticket-punch {
-  position: absolute;
-  top: 50%;
-  left: 9px;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--market-line);
-  border-radius: 50%;
-  background: var(--market-body-bg);
-  transform: translateY(-50%);
-}
-
-// 支付状态印章
-.order-stamp {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  font-size: 14px;
-  font-style: normal;
-
-  &.stamp-1 {
-    @include stamp-text(var(--market-green));
-  }
-
-  &.stamp-0 {
-    @include stamp-text(var(--market-orange));
-  }
-
-  &.stamp-2 {
-    @include stamp-text(var(--market-muted));
-    opacity: 0.6;
-  }
-}
-
-.order-header {
+.order-main {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding-right: 96px;
-  padding-bottom: 14px;
-  border-bottom: 1px dashed rgba(35, 49, 63, 0.14);
-
+  gap: 24px;
+  align-items: center;
+}
+.order-copy {
+  min-width: 0;
   h3 {
-    margin-top: 5px;
-    font-family: var(--market-font-display);
-    font-size: 20px;
-    font-weight: 900;
+    font-size: 24px;
+    line-height: 1.5;
+    margin: 12px 0 8px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
   }
 }
-
-.order-kicker {
-  color: var(--market-orange-text);
-  font-family: var(--market-font-mono);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 1px;
-}
-
-.order-body {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  padding-top: 16px;
-}
-
-.order-field {
-  display: grid;
-  gap: 5px;
-}
-
-.field-label {
-  color: var(--market-muted);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.field-value {
-  color: var(--market-ink);
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-.price,
-.countdown {
-  color: var(--market-orange-text);
-  font-family: var(--market-font-mono);
-}
-
-// 副券撕线 + 支付按钮
-.order-footer {
+.order-context {
   display: flex;
-  justify-content: flex-end;
-  margin: 16px -26px -18px;
-  padding: 14px 26px 16px;
-  border-top: 2px dashed rgba(224, 101, 31, 0.35);
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--market-muted);
 }
-
-.dialog-content {
-  display: grid;
-  gap: 12px;
-
-  p {
-    display: grid;
-    grid-template-columns: 86px minmax(0, 1fr);
-    gap: 12px;
-    color: var(--market-ink);
-    font-weight: 800;
+.order-state.pending {
+  color: var(--market-primary);
+}
+.order-quantity {
+  font-size: 13px;
+  color: var(--market-muted);
+  margin: 0;
+}
+.order-price {
+  font-size: 28px;
+  margin: 0;
+  text-align: right;
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  small {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--market-muted);
+    margin-top: 5px;
   }
-
-  span {
+}
+.order-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 22px;
+}
+.order-details {
+  min-width: 0;
+  summary {
+    cursor: pointer;
+    color: var(--market-muted);
+    font-size: 13px;
+    padding: 10px 0;
+    min-height: 44px;
+  }
+  dl {
+    margin: 8px 0 0;
+    display: grid;
+    gap: 12px;
+    font-size: 13px;
+  }
+  dl > div {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 10px;
+  }
+  dt {
     color: var(--market-muted);
   }
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
 }
-
+.order-payment {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  > span {
+    color: var(--market-muted);
+    font-size: 12px;
+  }
+}
+.dialog-content p {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 18px 0;
+  overflow-wrap: anywhere;
+  span {
+    color: var(--market-muted);
+    flex-shrink: 0;
+  }
+}
 @media (max-width: 760px) {
-  .order-body {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .order-item {
+    padding: 22px 20px;
   }
-}
-
-@media (max-width: 520px) {
-  .order-header {
-    flex-direction: column;
-    padding-right: 0;
+  .order-copy h3 {
+    font-size: 20px;
   }
-
-  .order-stamp {
-    position: static;
-    margin-top: 8px;
-    width: fit-content;
+  .order-price {
+    font-size: 24px;
   }
-
-  .order-body {
-    grid-template-columns: 1fr;
+  .order-context {
+    gap: 6px 12px;
   }
-
-  .order-footer .el-button {
-    width: 100%;
+  .order-bottom {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .order-payment {
+    justify-content: space-between;
+    flex: 1 0 100%;
   }
 }
 </style>

@@ -6,7 +6,7 @@
       :rules="rules"
       ref="registerForms"
       label-position="top"
-      aria-label="注册校园二手交易平台"
+      aria-label="注册校园集市"
       @submit.prevent="register"
     >
       <span class="auth-form-kicker">创建校园账户</span>

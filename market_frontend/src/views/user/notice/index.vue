@@ -12,7 +12,7 @@
       <div class="newsflash-copy">
         <span>CAMPUS BULLETIN · 校园快讯</span>
         <strong>课间路过公告墙，看看市集最近发生了什么</strong>
-        <p>平台通知、交易提醒和校园市集动态都集中在这里。</p>
+        <p>平台通知、交易提醒和校园集市动态都集中在这里。</p>
       </div>
       <div class="newsflash-count">
         <b>{{ noticeList.length }}</b>
@@ -29,7 +29,11 @@
         </div>
       </header>
 
+      <div v-if="loadError" class="quiet-state" role="alert">
+        {{ loadError }}<el-button @click="getNoticeList">重新加载</el-button>
+      </div>
       <div
+        v-else
         class="notice-stack"
         v-loading="loading"
         element-loading-text="正在整理公告"
@@ -59,7 +63,7 @@
               <small>发布管理员</small>
               <b>{{ getNoticePublisherName(item) }}</b>
             </span>
-            <em aria-hidden="true">校园市集</em>
+            <em aria-hidden="true">校园集市</em>
           </footer>
         </article>
 
@@ -75,11 +79,11 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
-import { ElMessage } from "element-plus";
 import { listNoticeVoByPageUsingPost } from "@/api/noticeController";
 
 const noticeList = ref([]);
 const loading = ref(true);
+const loadError = ref("");
 const getNoticePublisherName = (item) =>
   item?.user?.userName ||
   (item?.noticeAdminId ? `管理员 ${item.noticeAdminId}` : "管理员");
@@ -88,11 +92,18 @@ const getNoticePublisherInitial = (item) =>
   getNoticePublisherName(item).slice(0, 1);
 const getNoticeList = async () => {
   loading.value = true;
+  loadError.value = "";
   try {
-    const res = await listNoticeVoByPageUsingPost({ current: 1, pageSize: 15 });
+    const res = await listNoticeVoByPageUsingPost({
+      current: 1,
+      pageSize: 15,
+      sortField: "createTime",
+      sortOrder: "desc"
+    });
+    if (res.code !== 200 || !res.data) throw new Error("加载失败");
     noticeList.value = res.data.records || [];
   } catch (error) {
-    ElMessage.error("获取公告列表失败，" + error.message);
+    loadError.value = "公告暂时无法加载，请重试。";
   } finally {
     loading.value = false;
   }
@@ -291,16 +302,13 @@ onMounted(getNoticeList);
   color: var(--market-ink);
   background: var(--market-surface);
   box-shadow: 0 12px 25px rgba(30, 64, 109, 0.1);
-  transform: rotate(var(--paper-tilt));
-  animation: note-pin 0.46s var(--market-ease-spring) both;
-  animation-delay: calc(min(var(--notice-order), 6) * 45ms);
+
   &:nth-child(2n) {
     --paper-tilt: 0.35deg;
   }
   &:hover {
     border-color: rgba(37, 99, 235, 0.35);
     box-shadow: var(--market-shadow-lift);
-    transform: translateY(-4px) rotate(0);
   }
   &.is-latest {
     border-color: rgba(249, 115, 22, 0.34);
@@ -460,16 +468,6 @@ html.dark .notice-board {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-@keyframes note-pin {
-  from {
-    opacity: 0;
-    transform: translateY(18px) rotate(var(--paper-tilt));
-  }
-  to {
-    opacity: 1;
-    transform: rotate(var(--paper-tilt));
   }
 }
 @media (max-width: 760px) {

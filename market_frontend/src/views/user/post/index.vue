@@ -6,7 +6,7 @@
       </h1>
       <p>买过、用过、踩过的坑，都值得说给同学听。</p>
     </header>
-    <div class="journal-toolbar" v-if="!addPost">
+    <div class="journal-toolbar">
       <el-input
         v-model="searchText"
         placeholder="搜索同学的经验"
@@ -23,15 +23,16 @@
         >分享经验</el-button
       >
     </div>
-    <el-button v-else text @click="addPost = false">返回同学攻略</el-button>
     <PostTagFilter
-      v-if="!addPost"
       v-model="filterTags"
       v-model:mode="tagMatchMode"
       input-id="browse-post-tags"
       @change="handleSearch"
     />
-    <AddPost v-if="addPost" /><template v-else
+    <div v-if="loadError" class="quiet-state" role="alert">
+      {{ loadError }}<el-button @click="getPostList">重试</el-button>
+    </div>
+    <template v-else
       ><div class="journal-list" v-loading="loading">
         <PostPreview
           v-for="post in postList"
@@ -56,17 +57,20 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { ref, watch } from "vue";
 import { Promotion, Search } from "@element-plus/icons-vue";
-import { ElButton, ElMessage, ElPagination } from "element-plus";
+import { ElButton, ElPagination } from "element-plus";
 import { listPostVoByPageUsingPost } from "@/api/postController";
-import AddPost from "@/components/AddPost/index.vue";
 
 import PostTagFilter from "@/components/PostTagFilter/index.vue";
 import PostPreview from "@/components/PostPreview/index.vue";
-import eventBus from "@/utils/eventBus";
 
 // 搜索文本
+import { useRoute, useRouter } from "vue-router";
+import { queryPage, queryText } from "@/utils/marketNavigation";
+const route = useRoute(),
+  router = useRouter();
+const loadError = ref("");
 const searchText = ref("");
 const filterTags = ref<string[]>([]);
 const tagMatchMode = ref<"all" | "any">("all");
@@ -75,7 +79,6 @@ let querySequence = 0;
 
 // 帖子列表
 const postList = ref<API.PostVO[]>([]);
-const addPost = ref(false);
 
 // 分页配置
 const paginationConfig = ref({
@@ -88,6 +91,7 @@ const paginationConfig = ref({
 const getPostList = async () => {
   const sequence = ++querySequence;
   loading.value = true;
+  loadError.value = "";
   try {
     const res = await listPostVoByPageUsingPost({
       searchText: searchText.value,
@@ -101,38 +105,56 @@ const getPostList = async () => {
       postList.value = res.data.records || [];
       paginationConfig.value.total = parseInt(res.data.total);
     } else {
-      ElMessage.error("获取帖子列表失败");
+      loadError.value = "获取攻略失败，请重试";
     }
   } catch (error) {
-    if (sequence === querySequence) ElMessage.error("获取帖子列表失败");
+    if (sequence === querySequence) loadError.value = "获取攻略失败，请重试";
   } finally {
     if (sequence === querySequence) loading.value = false;
   }
 };
 
 const showAddPost = () => {
-  addPost.value = true;
+  void router.push({
+    path: "/user/post/new",
+    query: { returnTo: route.fullPath }
+  });
 };
 
 // 处理搜索
 const handleSearch = () => {
   paginationConfig.value.current = 1;
-  getPostList();
+  void syncQuery();
 };
 
 // 处理分页
 const handlePageChange = (page: number) => {
   paginationConfig.value.current = page;
-  getPostList();
+  void syncQuery();
 };
 
-// 初始化加载帖子列表
-onMounted(() => {
-  getPostList();
-  eventBus.on("refresh-post-list", getPostList); // 监听事件
-});
-onUnmounted(() => {
-  eventBus.off("refresh-post-list", getPostList); // 组件卸载时移除监听
-});
+const syncQuery = () =>
+  router.push({
+    query: {
+      ...route.query,
+      q: searchText.value || undefined,
+      tags: filterTags.value,
+      mode: tagMatchMode.value,
+      page: paginationConfig.value.current
+    }
+  });
+watch(
+  () => route.query,
+  (query) => {
+    searchText.value = queryText(query.q);
+    filterTags.value = (
+      Array.isArray(query.tags) ? query.tags : query.tags ? [query.tags] : []
+    ).filter((item): item is string => typeof item === "string");
+    tagMatchMode.value = query.mode === "any" ? "any" : "all";
+    paginationConfig.value.current = queryPage(query.page);
+    void getPostList();
+  },
+  { immediate: true }
+);
 </script>
 <style scoped lang="scss" src="@/styles/journal.scss"></style>

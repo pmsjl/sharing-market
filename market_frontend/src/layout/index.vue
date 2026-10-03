@@ -1,5 +1,6 @@
 <template>
   <div
+    v-if="userStore.token"
     class="layout_container"
     :class="{
       'market-consumer': isConsumer,
@@ -25,13 +26,33 @@
       </el-scrollbar>
     </aside>
 
+    <el-drawer
+      v-if="!isConsumer"
+      v-model="adminNavigationOpen"
+      title="校园集市 · 管理导航"
+      direction="ltr"
+      size="min(300px, 88vw)"
+      append-to-body
+    >
+      <el-menu
+        :default-active="$route.path"
+        :default-openeds="['/admin']"
+        @select="adminNavigationOpen = false"
+        ><Menu :menuList="userStore.menuRoutes"
+      /></el-menu>
+    </el-drawer>
+
     <section
       class="layout_content"
       :class="{ fold: LayOutSettingStore.fold ? true : false }"
     >
       <header class="layout_tabbar">
         <MarketNavigation v-if="isConsumer" />
-        <Tabbar v-else />
+        <Tabbar
+          v-else
+          :navigation-open="adminNavigationOpen"
+          @open-navigation="adminNavigationOpen = true"
+        />
       </header>
       <main
         id="market-main"
@@ -49,7 +70,7 @@
 <script setup lang="ts">
 import Tabbar from "./tabbar/index.vue";
 import MarketNavigation from "./MarketNavigation.vue";
-import { computed, watch, nextTick } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
 import { GET_ROLE } from "@/utils/token";
 import { useRoute } from "vue-router";
 import Logo from "./logo/index.vue";
@@ -61,6 +82,7 @@ import useLayOutSettingStore from "@/store/modules/setting";
 const userStore = userUserStore();
 const LayOutSettingStore = useLayOutSettingStore();
 const $route = useRoute();
+const adminNavigationOpen = ref(false);
 const isConsumer = computed(() => {
   // Read the token as a dependency so a role switch updates the shell.
   return Boolean(userStore.token) && GET_ROLE() === "user";
@@ -68,6 +90,7 @@ const isConsumer = computed(() => {
 watch(
   () => $route.path,
   async () => {
+    adminNavigationOpen.value = false;
     await nextTick();
     document.getElementById("market-main")?.scrollTo({ top: 0 });
   }
@@ -87,7 +110,7 @@ export default {
   max-height: 100dvh;
   min-height: 0;
   overflow: hidden;
-  background: var(--market-body-bg);
+  background: var(--market-canvas);
 }
 .layout_slider {
   position: sticky;
@@ -97,22 +120,11 @@ export default {
   height: 100dvh;
   border-right: 1px solid var(--market-line);
   background: var(--market-sidebar-bg);
-  box-shadow: 8px 0 30px rgba(30, 64, 109, 0.08);
+  box-shadow: none;
   transition: flex-basis 0.24s var(--market-ease-standard),
     width 0.24s var(--market-ease-standard);
   z-index: 20;
-  &::before {
-    display: block;
-    width: 100%;
-    height: 7px;
-    background: linear-gradient(
-      90deg,
-      var(--market-primary) 0 60%,
-      var(--market-orange) 60% 76%,
-      var(--market-yellow) 76% 100%
-    );
-    content: "";
-  }
+
   &.fold {
     flex-basis: $base-menu-min-width;
     width: $base-menu-min-width;
@@ -227,13 +239,7 @@ export default {
     display: block;
   }
   .layout_slider {
-    position: fixed;
-    left: 0;
-    transform: translateX(-100%);
-    transition: transform 0.24s var(--market-ease-standard);
-  }
-  .layout_slider.fold {
-    transform: translateX(0);
+    display: none;
   }
   .layout_main {
     padding: 15px;

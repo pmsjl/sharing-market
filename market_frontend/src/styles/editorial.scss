@@ -1,0 +1,210 @@
+/* Content-led user pages; administrative tables keep their compact scale. */
+.market-consumer .editorial-surface {
+  font-size: 15px;
+  .quiet-heading {
+    margin-bottom: 34px;
+    h1 {
+      font-size: clamp(32px, 4vw, 46px);
+      font-weight: 750;
+      letter-spacing: -1.4px;
+      line-height: 1.25;
+      margin-bottom: 14px;
+    }
+    p {
+      font-size: 15px;
+      max-width: 58ch;
+    }
+  }
+  .el-form-item {
+    margin-bottom: 26px;
+  }
+  .el-form-item__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--market-muted);
+    padding-bottom: 8px;
+  }
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-input-tag {
+    min-height: 44px;
+    border-radius: 9px;
+  }
+  .el-input__wrapper {
+    padding-inline: 14px;
+  }
+  .el-input__inner {
+    height: 42px;
+    font-size: 15px;
+    color: var(--market-ink);
+  }
+  .el-textarea__inner {
+    padding: 14px;
+    font-size: 15px;
+    line-height: 1.85;
+    border-radius: 9px;
+  }
+  .el-input-number,
+  .el-select {
+    width: 100%;
+  }
+  .el-input-number__decrease,
+  .el-input-number__increase {
+    height: calc(50% - 1px);
+  }
+  .el-button:not(.is-link):not(.is-text) {
+    min-height: 44px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .quiet-tabs {
+    gap: 28px;
+    margin: 0 0 28px;
+    border-bottom: 0;
+    a,
+    button {
+      min-height: 44px;
+      color: var(--market-muted);
+      &.active {
+        color: var(--market-ink);
+        border-color: var(--market-primary);
+        font-weight: 650;
+      }
+    }
+  }
+}
+.editorial-surface {
+  .section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    h2 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+    }
+    p {
+      margin: 8px 0 0;
+      color: var(--market-muted);
+      font-size: 14px;
+    }
+    > a {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      gap: 8px;
+      min-height: 44px;
+      color: var(--market-primary);
+      font-size: 13px;
+    }
+  }
+  .editorial-empty {
+    padding: 36px 0;
+    h3 {
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+    p {
+      color: var(--market-muted);
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+  }
+}
+.editorial-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 10px 18px;
+  color: var(--market-on-primary);
+  background: var(--market-primary);
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  &:hover {
+    background: var(--market-primary-hover);
+  }
+}
+.account-section-menu {
+  min-width: 188px;
+  .el-dropdown-menu__item {
+    min-height: 44px;
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+  }
+  .is-current {
+    color: var(--market-primary);
+    font-weight: 650;
+  }
+}
+.editor-page.editorial-surface {
+  padding-top: 10px;
+  .editor-actions {
+    padding: 18px 0;
+    margin-top: 16px;
+    background: var(--market-canvas);
+  }
+  .editor-actions .el-button {
+    border-radius: 24px;
+    padding-inline: 30px;
+    min-width: 140px;
+  }
+}
+@media (max-width: 760px) {
+  .market-consumer .editorial-surface {
+    .quiet-heading {
+      margin-bottom: 28px;
+      h1 {
+        font-size: 32px;
+        letter-spacing: -0.8px;
+      }
+      p {
+        font-size: 14px;
+      }
+    }
+    .quiet-tabs {
+      gap: 20px;
+      font-size: 14px;
+    }
+  }
+  .editorial-surface .section-heading {
+    align-items: flex-start;
+    gap: 12px;
+    h2 {
+      font-size: 23px;
+    }
+    p {
+      font-size: 13px;
+    }
+    > a {
+      min-height: 34px;
+    }
+  }
+  .editor-page.editorial-surface {
+    padding-top: 0;
+    .editor-actions {
+      gap: 12px;
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+    }
+    .editor-count {
+      font-size: 11px;
+      line-height: 1.6;
+    }
+  }
+}
+@media (max-width: 360px) {
+  .market-consumer .editorial-surface .quiet-heading h1 {
+    font-size: 28px;
+  }
+  .editorial-surface .section-heading p {
+    max-width: 17ch;
+  }
+}

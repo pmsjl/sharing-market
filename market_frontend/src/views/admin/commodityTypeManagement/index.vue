@@ -1,14 +1,18 @@
 <template>
   <div class="admin-page commodity-type-admin">
+    <header class="quiet-heading">
+      <h1>商品分类</h1>
+      <p>整理好物分类，方便同学查找。</p>
+    </header>
     <!-- 查询区域 -->
-    <el-card style="margin-bottom: 10px">
+    <el-card class="admin-search">
       <el-row :gutter="10">
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="类别ID" label-width="80px">
             <el-input v-model="queryParams.id" placeholder="请输入类别ID" />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label="类别名称" label-width="80px">
             <el-input
               v-model="queryParams.typeName"
@@ -16,7 +20,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="8">
+        <el-col :xs="24" :sm="12" :lg="6">
           <el-form-item label-width="20px">
             <el-button @click="resetQuery">重置</el-button>
             <el-button type="primary" @click="getCommodityTypeList"
@@ -35,24 +39,28 @@
       <el-table
         :data="commodityTypeList"
         style="width: 100%"
-        :loading="loading"
+        v-loading="loading"
       >
-        <el-table-column prop="id" label="类别ID" />
-        <el-table-column prop="typeName" label="类别名称" />
-        <el-table-column prop="createTime" label="创建时间" />
-        <el-table-column prop="updateTime" label="更新时间" />
-        <el-table-column label="操作" width="200px">
+        <el-table-column prop="id" label="类别ID" min-width="172" />
+        <el-table-column prop="typeName" label="类别名称" min-width="160" />
+        <el-table-column prop="createTime" label="创建时间" min-width="176" />
+        <el-table-column prop="updateTime" label="更新时间" min-width="176" />
+        <el-table-column
+          label="操作"
+          width="124"
+          fixed="right"
+          class-name="admin-operations"
+        >
           <template #default="{ row }">
-            <el-button type="primary" @click="showEditDialog(row.id)"
+            <el-button link type="primary" @click="showEditDialog(row.id)"
               >修改
             </el-button>
             <el-popconfirm
               title="你确定要删除该类别吗？"
               @confirm="deleteCommodityType(row)"
-              @cancel="cancelEvent"
             >
               <template #reference>
-                <el-button type="danger">删除</el-button>
+                <el-button link type="danger">删除</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -63,7 +71,8 @@
       <el-pagination
         style="margin-top: 20px"
         background
-        layout="total, sizes, prev, pager, next, jumper"
+        layout="total, prev, pager, next"
+        :pager-count="5"
         :page-sizes="[5, 10, 15, 20]"
         :current-page="paginationConfig.current"
         :total="paginationConfig.total"
@@ -75,42 +84,42 @@
 
     <!-- 修改类别的对话框 -->
     <el-dialog
+      append-to-body
       title="修改类别"
       v-model="editDialogVisible"
-      width="50%"
+      width="680px"
       @close="resetEditField(editFormRef)"
+      class="market-admin-dialog"
     >
-      <el-form :model="editForm" ref="editFormRef">
+      <el-form label-position="top" :model="editForm" ref="editFormRef">
         <el-form-item label="类别名称" prop="typeName">
           <el-input v-model="editForm.typeName" />
         </el-form-item>
       </el-form>
-      <span class="dialog-footer">
-        <slot name="footer">
-          <el-button @click="resetEditField(editFormRef)">取消</el-button>
-          <el-button type="primary" @click="editCommodityType">确定</el-button>
-        </slot>
-      </span>
+      <template #footer>
+        <el-button @click="resetEditField(editFormRef)">取消</el-button>
+        <el-button type="primary" @click="editCommodityType">确定</el-button>
+      </template>
     </el-dialog>
 
     <!-- 添加类别的对话框 -->
     <el-dialog
+      append-to-body
       title="添加类别"
       v-model="addDialogVisible"
-      width="50%"
+      width="680px"
       @close="addDialogClosed"
+      class="market-admin-dialog"
     >
-      <el-form :model="addForm" ref="addFormRef">
+      <el-form label-position="top" :model="addForm" ref="addFormRef">
         <el-form-item label="类别名称" prop="typeName">
           <el-input v-model="addForm.typeName" />
         </el-form-item>
       </el-form>
-      <span class="dialog-footer">
-        <slot name="footer">
-          <el-button @click="addDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="addCommodityType">添加</el-button>
-        </slot>
-      </span>
+      <template #footer>
+        <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="addCommodityType">添加</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -294,9 +303,6 @@ const handleCurrentChange = (page: number) => {
 };
 
 // 取消删除
-const cancelEvent = () => {
-  ElMessage.success("取消删除成功");
-};
 
 // 显示添加对话框
 const showAddDialog = () => {
@@ -308,8 +314,4 @@ onMounted(() => {
   getCommodityTypeList();
 });
 </script>
-<style scoped lang="scss">
-.commodity-type-admin {
-  padding: 20px;
-}
-</style>
+<style scoped lang="scss"></style>

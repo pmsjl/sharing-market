@@ -17,8 +17,9 @@
         :key="item.id"
         class="listing-item"
       >
-        <router-link
-          :to="'/user/commodity/detail/' + item.id"
+        <component
+          :is="linkable ? RouterLink : 'div'"
+          :to="linkable ? '/user/commodity/detail/' + item.id : undefined"
           class="listing-link"
         >
           <div class="listing-cover">
@@ -45,7 +46,7 @@
             }}</span>
             <h3>{{ item.commodityName || "未命名商品" }}</h3>
             <div class="listing-price">
-              <strong>{{ formatPrice(item.price) }}</strong
+              <strong>{{ formatCampusCoin(item.price) }}</strong
               ><span>校园币</span
               ><span v-if="item.commodityInventory === 0" class="listing-sold"
                 >已售罄</span
@@ -63,23 +64,22 @@
               >
             </div>
           </div>
-        </router-link>
+        </component>
       </article>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { formatCampusCoin } from "@/utils/marketNavigation";
+import { RouterLink } from "vue-router";
 import { ref, PropType } from "vue";
 import { Picture, Star } from "@element-plus/icons-vue";
 defineProps({
-  commodityList: { type: Array as PropType<API.CommodityVO[]>, required: true }
+  commodityList: { type: Array as PropType<API.CommodityVO[]>, required: true },
+  linkable: { type: Boolean, default: true }
 });
 const failedCovers = ref<Record<string, boolean>>({});
-const formatPrice = (value?: number) =>
-  new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(
-    Number(value) || 0
-  );
 </script>
 
 <style scoped lang="scss">

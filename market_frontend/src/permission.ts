@@ -71,7 +71,7 @@ router.beforeEach(async (to, from, next) => {
       }
       //如果to.matched.length等于0，意味着没有找到匹配到目标路径的路由记录。
       if (to.matched.length == 0) {
-        next({ path: to.path });
+        next({ path: to.path, query: to.query, hash: to.hash, replace: true });
       } else {
         // 如果to.matched.length不等于0，说明目标路径存在匹配的路由配置，直接执行 next()，允许导航继续进行。
         next();
@@ -83,7 +83,7 @@ router.beforeEach(async (to, from, next) => {
         next({ ...to });
       } catch (e) {
         await userStore.userInfo();
-        next({ path: "/login", query: { redirect: to.path } });
+        next({ path: "/login", query: { redirect: to.fullPath } });
       }
     }
   } else {

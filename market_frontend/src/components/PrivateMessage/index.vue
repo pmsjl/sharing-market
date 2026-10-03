@@ -428,8 +428,8 @@ onBeforeUnmount(() => {
   width: 280px;
   flex-shrink: 0;
   min-height: 0;
-  border-right: 1px dashed var(--market-line-strong);
-  background: var(--market-paper-deep);
+  border-right: 1px solid var(--market-line-strong);
+  background: var(--market-surface);
 }
 .mail-list-heading {
   display: flex;
@@ -437,7 +437,7 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 20px 18px 14px;
   strong {
-    font-family: var(--market-font-display);
+    font-family: var(--market-font-body);
     font-size: 18px;
   }
   span {
@@ -461,15 +461,14 @@ onBeforeUnmount(() => {
   padding: 14px 10px;
   margin-bottom: 8px;
   text-align: left;
-  border: 1px solid transparent;
-  border-radius: 5px 12px 5px 5px;
+  border: 0;
+  border-radius: 6px;
   color: var(--market-ink);
   background: var(--market-surface);
   cursor: pointer;
   transition: background 160ms, border-color 160ms;
   &:hover,
   &.selected {
-    border-color: var(--market-primary);
     background: var(--market-primary-soft);
   }
   .el-avatar {
@@ -526,7 +525,7 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 11px;
   color: var(--market-muted);
-  border-top: 1px dashed var(--market-line);
+  border-top: 1px solid var(--market-line);
 }
 .mail-thread {
   position: relative;
@@ -542,7 +541,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 10px;
   padding: 16px 20px;
-  border-bottom: 1px dashed var(--market-line);
+  border-bottom: 1px solid var(--market-line);
   small {
     display: block;
     margin-top: 4px;
@@ -558,7 +557,7 @@ onBeforeUnmount(() => {
     color: var(--market-primary);
   }
   h3 {
-    font-family: var(--market-font-display);
+    font-family: var(--market-font-body);
     font-size: 21px;
   }
   p {
@@ -572,11 +571,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   min-height: 0;
   padding: 20px;
-  background: repeating-linear-gradient(
-      transparent 0 31px,
-      var(--market-wash) 31px 32px
-    ),
-    var(--market-paper);
+  background: var(--market-canvas);
 }
 .mail-message {
   display: flex;
@@ -611,7 +606,7 @@ onBeforeUnmount(() => {
 .mail-compose {
   position: relative;
   padding: 16px 18px;
-  border-top: 1px dashed var(--market-line-strong);
+  border-top: 1px solid var(--market-line-strong);
   background: var(--market-surface);
 }
 .mail-compose-actions {
@@ -626,7 +621,7 @@ onBeforeUnmount(() => {
   }
   .el-button {
     margin-left: 0;
-    border-radius: 5px 10px 5px 5px;
+    border-radius: 8px;
   }
   .el-icon {
     margin-left: 5px;

@@ -23,6 +23,7 @@ const props = defineProps<{
 const chartDom = ref<HTMLElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
 let resizeObserver: ResizeObserver | null = null;
+let themeObserver: MutationObserver | null = null;
 let renderTimer: number | null = null;
 
 const getChartWidth = () => chartDom.value?.clientWidth || 0;
@@ -42,13 +43,19 @@ const renderChart = async () => {
     chartInstance = echarts.init(chartDom.value);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const styles = getComputedStyle(chartDom.value);
+  const color = (name: string) => styles.getPropertyValue(name).trim();
+  const primary = color("--market-primary");
+  const muted = color("--market-muted");
+  const line = color("--market-line");
+  const soft = color("--market-surface-soft");
+  const today = new Intl.DateTimeFormat("en-CA").format(new Date());
   const eChartsData = props.data.map((item) => ({
     value: [item.date, item.value],
     itemStyle:
       item.date === today
         ? {
-            borderColor: "#f97316",
+            borderColor: primary,
             borderWidth: 2
           }
         : undefined
@@ -63,10 +70,10 @@ const renderChart = async () => {
     {
       tooltip: {
         borderWidth: 1,
-        borderColor: "#d7b98c",
-        backgroundColor: "rgba(35, 49, 63, 0.94)",
+        borderColor: line,
+        backgroundColor: color("--market-surface"),
         textStyle: {
-          color: "#fdf6e3",
+          color: color("--market-ink"),
           fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif'
         },
         extraCssText:
@@ -82,7 +89,7 @@ const renderChart = async () => {
         min: 0,
         max: maxValue,
         inRange: {
-          color: ["#edf4fc", "#f2b8a0", "#f97316", "#2563eb"]
+          color: [soft, color("--market-primary-soft"), primary]
         }
       },
       calendar: {
@@ -97,7 +104,7 @@ const renderChart = async () => {
           show: true,
           position: "top",
           margin: 18,
-          color: "#5f6773",
+          color: muted,
           fontSize: 18,
           fontWeight: 600
         },
@@ -105,15 +112,15 @@ const renderChart = async () => {
           firstDay: 1,
           nameMap: "ZH",
           margin: 10,
-          color: "#5f6773"
+          color: muted
         },
         monthLabel: {
           nameMap: "ZH",
           margin: 12,
-          color: "#5f6773"
+          color: muted
         },
         itemStyle: {
-          borderColor: "rgba(35, 49, 63, 0.1)",
+          borderColor: line,
           borderWidth: 1
         }
       },
@@ -128,10 +135,9 @@ const renderChart = async () => {
           },
           emphasis: {
             itemStyle: {
-              borderColor: "#f97316",
+              borderColor: primary,
               borderWidth: 2,
-              shadowBlur: 8,
-              shadowColor: "rgba(224, 101, 31, 0.32)"
+              shadowBlur: 0
             }
           }
         }
@@ -154,6 +160,11 @@ const scheduleRender = () => {
 };
 
 onMounted(() => {
+  themeObserver = new MutationObserver(scheduleRender);
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "style", "data-theme"]
+  });
   if (chartDom.value) {
     resizeObserver = new ResizeObserver(() => {
       scheduleRender();
@@ -168,6 +179,7 @@ onUnmounted(() => {
   if (renderTimer !== null) {
     window.cancelAnimationFrame(renderTimer);
   }
+  themeObserver?.disconnect();
   resizeObserver?.disconnect();
   resizeObserver = null;
   chartInstance?.dispose();
@@ -188,17 +200,7 @@ watch(
   width: 100%;
   overflow-x: auto;
   padding: 20px;
-  border-top: 8px solid transparent;
-  background: linear-gradient(var(--market-surface), var(--market-surface))
-      padding-box,
-    repeating-linear-gradient(
-        -45deg,
-        var(--market-stamp-red),
-        var(--market-stamp-red) 12px,
-        var(--market-chalk) 12px,
-        var(--market-chalk) 24px
-      )
-      border-box;
+  background: transparent;
 }
 
 .calendar-heading {
@@ -210,7 +212,7 @@ watch(
   gap: 16px;
   min-width: 620px;
   padding: 0 8px 12px;
-  border-bottom: 1px dashed var(--market-line);
+  border-bottom: 1px solid var(--market-line);
 
   div {
     display: grid;

@@ -50,23 +50,6 @@
   ) !important;
 }
 
-/* 欢迎页：开市公告 */
-.market-page.welcome-page .welcome-hero {
-  overflow: hidden;
-  border-radius: 16px 26px 16px 26px;
-  background: linear-gradient(
-    125deg,
-    var(--market-surface),
-    var(--market-primary-soft)
-  );
-}
-.market-page.welcome-page .feature-card {
-  border: 1px solid var(--market-line) !important;
-  border-radius: var(--market-radius-note) !important;
-  background: var(--market-surface) !important;
-  box-shadow: var(--market-shadow-soft) !important;
-}
-
 /* 商品：摊位分区与价签 */
 .market-page.commodity-page .stall-header {
   position: relative;
@@ -139,65 +122,6 @@
   color: var(--market-primary) !important;
 }
 
-/* 订单：校园取货回执 */
-.market-page.my-orders-page .orders-panel {
-  padding: 20px;
-  border-radius: var(--market-radius-board);
-}
-.order-list-container .order-item {
-  border-radius: 7px 16px 7px 16px !important;
-  background: var(--market-surface) !important;
-}
-.order-list-container .order-item::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 6px;
-  border-radius: 7px 0 0 16px;
-  background: var(--market-primary);
-  content: "";
-}
-.order-list-container .order-item.status-0::before {
-  background: var(--market-orange);
-}
-.order-list-container .order-item.status-2::before {
-  background: var(--market-faint);
-}
-
-/* 个人中心：校园卡与个人摊位档案 */
-.market-page.personal-home-page .profile-hero {
-  overflow: hidden;
-  border-radius: 14px 24px 14px 24px;
-  background: linear-gradient(
-      115deg,
-      var(--market-primary-soft),
-      transparent 54%
-    ),
-    var(--market-surface);
-}
-.market-page.personal-home-page .profile-hero::after {
-  position: absolute;
-  right: 24px;
-  bottom: 18px;
-  width: 86px;
-  height: 32px;
-  border: 2px solid var(--market-orange);
-  border-radius: 5px;
-  color: var(--market-orange-text);
-  font-family: var(--market-font-display);
-  font-weight: 900;
-  line-height: 28px;
-  text-align: center;
-  content: "个人摊位";
-  transform: rotate(-5deg);
-}
-.market-page.personal-home-page .field-card,
-.market-page.personal-home-page .tab-panel {
-  border-color: var(--market-line) !important;
-  background: var(--market-surface) !important;
-}
-
 /* 社区：同学交流墙 */
 .post-browse .search-bar {
   border: 1px solid var(--market-line);
@@ -244,14 +168,6 @@
 }
 .post-detail .agent-return-bar {
   background: var(--market-primary-soft) !important;
-}
-
-/* 404：校园指路黑板 */
-.not-found-page .classroom-board {
-  border-color: var(--market-line-strong) !important;
-  border-radius: 16px 25px 16px 25px !important;
-  background: linear-gradient(145deg, #1d4f82, #17365f) !important;
-  box-shadow: var(--market-shadow-lift) !important;
 }
 
 html.dark .market-page.home-page .home-hero,

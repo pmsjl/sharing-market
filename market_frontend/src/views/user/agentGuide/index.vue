@@ -14,7 +14,26 @@
       :size="Math.min(340, viewportWidth - 24)"
       append-to-body
       class="agent-history-drawer"
-      ><div class="conversation-rail">
+      ><nav class="quiet-tabs" aria-label="咨询记录分类">
+        <button
+          type="button"
+          :class="{ active: !showArchived }"
+          @click="setHistory(false)"
+        >
+          最近咨询</button
+        ><button
+          type="button"
+          :class="{ active: showArchived }"
+          @click="setHistory(true)"
+        >
+          已归档
+        </button>
+      </nav>
+      <ArchivedAiConversations
+        v-if="showArchived"
+        @restored="reloadConversations"
+      />
+      <div v-else class="conversation-rail">
         <el-button class="new-chat-button" type="primary" @click="startNewChat">
           <span aria-hidden="true">＋</span>
           新建咨询
@@ -554,6 +573,7 @@
     /></el-drawer>
 
     <el-drawer
+      append-to-body
       v-model="contextDrawerOpen"
       title=""
       direction="rtl"
@@ -691,6 +711,7 @@
 </template>
 
 <script setup lang="ts">
+import ArchivedAiConversations from "@/components/ArchivedAiConversations/index.vue";
 import {
   computed,
   nextTick,
@@ -795,6 +816,19 @@ const composerFocused = ref(false);
 const conversationLoading = ref(false);
 const conversationLoadFailed = ref(false);
 const historyDrawerOpen = ref(false);
+const showArchived = computed(() => route.query.history === "archived");
+const setHistory = (archived: boolean) =>
+  router.replace({
+    query: { ...route.query, history: archived ? "archived" : undefined }
+  });
+watch(
+  () => route.query.history,
+  (history) => {
+    if (history === "archived") historyDrawerOpen.value = true;
+  },
+  { immediate: true }
+);
+
 const contextDrawerOpen = ref(false);
 const viewportWidth = ref(window.innerWidth);
 const conversations = ref<AiConversationVO[]>([]);
@@ -1877,15 +1911,18 @@ const openCommodity = (commodityId: string) => {
   });
 };
 
-onMounted(async () => {
-  layoutSettingStore.focusMode = false;
-  window.addEventListener("resize", handleResize);
-  await loadAiQuota();
-  const loaded = await loadConversations();
+let routeReady = false;
+let routeRestoreSequence = 0;
+const restoreRequestedConversation = async () => {
+  const revision = ++routeRestoreSequence;
   const requestedConversationId = Array.isArray(route.query.conversationId)
     ? route.query.conversationId[0]
     : route.query.conversationId;
-  if (!loaded || !requestedConversationId) return;
+  if ((requestedConversationId || null) === activeConversationId.value) return;
+  if (!requestedConversationId) {
+    startNewChat();
+    return;
+  }
   const conversation = conversations.value.find(
     (item) => item.id === requestedConversationId
   );
@@ -1893,13 +1930,34 @@ onMounted(async () => {
     await selectConversation(conversation);
     return;
   }
+  finishActiveTyping();
+  activeChat.value.context = getShoppingContext();
   activeConversationId.value = requestedConversationId;
   messagePage.value = 1;
   const restored = await loadMessages(requestedConversationId);
-  if (!restored) {
+  if (
+    !restored &&
+    revision === routeRestoreSequence &&
+    activeConversationId.value === requestedConversationId
+  ) {
     startNewChat();
     ElMessage.warning("原咨询已不可用，已为你打开新咨询");
   }
+};
+watch(
+  () => route.query.conversationId,
+  () => {
+    if (routeReady) void restoreRequestedConversation();
+  }
+);
+onMounted(async () => {
+  layoutSettingStore.focusMode = false;
+  window.addEventListener("resize", handleResize);
+  await loadAiQuota();
+  const loaded = await loadConversations();
+  if (disposed) return;
+  routeReady = true;
+  if (loaded) await restoreRequestedConversation();
 });
 
 onBeforeUnmount(() => {

@@ -37,13 +37,12 @@
     >
       <div class="theme-panel">
         <div class="theme-heading">
-          <span class="theme-kicker">MARKET PASS</span>
           <strong>市集外观</strong>
-          <p>选择校牌颜色，并切换白天或夜间逛摊。</p>
+          <p>选择主题色与明暗模式。</p>
         </div>
         <div class="theme-section">
-          <span class="theme-label">校牌颜色</span>
-          <div class="accent-options" role="radiogroup" aria-label="校牌颜色">
+          <span class="theme-label">主题色</span>
+          <div class="accent-options" role="radiogroup" aria-label="主题色">
             <button
               v-for="option in accentOptions"
               :key="option.value"
@@ -67,7 +66,7 @@
         </div>
         <div class="mode-row">
           <span>
-            <b>夜间校园</b>
+            <b>深色模式</b>
             <small>柔和灰阶，保留校园色彩</small>
           </span>
           <el-switch
@@ -213,15 +212,23 @@ onMounted(() => {
 });
 
 const getUserInformationById = async () => {
+  const sessionToken = userStore.token;
+  if (!sessionToken) return;
   const id = GET_ID();
   if (id == null) return ElMessage.info("获取用户信息失败");
-  const result: any = await getUserVoByIdUsingGet({
-    id: BigInt(id as string) as any
-  });
-  if (result.code == 200) user.value = result.data;
-  userStore.avatar = user.value.userAvatar;
-  userStore.userName = user.value.userName;
-  userStore.userAccount = user.value.userAccount;
+  try {
+    const result: any = await getUserVoByIdUsingGet({
+      id: BigInt(id as string) as any
+    });
+    if (userStore.token !== sessionToken || result.code !== 200) return;
+    user.value = result.data;
+    userStore.avatar = user.value.userAvatar;
+    userStore.userName = user.value.userName;
+    userStore.userAccount = user.value.userAccount;
+  } catch {
+    // The request interceptor reports current-session errors. A profile request
+    // finishing after logout should neither notify nor restore the old profile.
+  }
 };
 const updateRefsh = () => {
   layOutSettingStore.refsh = !layOutSettingStore.refsh;
@@ -237,7 +244,7 @@ const fullScren = async () => {
 const goPersonalHomePage = () => $router.push("/user/account");
 const logout = async () => {
   await userStore.userLogout();
-  $router.push({ path: "/login" });
+  await $router.replace({ path: "/login" });
 };
 const changeThemeMode = () => applyThemeMode(dark.value ? "night" : "light");
 const setAccent = (preset: ThemeAccentPreset) => {
@@ -395,13 +402,6 @@ export default { name: "Setting" };
     line-height: 1.55;
   }
 }
-.theme-kicker {
-  color: var(--market-orange-text);
-  font-family: var(--market-font-mono);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-}
 .theme-section {
   padding: 15px 0;
 }
@@ -507,9 +507,7 @@ export default { name: "Setting" };
 .campus-account-menu.el-popper {
   min-width: 200px;
   border: 1px solid var(--market-line);
-  border-top: 3px solid var(--market-orange);
-  border-top-color: var(--market-orange) !important;
-  border-radius: 6px 14px 6px 6px;
+  border-radius: 12px;
   background: var(--market-surface);
   box-shadow: var(--market-shadow);
   .el-dropdown-menu {
@@ -522,7 +520,7 @@ export default { name: "Setting" };
     gap: 11px;
     padding: 12px 14px 16px;
     margin-bottom: 7px;
-    border-bottom: 1px dashed var(--market-line-strong);
+    border-bottom: 1px solid var(--market-line);
     .el-avatar {
       flex-shrink: 0;
       background: var(--market-primary-soft);
@@ -560,7 +558,7 @@ export default { name: "Setting" };
     background: var(--market-primary-soft);
   }
   .el-dropdown-menu__item--divided {
-    border-top: 1px dashed var(--market-line-strong);
+    border-top: 1px solid var(--market-line);
     margin-top: 7px;
   }
   .account-logout:hover,

@@ -6,7 +6,7 @@
       :rules="rules"
       ref="loginForms"
       label-position="top"
-      aria-label="登录校园二手交易平台"
+      aria-label="登录校园集市"
       @submit.prevent="login"
     >
       <span class="auth-form-kicker">校园账户登录</span>
