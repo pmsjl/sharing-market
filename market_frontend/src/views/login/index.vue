@@ -61,7 +61,6 @@
         </button>
       </p>
 
-      <div class="auth-security">安全登录 · 信息加密</div>
     </el-form>
   </AuthMarketLayout>
 </template>

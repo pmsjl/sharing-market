@@ -17,7 +17,6 @@
 
       <aside class="auth-market-showcase" aria-labelledby="showcase-title">
         <div class="showcase-copy">
-          <span class="market-eyebrow">今日市集开放中</span>
           <h1 id="showcase-title">校园好物橱窗，总有一件正合适</h1>
           <p>登录后解锁发布、收藏、私信和个性化推荐。</p>
         </div>

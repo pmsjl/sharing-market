@@ -4,7 +4,6 @@
       <h1>
         同学攻略<span aria-hidden="true" class="journal-mark">一起分享</span>
       </h1>
-      <p>买过、用过、踩过的坑，都值得说给同学听。</p>
     </header>
     <div class="journal-toolbar">
       <el-input

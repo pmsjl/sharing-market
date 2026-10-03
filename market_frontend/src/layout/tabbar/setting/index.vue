@@ -67,7 +67,6 @@
         <div class="mode-row">
           <span>
             <b>深色模式</b>
-            <small>柔和灰阶，保留校园色彩</small>
           </span>
           <el-switch
             @change="changeThemeMode"

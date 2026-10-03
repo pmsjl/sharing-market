@@ -2,7 +2,6 @@
   <section class="selection-sheet" aria-labelledby="selection-title">
     <header class="selection-heading">
       <div>
-        <span>一起挑，更好选</span>
         <h2 id="selection-title">
           本轮好物 <small>{{ recommendations.length }}</small>
         </h2>

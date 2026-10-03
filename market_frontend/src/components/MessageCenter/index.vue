@@ -10,7 +10,7 @@
   >
     <template #header
       ><div class="message-drawer-heading">
-        <h2>校园私信 <span>同学之间，随时聊聊</span></h2>
+        <h2>校园私信 </h2>
       </div></template
     >
     <PrivateMessage />
