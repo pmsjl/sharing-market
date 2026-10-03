@@ -318,24 +318,24 @@ const partners = [
 }
 .mascot-run {
   width: 147.8px;
-  height: 202.1px;
+  height: 210.72px;
   margin-left: -114.6px;
-  background-size: 886.8px 202.1px;
+  background-size: 1773.75px 210.72px;
   transform-origin: 106.9px 100%;
   &.is-active {
     visibility: visible;
-    animation: mascot-run-cycle 0.48s steps(6) infinite;
+    animation: mascot-run-cycle 0.52s steps(12) infinite;
   }
 }
 .mascot-walk {
   width: 136.5px;
-  height: 229.3px;
+  height: 228.59px;
   margin-left: -92.3px;
-  background-size: 819px 229.3px;
+  background-size: 1637.62px 228.59px;
   transform-origin: 84.6px 100%;
   &.is-active {
     visibility: visible;
-    animation: mascot-walk-cycle 0.66s steps(6) infinite;
+    animation: mascot-walk-cycle 0.96s steps(12) infinite;
   }
 }
 .mascot-run.is-left,
@@ -354,7 +354,7 @@ const partners = [
     background-position-x: 0;
   }
   to {
-    background-position-x: -886.8px;
+    background-position-x: -1773.75px;
   }
 }
 @keyframes mascot-walk-cycle {
@@ -362,7 +362,7 @@ const partners = [
     background-position-x: 0;
   }
   to {
-    background-position-x: -819px;
+    background-position-x: -1637.62px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

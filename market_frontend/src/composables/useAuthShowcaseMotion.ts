@@ -13,9 +13,9 @@ import gsap from "gsap";
 const session = { phases: [0, 0], entered: false };
 const isAuthRoute = (path: string) => path === "/login" || path === "/register";
 
-// Locomotion speeds in display pixels per second; playback stays in step with the sprite cycles.
-const RUN_SPEED = 380;
-const WALK_SPEED = 130;
+// Locomotion speeds in display pixels per second, matched to the stride drawn in each sprite cycle.
+const RUN_SPEED = 225;
+const WALK_SPEED = 178;
 
 export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
   const router = useRouter();
