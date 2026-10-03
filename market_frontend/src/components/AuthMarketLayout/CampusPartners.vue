@@ -96,14 +96,8 @@
               decoding="async"
               @error="failed.mascotAway = true"
             />
-            <div
-              class="mascot-run"
-              :style="{ backgroundImage: spriteRunImage }"
-            ></div>
-            <div
-              class="mascot-walk"
-              :style="{ backgroundImage: spriteWalkImage }"
-            ></div>
+            <div class="mascot-run" :style="spriteStyle('run')"></div>
+            <div class="mascot-walk" :style="spriteStyle('walk')"></div>
             <img
               v-if="failed.mascot || (protecting && failed.mascotAway)"
               class="mascot-logo-fallback"
@@ -122,9 +116,8 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import setting from "@/setting";
+import { spriteStyle } from "@/utils/authMascotMotion";
 defineProps<{ protecting: boolean }>();
-const spriteRunImage = "url(/generated/auth-partners/mascot-run.webp)";
-const spriteWalkImage = "url(/generated/auth-partners/mascot-walk.webp)";
 const failed = reactive<Record<string, boolean>>({});
 const partners = [
   {
@@ -295,6 +288,15 @@ const partners = [
   height: 100%;
   transform-origin: 50% 95%;
 }
+// The unrotated wrapper keeps hover stable while its child sways.
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .mascot-travel {
+    pointer-events: auto;
+  }
+}
+.mascot-pose {
+  pointer-events: none;
+}
 .mascot-image {
   position: absolute;
   inset: 0;
@@ -316,60 +318,16 @@ const partners = [
   background-repeat: no-repeat;
   pointer-events: none;
 }
-.mascot-run {
-  width: 147.8px;
-  height: 210.72px;
-  margin-left: -114.6px;
-  background-size: 1773.75px 210.72px;
-  transform-origin: 106.9px 100%;
-  &.is-active {
-    visibility: visible;
-    animation: mascot-run-cycle 0.52s steps(12) infinite;
-  }
-}
-.mascot-walk {
-  width: 136.5px;
-  height: 228.59px;
-  margin-left: -92.3px;
-  background-size: 1637.62px 228.59px;
-  transform-origin: 84.6px 100%;
-  &.is-active {
-    visibility: visible;
-    animation: mascot-walk-cycle 0.96s steps(12) infinite;
-  }
+.mascot-run.is-active,
+.mascot-walk.is-active {
+  visibility: visible;
 }
 .mascot-run.is-left,
 .mascot-walk.is-left {
   transform: scaleX(-1);
 }
-.mascot-run.is-paused,
-.mascot-walk.is-paused {
-  animation-play-state: paused;
-}
 .campus-mascot.is-moving .mascot-front {
   visibility: hidden;
-}
-@keyframes mascot-run-cycle {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: -1773.75px;
-  }
-}
-@keyframes mascot-walk-cycle {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: -1637.62px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mascot-run,
-  .mascot-walk {
-    animation: none !important;
-  }
 }
 .mascot-shadow {
   position: absolute;

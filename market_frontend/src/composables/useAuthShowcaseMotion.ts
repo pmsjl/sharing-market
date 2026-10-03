@@ -8,14 +8,20 @@ import {
 } from "vue";
 import { useRouter } from "vue-router";
 import gsap from "gsap";
+import { AUTH_MASCOT_SPRITES } from "@/generated/authMascotSprites";
+import {
+  createMotionProfile,
+  distanceAtTime,
+  frameAtDistance,
+  MASCOT_GAITS,
+  nearestContactFrame,
+  spriteLayout,
+  type MascotGait
+} from "@/utils/authMascotMotion";
 
 // Presentation state lasts only while moving between the two auth routes.
 const session = { phases: [0, 0], entered: false };
 const isAuthRoute = (path: string) => path === "/login" || path === "/register";
-
-// Locomotion speeds in display pixels per second, matched to the stride drawn in each sprite cycle.
-const RUN_SPEED = 225;
-const WALK_SPEED = 178;
 
 export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
   const router = useRouter();
@@ -113,6 +119,14 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         const spriteRun = page.querySelector<HTMLElement>(".mascot-run");
         const spriteWalk = page.querySelector<HTMLElement>(".mascot-walk");
         const spritesReady = { run: false, walk: false };
+        const probes: HTMLImageElement[] = [];
+        const setFrame = (gait: MascotGait, frame: number) => {
+          const sprite = gait === "run" ? spriteRun : spriteWalk;
+          if (sprite)
+            sprite.style.backgroundPositionX = `${
+              -frame * spriteLayout(gait).width
+            }px`;
+        };
         const setMoving = (gait: "run" | "walk" | null, flipped = false) => {
           spriteRun?.classList.remove("is-active", "is-left");
           spriteWalk?.classList.remove("is-active", "is-left");
@@ -128,13 +142,15 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         };
         let mascotAction: gsap.core.Timeline | undefined;
         let mascotTimer: gsap.core.Tween | undefined;
+        let hoverSway: gsap.core.Timeline | undefined;
+        let pointerInPage = false;
+        let mascotHovered = false;
         let lastAction = -1;
         let hovered = false;
         let resizeFrame = 0;
         let pointerFrame = 0;
         let pointer = { x: 0, y: 0 };
         let centers: Array<{ x: number; y: number }> = [];
-        let peek = { x: 0 };
         let entranceSuspended = false;
         const frozen = () => document.hidden;
         const pointerFrozen = () => frozen() || isProtecting.value;
@@ -167,10 +183,10 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             mascotTimer?.pause();
           } else {
             mascotAction?.resume();
-            mascotTimer?.resume();
+            if (!mascotHovered && !hoverSway) mascotTimer?.resume();
           }
-          spriteRun?.classList.toggle("is-paused", paused);
-          spriteWalk?.classList.toggle("is-paused", paused);
+          if (paused || isProtecting.value) hoverSway?.pause();
+          else hoverSway?.resume();
           if (pointerFrozen()) stopPointer();
         };
         const measureScene = () => {
@@ -181,21 +197,18 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
               y: rect.top + rect.height * 0.35
             };
           });
-          const actorRect = actor?.getBoundingClientRect();
-          const formRect = page
-            .querySelector(".auth-panel-content")
-            ?.getBoundingClientRect();
-          if (actorRect && formRect) {
-            // Keep the entire sprite outside the form's left edge.
-            peek = { x: Math.max(0, formRect.left - actorRect.right - 48) };
-          }
         };
         const rebuildLoops = () => {
           if (disposed) return;
-          if (actor?.dataset.action === "peek") {
+          if (
+            actor?.dataset.action === "peek" ||
+            actor?.dataset.action === "walk"
+          ) {
             // A resized form can move into the old destination. Reset before measuring.
             mascotAction?.kill();
             mascotAction = undefined;
+            hoverSway?.kill();
+            hoverSway = undefined;
             gsap.set([travel, pose].filter(Boolean), {
               x: 0,
               y: 0,
@@ -207,7 +220,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             actor.dataset.action = "rest";
             setMoving(null);
             void nextTick().then(() => {
-              if (!disposed) scheduleMascot();
+              if (!disposed) settleIdle();
             });
           }
           measureScene();
@@ -271,40 +284,185 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         // Own loops explicitly: media reversion must not rewind saved progress.
         context.ignore(rebuildLoops);
 
+        const refreshMascotHover = () => {
+          // CSS :hover may lag when a transformed actor moves under a stationary
+          // mouse. Use the stable wrapper and the latest real mouse coordinates.
+          const rect = travel?.getBoundingClientRect();
+          mascotHovered = !!(
+            pointerInPage &&
+            rect &&
+            pointer.x >= rect.left &&
+            pointer.x <= rect.right &&
+            pointer.y >= rect.top &&
+            pointer.y <= rect.bottom
+          );
+          return mascotHovered;
+        };
+        const startHoverSway = () => {
+          if (
+            disposed ||
+            !allowed ||
+            pointerFrozen() ||
+            !pose ||
+            !actor ||
+            !mascotHovered ||
+            mascotAction ||
+            hoverSway
+          )
+            return;
+          mascotTimer?.kill();
+          mascotTimer = undefined;
+          actor.dataset.action = "sway";
+          hoverSway = gsap
+            .timeline()
+            .to(pose, { rotation: -4, duration: 0.45, ease: "sine.inOut" })
+            .to(pose, {
+              rotation: 4,
+              duration: 0.65,
+              ease: "sine.inOut",
+              repeat: -1,
+              yoyo: true
+            });
+          syncPlayback();
+        };
+        const settleIdle = (first = false) => {
+          if (disposed || !allowed || !actor || isProtecting.value) return;
+          refreshMascotHover();
+          if (mascotHovered) startHoverSway();
+          else scheduleMascot(first);
+        };
+        const stopHoverSway = () => {
+          if (!hoverSway || !pose || !actor) return;
+          hoverSway.kill();
+          hoverSway = undefined;
+          actor.dataset.action = "settle";
+          hoverSway = gsap
+            .timeline({
+              onComplete: () => {
+                hoverSway = undefined;
+                actor.dataset.action = "rest";
+                settleIdle();
+              }
+            })
+            .to(pose, { rotation: 0, duration: 0.25, ease: "sine.out" });
+          syncPlayback();
+        };
+        const mascotEnter = (event: PointerEvent) => {
+          if (event.pointerType !== "mouse") return;
+          pointerInPage = true;
+          pointer = { x: event.clientX, y: event.clientY };
+          mascotHovered = true;
+          startHoverSway();
+        };
+        const mascotLeave = () => {
+          mascotHovered = false;
+          if (actor?.dataset.action === "sway") stopHoverSway();
+        };
+        const windowLeave = () => {
+          pointerInPage = false;
+          mascotLeave();
+        };
+        // Bounds include the mirrored sprite and standing image at the endpoint.
+        const availableDistance = (gait: MascotGait, left: boolean) => {
+          if (!actor) return 0;
+          const rect = actor.getBoundingClientRect();
+          const center = rect.left + rect.width / 2;
+          const layout = spriteLayout(gait);
+          const origin = center + layout.offset;
+          // Include both orientations: turning around must also remain safe.
+          const spriteLeft =
+            origin - Math.max(layout.anchor, layout.width - layout.anchor);
+          const spriteRight =
+            origin + Math.max(layout.anchor, layout.width - layout.anchor);
+          const scene = page.getBoundingClientRect();
+          const form = page
+            .querySelector(".auth-panel-content")
+            ?.getBoundingClientRect();
+          const safeRight = Math.min(
+            scene.right - 8,
+            (form?.left ?? scene.right) - 48
+          );
+          return left
+            ? Math.max(0, Math.min(rect.left, spriteLeft) - scene.left - 8)
+            : Math.max(0, safeRight - Math.max(rect.right, spriteRight));
+        };
+        const addTravelLeg = (
+          timeline: gsap.core.Timeline,
+          gait: MascotGait,
+          from: number,
+          to: number
+        ) => {
+          const profile = createMotionProfile(
+            to - from,
+            MASCOT_GAITS[gait].speed
+          );
+          const clock = { elapsed: 0 };
+          const direction = to < from ? -1 : 1;
+          timeline
+            .add(() => {
+              setFrame(gait, 0);
+              setMoving(gait, direction < 0);
+            })
+            .to(clock, {
+              elapsed: profile.duration,
+              duration: profile.duration,
+              ease: "none",
+              onUpdate: () => {
+                const distance = distanceAtTime(clock.elapsed, profile);
+                gsap.set(travel, { x: from + direction * distance });
+                setFrame(gait, frameAtDistance(distance, gait));
+              }
+            })
+            .add(() => {
+              gsap.set(travel, { x: to });
+              setFrame(
+                gait,
+                nearestContactFrame(frameAtDistance(profile.length, gait), gait)
+              );
+            })
+            .to({}, { duration: 0.08 })
+            .add(() => setMoving(null));
+        };
         const scheduleMascot = (first = false) => {
           if (disposed || !allowed || !actor || !travel || !pose) return;
           mascotTimer?.kill();
           mascotTimer = gsap.delayedCall(
             first ? 4 + Math.random() * 3 : 10 + Math.random() * 6,
             () => {
-              if (disposed) return;
-              let action = Math.floor(Math.random() * 4);
-              if (action === lastAction) action = (action + 1) % 4;
+              mascotTimer = undefined;
+              if (disposed || isProtecting.value) return;
+              if (refreshMascotHover()) {
+                startHoverSway();
+                return;
+              }
+              const actions = ["hop", "peek", "walk"] as const;
+              let action = Math.floor(Math.random() * actions.length);
+              if (action === lastAction) action = (action + 1) % actions.length;
               lastAction = action;
-              actor.dataset.action = ["sway", "hop", "peek", "walk"][action];
+              const name = actions[action];
+              const gait = name === "peek" ? "run" : "walk";
+              const distance =
+                name === "hop"
+                  ? 0
+                  : Math.min(
+                      availableDistance(gait, name === "walk"),
+                      name === "walk" ? 60 + Math.random() * 80 : Infinity
+                    );
+              if (name !== "hop" && (!spritesReady[gait] || distance < 1)) {
+                actor.dataset.action = "rest";
+                settleIdle();
+                return;
+              }
+              actor.dataset.action = name;
               mascotAction = gsap.timeline({
                 onComplete: () => {
+                  mascotAction = undefined;
                   actor.dataset.action = "rest";
                   setMoving(null);
-                  scheduleMascot();
+                  settleIdle();
                 }
               });
-              if (action === 0) {
-                mascotAction
-                  .to(pose, {
-                    rotation: -4,
-                    duration: 0.45,
-                    ease: "sine.inOut"
-                  })
-                  .to(pose, {
-                    rotation: 4,
-                    duration: 0.65,
-                    repeat: 2,
-                    yoyo: true,
-                    ease: "sine.inOut"
-                  })
-                  .to(pose, { rotation: 0, duration: 0.45 });
-              } else if (action === 1) {
+              if (name === "hop") {
                 mascotAction
                   .to(pose, { scaleY: 0.96, scaleX: 1.03, duration: 0.13 })
                   .to(pose, {
@@ -323,41 +481,23 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
                     duration: 0.4,
                     ease: "bounce.out"
                   });
-              } else if (action === 2) {
-                // Peek: run over to the form side on the ground line, pause, run back.
-                const distance = Math.max(60, peek.x);
-                const runTime = distance / RUN_SPEED;
-                gsap.set(travel, { x: 0 });
-                mascotAction
-                  .add(() => setMoving("run"))
-                  .to(travel, { x: distance, duration: runTime, ease: "none" })
-                  .add(() => setMoving(null))
-                  .to(shadow, { opacity: 0, duration: 0.25 }, 0)
-                  .to(pose, { rotation: 7, duration: 0.3 })
-                  .to(pose, { rotation: -3, duration: 0.45 }, "+=0.9")
-                  .to(pose, { rotation: 0, duration: 0.3 })
-                  .add(() => setMoving("run", true))
-                  .to(travel, { x: 0, duration: runTime, ease: "none" })
-                  .to(shadow, { opacity: 0.2, duration: 0.3 }, "<");
               } else {
-                // Stroll: walk a random short distance along the ground, then back.
-                const distance = 60 + Math.random() * 80;
-                const walkTime = distance / WALK_SPEED;
+                const destination = name === "walk" ? -distance : distance;
                 gsap.set(travel, { x: 0 });
-                mascotAction
-                  .add(() => setMoving("walk", true))
-                  .to(travel, {
-                    x: -distance,
-                    duration: walkTime,
-                    ease: "none"
-                  })
-                  .add(() => setMoving(null))
-                  .to(shadow, { opacity: 0, duration: 0.25 }, 0)
-                  .to(pose, { rotation: -3, duration: 0.45 }, "+=0.5")
-                  .to(pose, { rotation: 0, duration: 0.35 })
-                  .add(() => setMoving("walk"))
-                  .to(travel, { x: 0, duration: walkTime, ease: "none" })
-                  .to(shadow, { opacity: 0.2, duration: 0.3 }, "<");
+                addTravelLeg(mascotAction, gait, 0, destination);
+                mascotAction.to(shadow, { opacity: 0, duration: 0.25 }, 0);
+                if (name === "peek") {
+                  mascotAction
+                    .to(pose, { rotation: 7, duration: 0.3 })
+                    .to(pose, { rotation: -3, duration: 0.45 }, "+=0.9")
+                    .to(pose, { rotation: 0, duration: 0.3 });
+                } else {
+                  mascotAction
+                    .to(pose, { rotation: -3, duration: 0.45 }, "+=0.5")
+                    .to(pose, { rotation: 0, duration: 0.35 });
+                }
+                addTravelLeg(mascotAction, gait, destination, 0);
+                mascotAction.to(shadow, { opacity: 0.2, duration: 0.3 });
               }
               syncPlayback();
             }
@@ -384,12 +524,13 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             (["run", "walk"] as const).forEach((gait) => {
               const probe = new Image();
               probe.onload = () => {
-                spritesReady[gait] = true;
+                if (!disposed) spritesReady[gait] = true;
               };
               probe.onerror = () => {
-                spritesReady[gait] = false;
+                if (!disposed) spritesReady[gait] = false;
               };
-              probe.src = `/generated/auth-partners/mascot-${gait}.webp`;
+              probes.push(probe);
+              probe.src = AUTH_MASCOT_SPRITES[gait].src;
             });
             scheduleMascot(true);
           });
@@ -419,12 +560,16 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
           });
         };
         const pointerMove = (event: PointerEvent) => {
-          if (event.pointerType !== "mouse" || pointerFrozen()) return;
+          if (event.pointerType !== "mouse") return;
+          pointerInPage = true;
           pointer = { x: event.clientX, y: event.clientY };
+          if (pointerFrozen()) return;
+          if (refreshMascotHover()) startHoverSway();
           if (!pointerFrame)
             pointerFrame = requestAnimationFrame(updatePointer);
         };
         const resetPointer = () => {
+          windowLeave();
           if (pointerFrozen()) return;
           gsap.to([...aims, ...pupils], {
             rotation: 0,
@@ -449,6 +594,8 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             gsap.set([...aims, ...pupils], { rotation: 0, x: 0, y: 0 });
             mascotAction?.kill();
             mascotAction = undefined;
+            hoverSway?.kill();
+            hoverSway = undefined;
             gsap.set([travel, pose].filter(Boolean), {
               x: 0,
               y: 0,
@@ -461,7 +608,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             if (actor) actor.dataset.action = "privacy";
           } else if (actor && allowed) {
             actor.dataset.action = "rest";
-            scheduleMascot(true);
+            settleIdle(true);
           }
           syncPlayback();
         };
@@ -473,10 +620,23 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             entrance?.resume();
             entranceSuspended = false;
           }
+          if (!document.hidden) {
+            refreshMascotHover();
+            if (actor?.dataset.action === "sway" && !mascotHovered)
+              stopHoverSway();
+            else if (
+              actor?.dataset.action === "rest" &&
+              (mascotHovered || !mascotTimer)
+            )
+              settleIdle();
+          }
           syncPlayback();
         };
         const stopPrivacyWatch = watch(isProtecting, privacyChanged);
         if (allowed) {
+          travel?.addEventListener("pointerenter", mascotEnter);
+          travel?.addEventListener("pointerleave", mascotLeave);
+          window.addEventListener("blur", windowLeave);
           showcase?.addEventListener("pointerenter", pointerEnter);
           showcase?.addEventListener("pointerleave", pointerLeave);
           page.addEventListener("pointermove", pointerMove);
@@ -497,16 +657,25 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
           floats.forEach((float) => float.kill());
           mascotAction?.kill();
           mascotTimer?.kill();
+          hoverSway?.kill();
+          probes.forEach((probe) => {
+            probe.onload = null;
+            probe.onerror = null;
+          });
           stopPointer();
           setMoving(null);
-          spriteRun?.classList.remove("is-paused");
-          spriteWalk?.classList.remove("is-paused");
+          spriteRun?.style.removeProperty("background-position-x");
+          spriteWalk?.style.removeProperty("background-position-x");
+          if (actor) actor.dataset.action = "rest";
           stopPrivacyWatch();
           observer.disconnect();
           cancelAnimationFrame(resizeFrame);
           images.forEach((image) =>
             image.removeEventListener("load", scheduleRebuild)
           );
+          travel?.removeEventListener("pointerenter", mascotEnter);
+          travel?.removeEventListener("pointerleave", mascotLeave);
+          window.removeEventListener("blur", windowLeave);
           showcase?.removeEventListener("pointerenter", pointerEnter);
           showcase?.removeEventListener("pointerleave", pointerLeave);
           page.removeEventListener("pointermove", pointerMove);
