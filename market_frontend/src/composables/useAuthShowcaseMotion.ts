@@ -13,6 +13,10 @@ import gsap from "gsap";
 const session = { phases: [0, 0], entered: false };
 const isAuthRoute = (path: string) => path === "/login" || path === "/register";
 
+// Locomotion speeds in display pixels per second; playback stays in step with the sprite cycles.
+const RUN_SPEED = 380;
+const WALK_SPEED = 130;
+
 export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
   const router = useRouter();
   const isProtecting = ref(false);
@@ -106,6 +110,22 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         const travel = page.querySelector<HTMLElement>(".mascot-travel");
         const pose = page.querySelector<HTMLElement>(".mascot-pose");
         const shadow = page.querySelector<HTMLElement>(".mascot-shadow");
+        const spriteRun = page.querySelector<HTMLElement>(".mascot-run");
+        const spriteWalk = page.querySelector<HTMLElement>(".mascot-walk");
+        const spritesReady = { run: false, walk: false };
+        const setMoving = (gait: "run" | "walk" | null, flipped = false) => {
+          spriteRun?.classList.remove("is-active", "is-left");
+          spriteWalk?.classList.remove("is-active", "is-left");
+          const sprite =
+            gait === "run" ? spriteRun : gait === "walk" ? spriteWalk : null;
+          if (sprite && gait && spritesReady[gait]) {
+            sprite.classList.add("is-active");
+            if (flipped) sprite.classList.add("is-left");
+            actor?.classList.add("is-moving");
+          } else {
+            actor?.classList.remove("is-moving");
+          }
+        };
         let mascotAction: gsap.core.Timeline | undefined;
         let mascotTimer: gsap.core.Tween | undefined;
         let lastAction = -1;
@@ -114,7 +134,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         let pointerFrame = 0;
         let pointer = { x: 0, y: 0 };
         let centers: Array<{ x: number; y: number }> = [];
-        let peek = { x: 0, y: 0 };
+        let peek = { x: 0 };
         let entranceSuspended = false;
         const frozen = () => document.hidden;
         const pointerFrozen = () => frozen() || isProtecting.value;
@@ -149,6 +169,8 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             mascotAction?.resume();
             mascotTimer?.resume();
           }
+          spriteRun?.classList.toggle("is-paused", paused);
+          spriteWalk?.classList.toggle("is-paused", paused);
           if (pointerFrozen()) stopPointer();
         };
         const measureScene = () => {
@@ -165,14 +187,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             ?.getBoundingClientRect();
           if (actorRect && formRect) {
             // Keep the entire sprite outside the form's left edge.
-            peek = {
-              x: Math.max(0, formRect.left - actorRect.right - 48),
-              y: gsap.utils.clamp(
-                -100,
-                60,
-                formRect.bottom - actorRect.bottom - 20
-              )
-            };
+            peek = { x: Math.max(0, formRect.left - actorRect.right - 48) };
           }
         };
         const rebuildLoops = () => {
@@ -190,6 +205,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             });
             if (shadow) gsap.set(shadow, { opacity: 0.2 });
             actor.dataset.action = "rest";
+            setMoving(null);
             void nextTick().then(() => {
               if (!disposed) scheduleMascot();
             });
@@ -262,13 +278,14 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             first ? 4 + Math.random() * 3 : 10 + Math.random() * 6,
             () => {
               if (disposed) return;
-              let action = Math.floor(Math.random() * 3);
-              if (action === lastAction) action = (action + 1) % 3;
+              let action = Math.floor(Math.random() * 4);
+              if (action === lastAction) action = (action + 1) % 4;
               lastAction = action;
-              actor.dataset.action = ["sway", "hop", "peek"][action];
+              actor.dataset.action = ["sway", "hop", "peek", "walk"][action];
               mascotAction = gsap.timeline({
                 onComplete: () => {
                   actor.dataset.action = "rest";
+                  setMoving(null);
                   scheduleMascot();
                 }
               });
@@ -306,25 +323,41 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
                     duration: 0.4,
                     ease: "bounce.out"
                   });
-              } else {
+              } else if (action === 2) {
+                // Peek: run over to the form side on the ground line, pause, run back.
+                const distance = Math.max(60, peek.x);
+                const runTime = distance / RUN_SPEED;
+                gsap.set(travel, { x: 0 });
                 mascotAction
-                  .to(travel, {
-                    x: peek.x,
-                    y: peek.y,
-                    duration: 1.15,
-                    ease: "power2.inOut"
-                  })
-                  .to(shadow, { opacity: 0, duration: 0.2 }, 0)
+                  .add(() => setMoving("run"))
+                  .to(travel, { x: distance, duration: runTime, ease: "none" })
+                  .add(() => setMoving(null))
+                  .to(shadow, { opacity: 0, duration: 0.25 }, 0)
                   .to(pose, { rotation: 7, duration: 0.3 })
-                  .to(pose, { rotation: -3, duration: 0.4 }, "+=1.2")
+                  .to(pose, { rotation: -3, duration: 0.45 }, "+=0.9")
+                  .to(pose, { rotation: 0, duration: 0.3 })
+                  .add(() => setMoving("run", true))
+                  .to(travel, { x: 0, duration: runTime, ease: "none" })
+                  .to(shadow, { opacity: 0.2, duration: 0.3 }, "<");
+              } else {
+                // Stroll: walk a random short distance along the ground, then back.
+                const distance = 60 + Math.random() * 80;
+                const walkTime = distance / WALK_SPEED;
+                gsap.set(travel, { x: 0 });
+                mascotAction
+                  .add(() => setMoving("walk", true))
                   .to(travel, {
-                    x: 0,
-                    y: 0,
-                    duration: 1.1,
-                    ease: "power2.inOut"
+                    x: -distance,
+                    duration: walkTime,
+                    ease: "none"
                   })
-                  .to(pose, { rotation: 0, duration: 0.3 }, "<")
-                  .to(shadow, { opacity: 0.2, duration: 0.3 });
+                  .add(() => setMoving(null))
+                  .to(shadow, { opacity: 0, duration: 0.25 }, 0)
+                  .to(pose, { rotation: -3, duration: 0.45 }, "+=0.5")
+                  .to(pose, { rotation: 0, duration: 0.35 })
+                  .add(() => setMoving("walk"))
+                  .to(travel, { x: 0, duration: walkTime, ease: "none" })
+                  .to(shadow, { opacity: 0.2, duration: 0.3 }, "<");
               }
               syncPlayback();
             }
@@ -348,6 +381,16 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
                   })
                 );
               });
+            (["run", "walk"] as const).forEach((gait) => {
+              const probe = new Image();
+              probe.onload = () => {
+                spritesReady[gait] = true;
+              };
+              probe.onerror = () => {
+                spritesReady[gait] = false;
+              };
+              probe.src = `/generated/auth-partners/mascot-${gait}.webp`;
+            });
             scheduleMascot(true);
           });
 
@@ -414,6 +457,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
               scaleY: 1
             });
             if (shadow) gsap.set(shadow, { opacity: 0.2 });
+            setMoving(null);
             if (actor) actor.dataset.action = "privacy";
           } else if (actor && allowed) {
             actor.dataset.action = "rest";
@@ -454,6 +498,9 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
           mascotAction?.kill();
           mascotTimer?.kill();
           stopPointer();
+          setMoving(null);
+          spriteRun?.classList.remove("is-paused");
+          spriteWalk?.classList.remove("is-paused");
           stopPrivacyWatch();
           observer.disconnect();
           cancelAnimationFrame(resizeFrame);

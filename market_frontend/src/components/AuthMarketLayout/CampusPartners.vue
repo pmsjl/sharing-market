@@ -96,6 +96,14 @@
               decoding="async"
               @error="failed.mascotAway = true"
             />
+            <div
+              class="mascot-run"
+              :style="{ backgroundImage: spriteRunImage }"
+            ></div>
+            <div
+              class="mascot-walk"
+              :style="{ backgroundImage: spriteWalkImage }"
+            ></div>
             <img
               v-if="failed.mascot || (protecting && failed.mascotAway)"
               class="mascot-logo-fallback"
@@ -115,6 +123,8 @@
 import { reactive } from "vue";
 import setting from "@/setting";
 defineProps<{ protecting: boolean }>();
+const spriteRunImage = "url(/generated/auth-partners/mascot-run.webp)";
+const spriteWalkImage = "url(/generated/auth-partners/mascot-walk.webp)";
 const failed = reactive<Record<string, boolean>>({});
 const partners = [
   {
@@ -296,6 +306,70 @@ const partners = [
 }
 .mascot-away {
   visibility: hidden;
+}
+.mascot-run,
+.mascot-walk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  visibility: hidden;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+.mascot-run {
+  width: 147.8px;
+  height: 202.1px;
+  margin-left: -114.6px;
+  background-size: 886.8px 202.1px;
+  transform-origin: 106.9px 100%;
+  &.is-active {
+    visibility: visible;
+    animation: mascot-run-cycle 0.48s steps(6) infinite;
+  }
+}
+.mascot-walk {
+  width: 136.5px;
+  height: 229.3px;
+  margin-left: -92.3px;
+  background-size: 819px 229.3px;
+  transform-origin: 84.6px 100%;
+  &.is-active {
+    visibility: visible;
+    animation: mascot-walk-cycle 0.66s steps(6) infinite;
+  }
+}
+.mascot-run.is-left,
+.mascot-walk.is-left {
+  transform: scaleX(-1);
+}
+.mascot-run.is-paused,
+.mascot-walk.is-paused {
+  animation-play-state: paused;
+}
+.campus-mascot.is-moving .mascot-front {
+  visibility: hidden;
+}
+@keyframes mascot-run-cycle {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -886.8px;
+  }
+}
+@keyframes mascot-walk-cycle {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -819px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-run,
+  .mascot-walk {
+    animation: none !important;
+  }
 }
 .mascot-shadow {
   position: absolute;

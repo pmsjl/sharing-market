@@ -16,6 +16,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local acceptance/QA workspace (scripts, logs, screenshots, browser profile)
+.auth-partners-qa/
+
 # Editor directories and files
 .idea
 .vscode
