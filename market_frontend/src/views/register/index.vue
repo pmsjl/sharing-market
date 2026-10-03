@@ -12,7 +12,7 @@
       <span class="auth-form-kicker">创建校园账户</span>
       <div class="auth-form-heading">
         <h2>一起，让好物流转</h2>
-        <p>创建校园账户，分享闲置，也遇见新的喜欢。</p>
+        <p>创建校园账户，和新的喜欢见面。</p>
       </div>
 
       <el-form-item label="账号" prop="userAccount">

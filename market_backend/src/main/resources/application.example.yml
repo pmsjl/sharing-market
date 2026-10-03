@@ -98,7 +98,7 @@ ai:
     connect-timeout-ms: ${AI_AGENT_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${AI_AGENT_READ_TIMEOUT_MS:120000}
     pending-timeout-ms: ${AI_AGENT_PENDING_TIMEOUT_MS:140000}
-    max-concurrent-runs: ${AI_AGENT_MAX_CONCURRENT_RUNS:4}
+    max-concurrent-runs: ${AI_AGENT_MAX_CONCURRENT_RUNS:12}
 
 management:
   endpoints:

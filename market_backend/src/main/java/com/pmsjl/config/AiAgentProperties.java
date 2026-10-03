@@ -38,7 +38,7 @@ public class AiAgentProperties {
     private long pendingTimeoutMs;
 
     /** 后台 Agent 固定并发数；任务不排队，满载时明确失败。 */
-    private int maxConcurrentRuns = 4;
+    private int maxConcurrentRuns = 12;
 
     @PostConstruct
     public void validateTimeoutConfiguration() {

@@ -30,7 +30,7 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 
 - 会话：创建、续聊、归档、恢复、删除；历史上下文最多近 5 轮。
 - 消息：短事务保存后返回 PENDING，由专用线程调用 Agent；调用结束后在独立短事务中使用 CAS 回写 SUCCESS 或 FAILED。会话锁、超时判断、额度预占与商品/引用校验保持原有规则。
-- 后台并发：`AI_AGENT_MAX_CONCURRENT_RUNS` 默认 4，固定线程数、不排队；满载时不调用 Python，将本轮回写为可重试的 FAILED（`AI_AGENT_BUSY`）。业务失败沿用原有额度统计，不退回预占次数。
+- 后台并发：`AI_AGENT_MAX_CONCURRENT_RUNS` 默认 12，固定线程数、不排队；满载时不调用 Python，将本轮回写为可重试的 FAILED（`AI_AGENT_BUSY`）。业务失败沿用原有额度统计，不退回预占次数。
 - 浏览器使用现有消息分页接口轮询结果，刷新或关闭页面不取消生成。任务只保存在内存；Java 重启或回写失败遗留的 PENDING 由现有超时清理收尾，不自动重跑。
 - 额度：按 `AiUsageDaily`/`AiUsageGlobalDaily` 每日限量（用户默认 10、平台默认 100，`ai.access` 配置，时区 Asia/Shanghai）。
 - 定时任务：清理超时 PENDING 消息（每 30 秒）、释放过期未支付订单（每分钟）、同步商品浏览量（每 5 分钟）。
@@ -45,7 +45,7 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 
 实现分为两段短事务：`AiChatServiceImpl` / `AiMessageServiceImpl` 先保存等待中的消息，再通过 `AiAgentTaskRunner` 提交给 `AiAgentExecutorConfig` 配置的专用线程池；模型返回后，在另一段事务中校验和回写结果。内部 HTTP 请求仍需等待 Python 返回完整 `AgentRunResponse`，不会把这种等待带回浏览器提交请求，也不在模型等待期间持有数据库事务。
 
-- `AI_AGENT_MAX_CONCURRENT_RUNS` 默认 4；线程数固定，队列容量 0，满载以 `AI_AGENT_BUSY` 收尾为可重试 `FAILED`，因此提交响应不保证永远是 `PENDING`。
+- `AI_AGENT_MAX_CONCURRENT_RUNS` 默认 12；线程数固定，队列容量 0，满载以 `AI_AGENT_BUSY` 收尾为可重试 `FAILED`，因此提交响应不保证永远是 `PENDING`。
 - `AI_AGENT_PENDING_TIMEOUT_MS` 必须大于连接超时、读取超时与 5 秒回写余量之和；配置在启动时校验。
 - 结果按 `PENDING` 条件更新，已结束消息不会被迟到结果重新覆盖。生成任务没有持久化队列，也没有新增 Python 任务状态接口或 SSE。
 
