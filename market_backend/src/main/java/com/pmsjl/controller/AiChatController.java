@@ -36,10 +36,24 @@ public class AiChatController {
      */
     @PostMapping
     public Result<AiChatVO> createConversation(@RequestBody AiChatMessageRequest aiChatMessageRequest,
-                                                HttpServletRequest request) {
+                                               HttpServletRequest request) {
         ThrowUtils.throwIf(aiChatMessageRequest == null, ErrorCode.PARAMS_ERROR);
         AiChatVO aiChatVO = aiChatService.createConversation(aiChatMessageRequest, request);
         return ResultUtils.success(aiChatVO);
+    }
+
+    /**
+     * 保存新一轮消息并返回 PENDING，后台完成生成和条件回写。
+     */
+    @PostMapping("/{conversationId}/messages")
+    public Result<AiChatVO> sendMessage(@PathVariable("conversationId") Long conversationId,
+                                        @RequestBody AiChatMessageRequest aiChatMessageRequest,
+                                        HttpServletRequest request) {
+        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(aiChatMessageRequest == null, ErrorCode.PARAMS_ERROR);
+        AiChatVO aiChatVO = aiMessageService.sendMessage(conversationId, aiChatMessageRequest, request);
+        return ResultUtils.success(aiChatVO);
+
     }
 
     /**
@@ -119,17 +133,6 @@ public class AiChatController {
         return ResultUtils.success(aiConversationService.restoreConversation(conversationId, request));
     }
 
-    /** 保存新一轮消息并返回 PENDING，后台完成生成和条件回写。 */
-    @PostMapping("/{conversationId}/messages")
-    public Result<AiChatVO> sendMessage(@PathVariable("conversationId") Long conversationId,
-                                        @RequestBody AiChatMessageRequest aiChatMessageRequest,
-                                        HttpServletRequest request){
-        ThrowUtils.throwIf(conversationId==null||conversationId<=0,ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(aiChatMessageRequest==null,ErrorCode.PARAMS_ERROR);
-        AiChatVO aiChatVO=aiMessageService.sendMessage(conversationId,aiChatMessageRequest,request);
-        return ResultUtils.success(aiChatVO);
-
-    }
 
     private AiConversationStatusEnum parseConversationStatus(String status) {
         try {

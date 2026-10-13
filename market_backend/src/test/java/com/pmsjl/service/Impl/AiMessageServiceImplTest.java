@@ -7,12 +7,14 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
+import com.pmsjl.config.AiAccessProperties;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.manager.AiAgentTaskRunner;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
 import com.pmsjl.model.dto.ai.AiChatMessageRequest;
 import com.pmsjl.model.dto.ai.AiMessageQueryRequest;
+import com.pmsjl.model.dto.ai.AiUsageDate;
 import com.pmsjl.model.entity.AiConversation;
 import com.pmsjl.model.entity.AiMessage;
 import com.pmsjl.model.entity.User;
@@ -96,6 +98,9 @@ class AiMessageServiceImplTest {
         ReflectionTestUtils.setField(messageService, "transactionTemplate", transactionTemplate);
         ReflectionTestUtils.setField(messageService, "userService", userService);
         ReflectionTestUtils.setField(messageService, "aiAccessService", accessService);
+        AiAccessProperties accessProperties = new AiAccessProperties();
+        accessProperties.validate();
+        ReflectionTestUtils.setField(messageService, "aiAccessProperties", accessProperties);
         ReflectionTestUtils.setField(messageService, "aiAgentTaskRunner", taskRunner);
         ReflectionTestUtils.setField(messageService, "objectMapper", new ObjectMapper());
     }
@@ -281,6 +286,7 @@ class AiMessageServiceImplTest {
         AiConversation conversation = new AiConversation();
         conversation.setId(500L);
         when(conversationMapper.selectByIdForUpdate(500L)).thenReturn(conversation);
+        conversation.setUserId(101L);
         when(messageMapper.markPendingMessageTimedOut(
                 eq(700L), eq(expireBefore), eq(PENDING_TIMEOUT_MESSAGE),
                 eq(PENDING_TIMEOUT_ERROR_KEY))).thenReturn(1);
@@ -297,6 +303,8 @@ class AiMessageServiceImplTest {
         assertNotNull(conversation.getLastMessageTime());
         verify(conversationMapper).selectByIdForUpdate(500L);
         verify(conversationMapper).updateById(conversation);
+        verify(accessService).recordFailure(101L, new AiUsageDate(candidate.getCreateTime()
+                .toInstant().atZone(java.time.ZoneId.of("Asia/Shanghai")).toLocalDate()));
     }
 
     @Test
@@ -324,6 +332,7 @@ class AiMessageServiceImplTest {
 
         assertEquals(0, expiredCount);
         verify(conversationMapper, never()).updateById(any(AiConversation.class));
+        verifyNoInteractions(accessService);
     }
 
     private static AiMessage message(Long id, int sequenceNo, String role, String content, Date createTime) {

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
 import com.pmsjl.config.AiAgentProperties;
+import com.pmsjl.config.AiAccessProperties;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.manager.AiAgentTaskRunner;
 import com.pmsjl.manager.AiAgentClientException;
@@ -85,11 +86,13 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     private AiAgentProperties aiAgentProperties;
     @Autowired
     private AiAccessService aiAccessService;
+    @Autowired
+    private AiAccessProperties aiAccessProperties;
 
     @Override
     public AiPageVO<AiMessageVO> listConversationMessages(Long conversationId,
-                                                           AiMessageQueryRequest queryRequest,
-                                                           HttpServletRequest request) {
+                                                          AiMessageQueryRequest queryRequest,
+                                                          HttpServletRequest request) {
         ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
         int current = queryRequest.getCurrent();
         int pageSize = queryRequest.getPageSize();
@@ -226,6 +229,9 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                 );
                 ThrowUtils.throwIf(changed != 1, ErrorCode.CONFLICT_ERROR,
                         "Pending message state has already changed");
+                Long userId = userService.getLoginUser().getId();
+                aiAccessService.recordFailure(userId, new AiUsageDate(oldPendingMessage.getCreateTime()
+                        .toInstant().atZone(aiAccessProperties.getZoneId()).toLocalDate()));
             } else {
                 throw new BusinessException(ErrorCode.CONFLICT_ERROR, "上一条消息正在回复中，无法发送新消息");
             }
@@ -278,6 +284,9 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         if (changed != 1) {
             return false;
         }
+
+        aiAccessService.recordFailure(conversation.getUserId(), new AiUsageDate(candidate.getCreateTime()
+                .toInstant().atZone(aiAccessProperties.getZoneId()).toLocalDate()));
 
         conversation.setLastMessagePreview(PENDING_TIMEOUT_MESSAGE);
         conversation.setLastMessageTime(now);

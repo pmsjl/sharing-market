@@ -4,7 +4,7 @@
 
     <select id="selectStalePendingMessages" resultType="com.pmsjl.model.entity.AiMessage">
 
-        SELECT m.id, m.conversationId
+        SELECT m.id, m.conversationId, m.createTime
         FROM ai_message m
                  INNER JOIN ai_conversation c
                             ON c.id = m.conversationId
