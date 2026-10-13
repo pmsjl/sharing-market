@@ -33,6 +33,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -123,6 +125,9 @@ class AiMessageServiceImplTest {
             order.add("conversation");
             return conversation;
         }).when(conversationMapper).selectOwnedByIdForUpdate(500L, 101L);
+        AiMessage latest = new AiMessage();
+        latest.setSequenceNo(2);
+        when(messageMapper.selectOne(any(Wrapper.class))).thenReturn(latest).thenReturn(null);
         when(accessService.reserveUsage(101L)).thenAnswer(invocation -> {
             order.add("usage");
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "quota reached");
@@ -134,6 +139,7 @@ class AiMessageServiceImplTest {
 
         AiChatMessageRequest requestBody = new AiChatMessageRequest();
         requestBody.setContent("继续咨询");
+        requestBody.setExpectedUserSequenceNo(3);
 
         assertThrows(BusinessException.class,
                 () -> messageService.sendMessage(500L, requestBody, request));
@@ -157,12 +163,50 @@ class AiMessageServiceImplTest {
 
         AiChatMessageRequest requestBody = new AiChatMessageRequest();
         requestBody.setContent("继续咨询");
+        requestBody.setExpectedUserSequenceNo(3);
 
         assertThrows(BusinessException.class,
                 () -> messageService.sendMessage(500L, requestBody, request));
         verify(accessService, never()).reserveUsage(anyLong());
         verify(messageMapper, never()).insert(any(AiMessage.class));
         verifyNoInteractions(taskRunner);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = {0, -1})
+    void sendMessageRejectsMissingOrInvalidSequenceBeforeAccessingConversation(Integer sequenceNo) {
+        AiChatMessageRequest body = new AiChatMessageRequest();
+        body.setContent("继续咨询");
+        body.setExpectedUserSequenceNo(sequenceNo);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> messageService.sendMessage(500L, body, request));
+
+        assertEquals(ErrorCode.PARAMS_ERROR.getCode(), exception.getCode());
+        assertEquals("expectedUserSequenceNo 必须为正整数", exception.getMessage());
+        verifyNoInteractions(userService, conversationMapper, messageMapper, accessService, taskRunner);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "0", "-1", "9.5", "\"9\"", "2147483648", "{}", "[]", "true"})
+    void invalidJsonSequenceCannotBeCoercedIntoAnAcceptedSequence(String jsonValue) throws Exception {
+        AiChatMessageRequest body = new ObjectMapper().readValue(
+                "{\"content\":\"继续咨询\",\"expectedUserSequenceNo\":" + jsonValue + "}",
+                AiChatMessageRequest.class);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> messageService.sendMessage(500L, body, request));
+
+        assertEquals(ErrorCode.PARAMS_ERROR.getCode(), exception.getCode());
+        verifyNoInteractions(userService, conversationMapper, messageMapper, accessService, taskRunner);
+    }
+
+    @Test
+    void validJsonSequenceIsDeserializedAsAnInteger() throws Exception {
+        AiChatMessageRequest body = new ObjectMapper().readValue(
+                "{\"content\":\"继续咨询\",\"expectedUserSequenceNo\":9}", AiChatMessageRequest.class);
+        assertEquals(9, body.getExpectedUserSequenceNo());
     }
 
     @Test

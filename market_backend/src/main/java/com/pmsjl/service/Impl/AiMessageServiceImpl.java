@@ -140,6 +140,10 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
     @Override
     public AiChatVO sendMessage(Long conversationId, AiChatMessageRequest aiChatMessageRequest, HttpServletRequest request) {
         //1.校验数据
+        ThrowUtils.throwIf(aiChatMessageRequest == null, ErrorCode.PARAMS_ERROR);
+        Integer expectedUserSequenceNo = aiChatMessageRequest.getExpectedUserSequenceNo();
+        ThrowUtils.throwIf(expectedUserSequenceNo == null || expectedUserSequenceNo <= 0,
+                ErrorCode.PARAMS_ERROR, "expectedUserSequenceNo 必须为正整数");
         String content = StringUtils.trimToEmpty(aiChatMessageRequest.getContent());
         ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "咨询内容不能为空");
         ThrowUtils.throwIf(content.length() > MAX_MESSAGE_LENGTH, ErrorCode.PARAMS_ERROR,
@@ -162,6 +166,11 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     ErrorCode.NOT_FOUND_ERROR,
                     "会话不存在，无法继续对话"
             );
+            // 先验证发送顺序，防止后发或迟到请求在上一轮结束后被误接受。
+            int userSequenceNo = getNextUserSequenceNo(conversationId);
+            ThrowUtils.throwIf(expectedUserSequenceNo != userSequenceNo,
+                    ErrorCode.CONFLICT_ERROR, "消息顺序已变化，请刷新后重试");
+
             //1.会话行锁内检查 pending，确保并发发送不会产生多个未完成回复
             // 因为锁释放了，可能还在获取agent消息，这时候其他请求再次涌入可能出现多个pending情况，
             //我们要确保如果已存在pending，并且不超时。新的消息无法发送
@@ -193,7 +202,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                     .toList();
 
             return this.addPendingMessage(loginUser, content, aiShoppingContext, requestId,
-                    conversationId, conversation, agentHistoryMessages, usageReservation);
+                    conversationId, conversation, agentHistoryMessages, usageReservation, userSequenceNo);
         });
         ThrowUtils.throwIf(pendingMessage == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
 
@@ -206,6 +215,21 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                 exception -> persistAgentFailure(pendingMessage, exception));
 
 
+    }
+
+    /** 必须在会话行锁内读取，保存消息时复用这个已校验的序号。 */
+    private int getNextUserSequenceNo(Long conversationId) {
+        AiMessage latestMessage = this.lambdaQuery()
+                .select(AiMessage::getSequenceNo)
+                .eq(AiMessage::getConversationId, conversationId)
+                .orderByDesc(AiMessage::getSequenceNo)
+                .last("LIMIT 1")
+                .one();
+        ThrowUtils.throwIf(latestMessage == null || latestMessage.getSequenceNo() == null,
+                ErrorCode.OPERATION_ERROR, "会话消息序号无效");
+        ThrowUtils.throwIf(latestMessage.getSequenceNo() >= Integer.MAX_VALUE - 1,
+                ErrorCode.OPERATION_ERROR, "会话消息序号已达到上限");
+        return latestMessage.getSequenceNo() + 1;
     }
 
     private void checkPendingMessage(Long conversationId) {
@@ -445,12 +469,12 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                                              AiShoppingContext shoppingContext, String requestId,
                                              Long conversationId, AiConversation conversation,
                                              List<AgentHistoryMessage> agentHistoryMessages,
-                                             AiUsageDate usageReservation) {
+                                             AiUsageDate usageReservation, int userSequenceNo) {
         Long userId = loginUser.getId();
         Date now = PersistenceTime.now();
 
         //插入第一阶段数据，并存储
-        AiMessage userMessage = getUserMessage(conversationId, userId, content, shoppingContext, requestId);
+        AiMessage userMessage = getUserMessage(conversationId, userId, content, shoppingContext, requestId, userSequenceNo);
         AiMessage assistantMessage = getAssistantMessage(conversationId, userId, content, shoppingContext, requestId, userMessage.getSequenceNo());
         updateAiConversation(conversation, now);
         return new PendingMessage(requestId, loginUser, content, shoppingContext, conversation,
@@ -491,7 +515,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         return assistantMessage;
     }
 
-    private AiMessage getUserMessage(Long conversationId, Long userId, String content, AiShoppingContext shoppingContext, String requestId) {
+    private AiMessage getUserMessage(Long conversationId, Long userId, String content, AiShoppingContext shoppingContext, String requestId, int userSequenceNo) {
         AiMessage userMessage = new AiMessage();
         userMessage.setUserId(userId);
         userMessage.setContent(content);
@@ -503,13 +527,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
         userMessage.setUpdateTime(now);
         userMessage.setRole(AiMessageRoleEnum.USER.getValue());
         userMessage.setStatus(AiMessageStatusEnum.SUCCESS.getValue());
-        AiMessage message = this.lambdaQuery().select(AiMessage::getSequenceNo).
-                eq(AiMessage::getConversationId, conversationId).
-                orderByDesc(AiMessage::getSequenceNo).
-                last("LIMIT 1").
-                one();
-        Integer sequenceNo = message.getSequenceNo();
-        userMessage.setSequenceNo(sequenceNo + 1);
+        userMessage.setSequenceNo(userSequenceNo);
         ThrowUtils.throwIf(!this.save(userMessage), ErrorCode.OPERATION_ERROR,
                 "创建用户消息失败");
         return userMessage;

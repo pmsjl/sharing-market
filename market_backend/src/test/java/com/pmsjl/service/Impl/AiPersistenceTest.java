@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.MybatisSqlSessionFactoryBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pmsjl.common.ErrorCode;
+import com.pmsjl.config.AiAccessProperties;
+import com.pmsjl.config.AiAgentProperties;
 import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.AiConversationMapper;
 import com.pmsjl.mapper.AiMessageMapper;
@@ -108,8 +110,9 @@ class AiPersistenceTest {
         previous.setIsDelete(0);
         messages.insert(previous);
         recorder.sql.clear();
+        int userSequenceNo = ReflectionTestUtils.invokeMethod(continuation, "getNextUserSequenceNo", 20L);
         AiMessage user = ReflectionTestUtils.invokeMethod(continuation, "getUserMessage",
-                20L, 1L, "next", null, "request-2");
+                20L, 1L, "next", null, "request-2", userSequenceNo);
         AiMessage assistant = ReflectionTestUtils.invokeMethod(continuation, "getAssistantMessage",
                 20L, 1L, "next", null, "request-2", user.getSequenceNo());
         assertEquals(3, recorder.sql.size());
@@ -118,6 +121,153 @@ class AiPersistenceTest {
         assertEquals(4, assistant.getSequenceNo());
         assertStoredTimes(user);
         assertStoredTimes(assistant);
+    }
+
+    @Test
+    void laterRequestArrivingFirstIsRejectedAndEarlierRequestUsesItsValidatedSequence() {
+        AiAccessService access = configureContinuationForSequenceTests();
+        AiConversation conversation = conversationWithLatestReply("SUCCESS", PersistenceTime.now());
+        recorder.sql.clear();
+
+        BusinessException conflict = assertThrows(BusinessException.class,
+                () -> continuation.sendMessage(conversation.getId(), continuationRequest("B", 11), null));
+        assertEquals(ErrorCode.CONFLICT_ERROR.getCode(), conflict.getCode());
+        assertEquals("消息顺序已变化，请刷新后重试", conflict.getMessage());
+        assertTrue(recorder.sql.stream().allMatch(sql -> sql.startsWith("SELECT")));
+        assertTrue(recorder.sql.get(0).contains("FOR UPDATE"));
+        verifyNoInteractions(access);
+        assertEquals(2L, messages.selectCount(null));
+
+        // 下一次 HTTP 请求不会复用上一次请求的 MyBatis 一级缓存。
+        session.clearCache();
+        recorder.sql.clear();
+        AiChatVO accepted = continuation.sendMessage(conversation.getId(), continuationRequest("A", 9), null);
+        assertEquals(9, accepted.getUserMessage().getSequenceNo());
+        assertEquals(10, accepted.getAssistantMessage().getSequenceNo());
+        assertEquals(AiMessageStatusEnum.PENDING, accepted.getAssistantMessage().getStatus());
+        // 会话锁、最新序号、PENDING 检查、历史各查询一次，插入时不再查询序号。
+        assertEquals(4, recorder.sql.stream().filter(sql -> sql.startsWith("SELECT")).count());
+        assertEquals("A", messages.selectById(accepted.getUserMessage().getId()).getContent());
+        verify(access).reserveUsage(1L);
+        assertEquals(4L, messages.selectCount(null));
+    }
+
+    @Test
+    void nextRequestIsRejectedWhilePendingThenAcceptedAfterCompletionAndOldRequestStaysRejected() {
+        AiAccessService access = configureContinuationForSequenceTests();
+        AiConversation conversation = conversationWithLatestReply("SUCCESS", PersistenceTime.now());
+        AiChatVO first = continuation.sendMessage(conversation.getId(), continuationRequest("A", 9), null);
+
+        recorder.sql.clear();
+        BusinessException pending = assertThrows(BusinessException.class,
+                () -> continuation.sendMessage(conversation.getId(), continuationRequest("B", 11), null));
+        assertEquals(ErrorCode.CONFLICT_ERROR.getCode(), pending.getCode());
+        assertEquals("上一条消息正在回复中，无法发送新消息", pending.getMessage());
+        assertTrue(recorder.sql.stream().allMatch(sql -> sql.startsWith("SELECT")));
+        verify(access, times(1)).reserveUsage(1L);
+
+        AiMessage reply = messages.selectById(first.getAssistantMessage().getId());
+        reply.setStatus("SUCCESS");
+        assertEquals(1, messages.updatePendingAssistantMessage(reply));
+
+        recorder.sql.clear();
+        BusinessException stale = assertThrows(BusinessException.class,
+                () -> continuation.sendMessage(conversation.getId(), continuationRequest("A", 9), null));
+        assertEquals(ErrorCode.CONFLICT_ERROR.getCode(), stale.getCode());
+        assertTrue(recorder.sql.stream().allMatch(sql -> sql.startsWith("SELECT")));
+        verify(access, times(1)).reserveUsage(1L);
+
+        AiChatVO second = continuation.sendMessage(conversation.getId(), continuationRequest("B", 11), null);
+        assertEquals(11, second.getUserMessage().getSequenceNo());
+        assertEquals(12, second.getAssistantMessage().getSequenceNo());
+        assertEquals(6L, messages.selectCount(null));
+        verify(access, times(2)).reserveUsage(1L);
+    }
+
+    @Test
+    void correctSequenceStillExpiresPreviousPendingBeforeReservingUsage() {
+        AiAccessService access = configureContinuationForSequenceTests();
+        AiConversation conversation = conversationWithLatestReply(
+                "PENDING", new Date(System.currentTimeMillis() - 120_000L));
+        AiChatVO result = continuation.sendMessage(conversation.getId(), continuationRequest("继续", 9), null);
+
+        AiMessage oldReply = messages.selectList(null).stream()
+                .filter(message -> message.getSequenceNo() == 8).findFirst().orElseThrow();
+        assertEquals("FAILED", oldReply.getStatus());
+        assertEquals(com.pmsjl.constant.AiChatConstant.PENDING_TIMEOUT_ERROR_KEY, oldReply.getAgentErrorKey());
+        assertEquals(9, result.getUserMessage().getSequenceNo());
+        assertEquals(10, result.getAssistantMessage().getSequenceNo());
+        var order = inOrder(access);
+        order.verify(access).recordFailure(eq(1L), any());
+        order.verify(access).reserveUsage(1L);
+    }
+
+    @Test
+    void wrongSequenceDoesNotExpirePreviousPendingOrReserveUsage() {
+        AiAccessService access = configureContinuationForSequenceTests();
+        AiConversation conversation = conversationWithLatestReply(
+                "PENDING", new Date(System.currentTimeMillis() - 120_000L));
+        recorder.sql.clear();
+
+        BusinessException conflict = assertThrows(BusinessException.class,
+                () -> continuation.sendMessage(conversation.getId(), continuationRequest("B", 11), null));
+        assertEquals(ErrorCode.CONFLICT_ERROR.getCode(), conflict.getCode());
+        assertTrue(recorder.sql.stream().allMatch(sql -> sql.startsWith("SELECT")));
+        assertEquals("PENDING", messages.selectList(null).stream()
+                .filter(message -> message.getSequenceNo() == 8).findFirst().orElseThrow().getStatus());
+        verifyNoInteractions(access);
+    }
+
+    private AiAccessService configureContinuationForSequenceTests() {
+        User user = new User();
+        user.setId(1L);
+        var userService = mock(UserService.class);
+        when(userService.getLoginUser()).thenReturn(user);
+        var access = mock(AiAccessService.class);
+        var transactions = mock(TransactionTemplate.class);
+        when(transactions.execute(any())).thenAnswer(invocation ->
+                ((TransactionCallback<?>) invocation.getArgument(0)).doInTransaction(mock(TransactionStatus.class)));
+        var runner = mock(AiAgentTaskRunner.class);
+        when(runner.submit(any(), any(), any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var agentProperties = new AiAgentProperties();
+        agentProperties.setPendingTimeoutMs(60_000L);
+        var accessProperties = new AiAccessProperties();
+        accessProperties.validate();
+        ReflectionTestUtils.setField(continuation, "userService", userService);
+        ReflectionTestUtils.setField(continuation, "aiAccessService", access);
+        ReflectionTestUtils.setField(continuation, "transactionTemplate", transactions);
+        ReflectionTestUtils.setField(continuation, "aiAgentTaskRunner", runner);
+        ReflectionTestUtils.setField(continuation, "aiChatService", chat);
+        ReflectionTestUtils.setField(continuation, "aiConversationMapper", conversations);
+        ReflectionTestUtils.setField(continuation, "objectMapper", new ObjectMapper());
+        ReflectionTestUtils.setField(continuation, "aiAgentProperties", agentProperties);
+        ReflectionTestUtils.setField(continuation, "aiAccessProperties", accessProperties);
+        return access;
+    }
+
+    private AiConversation conversationWithLatestReply(String status, Date created) {
+        User user = new User();
+        user.setId(1L);
+        AiConversation conversation = ReflectionTestUtils.invokeMethod(chat, "getAiConversation",
+                user, "previous", null, PersistenceTime.now());
+        AiMessage question = ReflectionTestUtils.invokeMethod(chat, "getUserMessage",
+                conversation, user, "previous", "previous-request");
+        question.setSequenceNo(7);
+        messages.updateById(question);
+        AiMessage reply = ReflectionTestUtils.invokeMethod(chat, "getAssistantMessage",
+                conversation, user, "previous-request");
+        reply.setSequenceNo(8);
+        reply.setStatus(status);
+        reply.setCreateTime(created);
+        messages.updateById(reply);
+        return conversation;
+    }
+
+    private AiChatMessageRequest continuationRequest(String content, int sequenceNo) {
+        AiChatMessageRequest request = new AiChatMessageRequest();
+        request.setContent(content);
+        request.setExpectedUserSequenceNo(sequenceNo);
+        return request;
     }
 
     @Test
@@ -283,6 +433,7 @@ class AiPersistenceTest {
                     conversation, user, "previous-request");
             previous.setStatus("SUCCESS");
             messages.updateById(previous);
+            request.setExpectedUserSequenceNo(3);
             recorder.sql.clear();
             result = continuation.sendMessage(conversation.getId(), request, null);
         } else {

@@ -137,6 +137,8 @@ export interface Result<T> {
 export interface AiChatMessageRequest {
   content: string;
   shoppingContext?: AiShoppingContext;
+  /** 首轮创建不使用，续聊必须携带预期用户消息序号。 */
+  expectedUserSequenceNo?: number;
 }
 
 export const createAiConversation = (body: AiChatMessageRequest) =>
@@ -149,7 +151,7 @@ export const createAiConversation = (body: AiChatMessageRequest) =>
 
 export const sendAiConversationMessage = (
   conversationId: string,
-  body: AiChatMessageRequest
+  body: AiChatMessageRequest & { expectedUserSequenceNo: number }
 ) =>
   request<unknown, Result<AiChatVO>>({
     url: `/api/ai/conversations/${conversationId}/messages`,

@@ -881,6 +881,7 @@ type ChatState = {
   page: number;
   total: number;
   revision: number;
+  nextUserSequenceNo?: number;
   pendingMessageId?: string;
   submissionUnknown?: boolean;
   pollingError?: string;
@@ -901,6 +902,19 @@ const getChatState = (key: string): ChatState => {
     };
   }
   return chatStates[key];
+};
+const syncNextUserSequenceNo = (state: ChatState) => {
+  const latestSequenceNo = state.messages.reduce((latest, message) => {
+    const sequenceNo = message.sequenceNo;
+    return !message.id.startsWith("local-") &&
+      typeof sequenceNo === "number" &&
+      Number.isSafeInteger(sequenceNo) &&
+      sequenceNo > latest
+      ? sequenceNo
+      : latest;
+  }, 0);
+  state.nextUserSequenceNo =
+    latestSequenceNo > 0 ? latestSequenceNo + 1 : undefined;
 };
 const activeChat = computed(() =>
   getChatState(activeConversationId.value || draftKey.value)
@@ -1463,6 +1477,7 @@ const resumePendingMessage = (conversationId: string, state: ChatState) => {
       state.messages = [...merged.values()].sort(
         (a, b) => (a.sequenceNo || 0) - (b.sequenceNo || 0)
       );
+      syncNextUserSequenceNo(state);
       state.total = total;
       state.pollingError = undefined;
     },
@@ -1533,6 +1548,7 @@ const loadMessages = async (conversationId: string, older = false) => {
           ).values()
         ].sort((a, b) => (a.sequenceNo || 0) - (b.sequenceNo || 0))
       : records;
+    syncNextUserSequenceNo(state);
     state.total = res.data.total;
     state.loadFailed = false;
     state.submissionUnknown = false;
@@ -1705,6 +1721,7 @@ const applyServerResponse = async (
       message.id !== data.assistantMessage.id
   );
   state.messages.push(data.userMessage, data.assistantMessage);
+  syncNextUserSequenceNo(state);
   const wasActive = activeChat.value === state;
   chatStates[data.conversation.id] = state;
   if (key !== data.conversation.id) {
@@ -1741,8 +1758,11 @@ const submitContent = async (
   }
 ) => {
   const state = activeChat.value;
+  if (state.sending) {
+    ElMessage.warning("上一条消息仍在处理中");
+    return;
+  }
   if (
-    state.sending ||
     state.loading ||
     state.loadFailed ||
     state.submissionUnknown ||
@@ -1751,6 +1771,20 @@ const submitContent = async (
     return;
   const conversationId = activeConversationId.value;
   const key = conversationId || draftKey.value;
+  // 在删除失败消息或添加本地占位消息前取号，不从修改后的列表重新计算。
+  const expectedUserSequenceNo = state.nextUserSequenceNo;
+  if (
+    conversationId &&
+    (typeof expectedUserSequenceNo !== "number" ||
+      !Number.isSafeInteger(expectedUserSequenceNo) ||
+      expectedUserSequenceNo <= 0)
+  ) {
+    state.composer = content;
+    state.loadFailed = true;
+    ElMessage.warning("请重新加载会话后再继续咨询");
+    return;
+  }
+  if (conversationId) state.nextUserSequenceNo = expectedUserSequenceNo! + 2;
   const body = { content, shoppingContext: getShoppingContext() };
   state.context = body.shoppingContext;
   state.revision += 1;
@@ -1758,6 +1792,8 @@ const submitContent = async (
   finishActiveTyping();
   const localIds: string[] = [];
   let retriedUserId: string | undefined;
+  let retriedAssistantMessage: AiMessageVO | undefined;
+  let retriedAssistantIndex = -1;
   if (options.failedMessageId) {
     const failedIndex = state.messages.findIndex(
       (item) => item.id === options.failedMessageId
@@ -1765,6 +1801,8 @@ const submitContent = async (
     retriedUserId = [...state.messages.slice(0, failedIndex)]
       .reverse()
       .find((item) => item.role === "USER")?.id;
+    retriedAssistantMessage = state.messages[failedIndex];
+    retriedAssistantIndex = failedIndex;
     state.messages = state.messages.filter(
       (item) => item.id !== options.failedMessageId
     );
@@ -1782,7 +1820,10 @@ const submitContent = async (
   try {
     await scrollToBottom();
     const res = conversationId
-      ? await sendAiConversationMessage(conversationId, body)
+      ? await sendAiConversationMessage(conversationId, {
+          ...body,
+          expectedUserSequenceNo: expectedUserSequenceNo!
+        })
       : await createAiConversation(body);
     if (disposed) return;
     if (res.code !== 200 || !res.data) {
@@ -1807,12 +1848,20 @@ const submitContent = async (
       state.messages = state.messages.filter(
         (item) => !localIds.includes(item.id)
       );
+      if (retriedAssistantMessage)
+        state.messages.splice(
+          retriedAssistantIndex,
+          0,
+          retriedAssistantMessage
+        );
+      syncNextUserSequenceNo(state);
       state.composer = content;
       if (
         conversationId &&
         [40900, 40901].includes(Number(error?.businessCode))
       ) {
         state.sending = false;
+        state.page = 1;
         await loadMessages(conversationId);
       }
       if (activeChat.value === state)
@@ -1826,8 +1875,10 @@ const submitContent = async (
       (item) => !localIds.includes(item.id)
     );
     state.composer = content;
-    if (conversationId) await loadMessages(conversationId);
-    else await loadConversations();
+    if (conversationId) {
+      state.page = 1;
+      await loadMessages(conversationId);
+    } else await loadConversations();
     if (
       activeChat.value === state &&
       error?.message &&
@@ -1844,10 +1895,13 @@ const submitContent = async (
 };
 
 const sendMessage = async () => {
+  if (sending.value) {
+    ElMessage.warning("上一条消息仍在处理中");
+    return;
+  }
   const content = composer.value.trim();
   if (
     !content ||
-    sending.value ||
     messageLoading.value ||
     messageLoadFailed.value ||
     quotaExhausted.value

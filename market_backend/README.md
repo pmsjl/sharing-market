@@ -40,7 +40,7 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 | 请求 | 返回与行为 |
 | --- | --- |
 | `POST /api/ai/conversations` | 首轮创建会话、用户消息与助手消息，返回 `AiChatVO`；通常助手状态为 `PENDING` |
-| `POST /api/ai/conversations/{conversationId}/messages` | 续聊保存新一轮消息，采用相同后台生成流程 |
+| `POST /api/ai/conversations/{conversationId}/messages` | 续聊必须携带正整数 `expectedUserSequenceNo`，保存新一轮消息并后台生成 |
 | `GET /api/ai/conversations/{conversationId}/messages` | 查询持久化消息与状态，不重新调用模型；前端按助手消息 ID 等待 `SUCCESS` / `FAILED` |
 
 实现分为两段短事务：`AiChatServiceImpl` / `AiMessageServiceImpl` 先保存等待中的消息，再通过 `AiAgentTaskRunner` 提交给 `AiAgentExecutorConfig` 配置的专用线程池；模型返回后，在另一段事务中校验和回写结果。内部 HTTP 请求仍需等待 Python 返回完整 `AgentRunResponse`，不会把这种等待带回浏览器提交请求，也不在模型等待期间持有数据库事务。
@@ -48,6 +48,8 @@ Browser (Vue) ──→  market_backend (Java)  ──→ MySQL / Redis / Aliyun
 - `AI_AGENT_MAX_CONCURRENT_RUNS` 默认 12；线程数固定，队列容量 0，满载以 `AI_AGENT_BUSY` 收尾为可重试 `FAILED`，因此提交响应不保证永远是 `PENDING`。
 - `AI_AGENT_PENDING_TIMEOUT_MS` 必须大于连接超时、读取超时与 5 秒回写余量之和；配置在启动时校验。
 - 结果按 `PENDING` 条件更新，已结束消息不会被迟到结果重新覆盖。生成任务没有持久化队列，也没有新增 Python 任务状态接口或 SSE。
+
+续聊请求示例：`{"content":"预算 3000","expectedUserSequenceNo":9}`。后端在会话行锁内要求预期序号等于数据库最新消息序号加一，再检查 PENDING 和预占额度；缺失或非正整数返回 `40000`，序号不匹配返回 `40900`（“消息顺序已变化，请刷新后重试”），均不保存新消息或预占额度。每轮 USER 和 ASSISTANT 占两个序号，同一客户端若并发发送，必须按发送顺序分别分配 9、11 等序号，不能都从同一份旧历史计算出 9。首轮创建不要求该字段。前端仍限制上一轮结束后才能发送，冲突后加载最新历史、保留输入，由用户手动重发；不会排队或自动重试。多个客户端各自使用相同序号时，不保证跨客户端的点击顺序。旧客户端续聊需更新后才能调用此接口。
 
 ## 鉴权机制
 
