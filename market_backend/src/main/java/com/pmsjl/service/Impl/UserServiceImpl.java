@@ -85,10 +85,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User getLoginUser() {
         User user=new User();
         BeanUtil.copyProperties(UserHolder.getUser(),user);
-        if(user==null||user.getId()==null){
+        if(user.getId()==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"登录用户不存在");
         }
-        ThrowUtils.throwIf(user==null,ErrorCode.NOT_FOUND_ERROR);
         return user;
     }
     @Override
@@ -138,7 +137,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<User> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_USER_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_USER_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {
@@ -218,7 +217,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public boolean userLogout(HttpServletRequest request) {
         User user=new User();
         LoginUserVO loginUserVO = UserHolder.getUser();
-        ThrowUtils.throwIf(ObjectUtils.isNull(loginUserVO)||ObjectUtils.isEmpty(loginUserVO),ErrorCode.NOT_LOGIN_ERROR,"用户信息不存在");
+        ThrowUtils.throwIf(ObjectUtils.isEmpty(loginUserVO),ErrorCode.NOT_LOGIN_ERROR,"用户信息不存在");
         BeanUtil.copyProperties(loginUserVO,user);
         String token = TokenUtils.getToken(request);
         stringRedisTemplate.delete(LOGIN_USER_KEY+token);

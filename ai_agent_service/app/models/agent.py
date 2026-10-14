@@ -303,8 +303,6 @@ def inline_local_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
         }
 
     resolved_schema = resolve(root_schema)
-    if not isinstance(resolved_schema, dict):
-        raise ValueError("展开后的 JSON Schema 顶层必须是对象")
     return resolved_schema
 
 

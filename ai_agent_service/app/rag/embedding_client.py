@@ -76,8 +76,6 @@ class EmbeddingClient:
                     # 只重试临时网络错误、429 和 5xx；等待时间依次为 1 秒、2 秒。
                     await asyncio.sleep(2**attempt)
 
-        raise AssertionError("embedding retry loop must return or raise")
-
     def _validate(
         self,
         payload: Mapping[str, Any],

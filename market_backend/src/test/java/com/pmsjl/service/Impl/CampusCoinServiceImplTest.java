@@ -1,6 +1,8 @@
 package com.pmsjl.service.Impl;
 
 import com.pmsjl.config.CampusCoinProperties;
+import com.pmsjl.common.ErrorCode;
+import com.pmsjl.exception.BusinessException;
 import com.pmsjl.mapper.CampusCoinTransactionMapper;
 import com.pmsjl.mapper.UserMapper;
 import com.pmsjl.model.dto.campusCoin.CampusCoinGrantRequest;
@@ -120,6 +122,17 @@ class CampusCoinServiceImplTest {
         assertEquals(CampusCoinTransactionTypeEnum.REGISTER_GRANT.getValue(),
                 transaction.getTransactionType());
         assertEquals("7", transaction.getBusinessId());
+    }
+
+    @Test
+    void invalidPurchaseAmountsAreRejectedBeforeChangingBalanceOrLedger() {
+        for (BigDecimal amount : new BigDecimal[]{null, BigDecimal.ZERO,
+                new BigDecimal("-1.00"), new BigDecimal("1.001")}) {
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> service.tryDebitForPurchase(7L, 88L, amount));
+            assertEquals(ErrorCode.PARAMS_ERROR.getCode(), exception.getCode());
+        }
+        verifyNoInteractions(userMapper, transactionMapper);
     }
 
     private static User user(Long id, String balance) {

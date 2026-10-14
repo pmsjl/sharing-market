@@ -151,6 +151,22 @@ mvn spring-boot:run
 - 存活：`GET /api/actuator/health/liveness`
 - 就绪：`GET /api/actuator/health/readiness`
 
+## Docker 构建
+
+在 `market_backend` 目录构建：
+
+```bash
+docker build -t sharing-market-backend:local .
+```
+
+默认使用 Maven Central。若容器下载依赖时报 `Remote host terminated the handshake` 或连接超时，可通过构建参数指定可访问的 HTTPS 镜像，例如[阿里云 Maven 镜像](https://developer.aliyun.com/mirror/maven)：
+
+```bash
+docker build --build-arg MAVEN_MIRROR_URL=https://maven.aliyun.com/repository/public -t sharing-market-backend:local .
+```
+
+镜像配置由 `.mvn/docker-settings.xml` 提供，依赖预下载和打包两个阶段都使用它；该文件必须随 Dockerfile 一起同步到服务器。镜像名可替换为实际部署使用的名称。宿主机的 Maven settings 不会自动用于 Docker 构建；此参数只改变构建阶段下载依赖的仓库地址。切换地址会重新执行相关构建层，不需要删除全部 Docker 缓存。若镜像仍报握手错误，需继续检查构建容器的网络、代理和 CA 证书。
+
 ## 数据库脚本
 
 `sql/script.sql` 是适用于 MySQL 8 的完整数据库初始化脚本，包含平台业务表及索引，不包含 `CREATE DATABASE` 或演示数据。用于本地开发和课程展示的种子数据脚本位于 `sql/seed/`。

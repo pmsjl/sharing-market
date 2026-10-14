@@ -1,4 +1,5 @@
 import asyncio
+import httpx
 import pytest
 from pydantic import ValidationError
 
@@ -138,17 +139,44 @@ def test_course_evidence_state_respects_fact_scope() -> None:
         False, course_plan, [course_chunk]) is None
 
 
-def test_unready_or_failed_retriever_degrades_without_raising():
+@pytest.mark.parametrize("error", [httpx.ReadTimeout("timeout"), ValueError("bad vector")])
+def test_unready_or_failed_retriever_degrades_without_raising(error):
     unavailable_service = _service(_Retriever())
     unavailable_service.retriever = None
     unready = _get(unavailable_service, "离校前大件物品怎么处理？", "request-1")
-    failed = _get(_service(_Retriever(error=RuntimeError("boom"))),
+    failed = _get(_service(_Retriever(error=error)),
                   "宿舍使用小家电有什么限制？", "request-1")
 
     assert unready.diagnostics.retrieval_status == "unavailable"
     assert failed.diagnostics.retrieval_status == "failed"
     assert unready.context.retrieved == []
     assert failed.context.retrieved == []
+
+
+@pytest.mark.parametrize("error_type", [TypeError, KeyError, AttributeError])
+def test_retrieval_and_post_validation_programming_errors_propagate(error_type):
+    post = _chunk("POST", "101", source_version="1700000000000")
+    for service in (
+        _service(_Retriever(error=error_type("bug"))),
+        _service(_Retriever(result=[post]), _JavaClient(error=error_type("bug"))),
+    ):
+        with pytest.raises(error_type, match="bug"):
+            _get(service, "宿舍交易经验", "request-bug")
+
+
+def test_index_loading_programming_errors_propagate(monkeypatch):
+    def fail_to_load(settings, build_name=None):
+        raise TypeError("index loader bug")
+
+    monkeypatch.setattr(rag_service_module.Retriever, "load", fail_to_load)
+    with pytest.raises(TypeError, match="index loader bug"):
+        RagService(Settings(rag_enabled=True), relations=CourseRelationIndex())
+
+    service = _service(_Retriever(build_name="build-1"))
+    service._reload_enabled = True
+    monkeypatch.setattr(rag_service_module, "current_build_name", lambda settings: "build-2")
+    with pytest.raises(TypeError, match="index loader bug"):
+        asyncio.run(service.reload_if_changed())
 
 
 def test_post_chunks_are_pruned_by_java_version_validation():
@@ -227,7 +255,7 @@ def test_broken_new_build_keeps_previous_retriever(monkeypatch):
     service._reload_enabled = True
 
     def fail_to_load(settings, build_name=None):
-        raise ValueError("索引文件损坏")
+        raise IndexStoreLoadError("索引文件损坏")
 
     monkeypatch.setattr(
         rag_service_module,

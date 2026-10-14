@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
+from app.clients.openai_responses import OpenAIResponsesClientError
 from app.models.agent import AgentHistoryMessage, AgentRunRequest, ShoppingContext
 from app.prompts.shopping_guide import SYSTEM_PROMPT
 from app.rag.course_relations import CourseRelationIndex
@@ -185,6 +186,32 @@ class _RouterClient:
     async def create_router_response(self, input_items, text_format):
         self.calls.append((input_items, text_format))
         return self.response
+
+
+@pytest.mark.parametrize("error_type", [TypeError, KeyError, AttributeError])
+def test_router_programming_errors_propagate(monkeypatch, error_type):
+    client = _RouterClient({})
+
+    async def fail_response(input_items, text_format):
+        raise error_type("router bug")
+
+    monkeypatch.setattr(client, "create_router_response", fail_response)
+    with pytest.raises(error_type, match="router bug"):
+        asyncio.run(HybridQueryRouter(_router_settings(), client).resolve(
+            _request("帮我找500元以内的耳机")))
+
+
+def test_router_service_timeout_still_falls_back(monkeypatch):
+    client = _RouterClient({})
+
+    async def fail_response(input_items, text_format):
+        raise OpenAIResponsesClientError(504, "AI_MODEL_TIMEOUT", "timeout", True)
+
+    monkeypatch.setattr(client, "create_router_response", fail_response)
+    result = asyncio.run(HybridQueryRouter(_router_settings(), client).resolve(
+        _request("帮我找500元以内的耳机")))
+    assert result.diagnostics.decision_source == "deterministic_fallback"
+    assert result.diagnostics.fallback_reason == "timeout"
 
 
 def test_previous_golden_guardrail_cases_are_decided_by_llm() -> None:

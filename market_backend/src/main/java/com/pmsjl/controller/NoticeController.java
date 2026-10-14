@@ -34,7 +34,6 @@ public class NoticeController {
     @PostMapping("/add")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Long> addNotice(@RequestBody NoticeAddRequest noticeAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(noticeAddRequest==null, ErrorCode.PARAMS_ERROR);
         Long id=noticeService.addNotice(noticeAddRequest,request);
         return ResultUtils.success(id);
     }
@@ -42,7 +41,6 @@ public class NoticeController {
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean> deleteNotice(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request){
-        ThrowUtils.throwIf(deleteRequest==null,ErrorCode.PARAMS_ERROR);
         Boolean result=noticeService.deleteNotice(deleteRequest,request);
         return ResultUtils.success(result);
     }
@@ -50,7 +48,6 @@ public class NoticeController {
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean> updateNotice(@RequestBody NoticeUpdateRequest noticeUpdateRequest,HttpServletRequest request) {
-        ThrowUtils.throwIf(noticeUpdateRequest==null,ErrorCode.PARAMS_ERROR);
         Boolean result=noticeService.updateNotice(noticeUpdateRequest,request);
         return ResultUtils.success(result);
     }
@@ -67,7 +64,6 @@ public class NoticeController {
     @PostMapping("list/page/vo")
     public Result<Page<NoticeVO>> listNoticeVOByPage(@RequestBody NoticeQueryRequest noticeQueryRequest,
                                                            HttpServletRequest request) {
-        ThrowUtils.throwIf(noticeQueryRequest==null,ErrorCode.PARAMS_ERROR);
         Page<NoticeVO>page=noticeService.listNoticeVOByPage(noticeQueryRequest,request);
         return ResultUtils.success(page);
     }

@@ -45,7 +45,7 @@ public class CampusCoinController {
     public Result<CampusCoinWalletVO> grantByAdmin(
             @RequestBody CampusCoinGrantRequest grantRequest,
             HttpServletRequest request) {
-        ThrowUtils.throwIf(grantRequest == null || grantRequest.getUserId() == null || grantRequest.getUserId() <= 0,
+        ThrowUtils.throwIf(grantRequest.getUserId() == null || grantRequest.getUserId() <= 0,
                 ErrorCode.PARAMS_ERROR, "用户 ID 非法");
         User operator = userService.getLoginUser();
         return ResultUtils.success(campusCoinService.grantByAdmin(grantRequest, operator.getId()));

@@ -6,7 +6,7 @@ import re
 import time
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.clients.openai_responses import OpenAIResponsesClientError
 from app.models.agent import AgentRunRequest, inline_local_schema_refs
@@ -593,11 +593,7 @@ class HybridQueryRouter:
                 ))
         except (
                 OpenAIResponsesClientError,
-                ValidationError,
                 ValueError,
-                TypeError,
-                KeyError,
-                AttributeError,
         ) as exception:
             return self._fallback(
                 request,

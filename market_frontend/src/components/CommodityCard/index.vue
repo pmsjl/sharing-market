@@ -400,12 +400,6 @@ const handleContactSeller = () => {
 
 const handleBuy = () => {
   if (!canPurchase.value || buying.value) return;
-  if (commodity.value.commodityInventory <= 0) {
-    return ElMessage.error({
-      message: "商品库存不够，无法完成购买",
-      duration: 1500
-    });
-  }
   buyDialogVisible.value = true;
 };
 

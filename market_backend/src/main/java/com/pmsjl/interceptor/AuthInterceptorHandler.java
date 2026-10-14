@@ -22,7 +22,7 @@ public class AuthInterceptorHandler implements HandlerInterceptor {
             return true;
         }
         LoginUserVO loginUserVO = UserHolder.getUser();
-        if(ObjectUtils.isNull(loginUserVO)||ObjectUtils.isEmpty(loginUserVO)){
+        if(ObjectUtils.isEmpty(loginUserVO)){
             response.setStatus(401);
             return false;
         }

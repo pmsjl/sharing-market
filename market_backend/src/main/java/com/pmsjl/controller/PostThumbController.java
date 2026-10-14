@@ -26,7 +26,6 @@ public class PostThumbController {
     @PostMapping("/")
     public Result<Integer> doThumb(@RequestBody PostThumbAddRequest postThumbAddRequest,
                                    HttpServletRequest request) {
-        ThrowUtils.throwIf(postThumbAddRequest == null, ErrorCode.PARAMS_ERROR);
         Long postId = postThumbAddRequest.getPostId();
         ThrowUtils.throwIf(postId == null || postId <= 0, ErrorCode.PARAMS_ERROR);
         int result = postThumbService.doPostThumb(postThumbAddRequest, request);

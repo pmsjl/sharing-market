@@ -1930,6 +1930,23 @@ class AgentServiceResponsesTests(unittest.IsolatedAsyncioTestCase):
             "AI_TOOL_ROUNDS_EXCEEDED",
         )
 
+    async def test_parser_programming_errors_are_not_wrapped(self):
+        service = AgentService(make_settings(), openai_client=StubOpenAIClient([]),
+                               java_backend_client=StubJavaBackendClient())
+        for tool, model in [("search_commodities", "CommoditySearchArguments"),
+                            ("get_my_preference_signals", "PreferenceToolArguments")]:
+            with self.subTest(tool=tool), patch(
+                    f"app.services.agent_service.{model}.model_validate",
+                    side_effect=TypeError("internal validator error")), self.assertRaisesRegex(
+                        TypeError, "internal validator error"):
+                await service._execute_tool_calls("request-1", 1, {
+                    "call_id": "call-1", "name": tool, "arguments": "{}",
+                })
+        with patch("app.services.agent_service.AgentFinalResult.model_validate",
+                   side_effect=TypeError("internal validator error")), self.assertRaisesRegex(
+                       TypeError, "internal validator error"):
+            service._extract_final_result([structured_output_message()])
+
     async def test_invalid_arguments_and_output_are_rejected(self):
         invalid_args_client = StubOpenAIClient([{
             "output": [{

@@ -354,7 +354,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<Commodity> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_COMMODITY_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {

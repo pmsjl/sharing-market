@@ -149,7 +149,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<CommodityOrder> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_ORDER_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_COMMODITY_ORDER_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {
@@ -180,8 +180,7 @@ public class CommodityOrderServiceImpl extends ServiceImpl<CommodityOrderMapper,
         long pageSize = commodityOrderPage.getSize();
         long total = commodityOrderPage.getTotal();
         Page<CommodityOrderVO> page = new Page<>(current, pageSize, total);
-        if (records == null || records.isEmpty()) {
-            page.setRecords(List.of());
+        if (records.isEmpty()) {
             return page;
         }
         List<CommodityOrderVO> commodityOrderVOList = records.stream().map(CommodityOrderVO::objToVo).toList();

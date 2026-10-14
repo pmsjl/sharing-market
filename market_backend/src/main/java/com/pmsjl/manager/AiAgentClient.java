@@ -82,8 +82,6 @@ public class AiAgentClient {
                 );
             }
             return agentRunResponse;
-        } catch (AiAgentClientException e) {
-            throw e;
         } catch (IOException e) {
             throw new AiAgentClientException("AI_AGENT_UNAVAILABLE", "AI 服务暂不可用", true, e);
         }

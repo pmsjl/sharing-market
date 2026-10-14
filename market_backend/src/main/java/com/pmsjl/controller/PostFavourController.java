@@ -33,7 +33,6 @@ public class PostFavourController {
     @PostMapping("/")
     public Result<Integer> doPostFavour(@RequestBody PostFavourAddRequest postFavourAddRequest,
                                         HttpServletRequest request) {
-        ThrowUtils.throwIf(postFavourAddRequest==null, ErrorCode.PARAMS_ERROR);
         Long postId = postFavourAddRequest.getPostId();
         ThrowUtils.throwIf(postId==null||postId<=0,ErrorCode.PARAMS_ERROR);
         int result=postFavourService.doPostFavour(postFavourAddRequest,request);
@@ -43,7 +42,6 @@ public class PostFavourController {
     @PostMapping("/my/list/page")
     public Result<Page<PostVO>> listMyFavourPostByPage(@RequestBody PostFavourQueryRequest favourQueryRequest,
                                                            HttpServletRequest request) {
-        ThrowUtils.throwIf(favourQueryRequest==null,ErrorCode.PARAMS_ERROR);
         Page<PostVO>page=postFavourService.listMyFavourPostByPage(favourQueryRequest,request);
         return ResultUtils.success(page);
 

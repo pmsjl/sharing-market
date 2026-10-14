@@ -68,7 +68,6 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
 
         Set<Long> paidCommodityIds = paidOrders.stream()
                 .map(CommodityOrder::getCommodityId)
-                .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         favorites.removeIf(favorite -> paidCommodityIds.contains(favorite.getCommodityId()));
 
@@ -158,7 +157,6 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
     private Map<Long, CommodityType> loadCommodityTypeMap(Collection<Commodity> commodities) {
         Set<Long> typeIds = commodities.stream()
                 .map(Commodity::getCommodityTypeId)
-                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         if (typeIds.isEmpty()) {
             return Map.of();
@@ -180,7 +178,7 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
     ) {
         Commodity commodity = commodityMap.get(order.getCommodityId());
         CommodityType type = resolvedType(commodity, typeMap);
-        if (commodity == null || type == null) {
+        if (type == null) {
             return;
         }
         behaviors.add(new EffectiveBehavior(
@@ -200,7 +198,7 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
     ) {
         Commodity commodity = commodityMap.get(favorite.getCommodityId());
         CommodityType type = resolvedType(commodity, typeMap);
-        if (commodity == null || type == null) {
+        if (type == null) {
             return;
         }
         behaviors.add(new EffectiveBehavior(
@@ -216,7 +214,7 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
             Commodity commodity,
             Map<Long, CommodityType> typeMap
     ) {
-        if (commodity == null || commodity.getCommodityTypeId() == null) {
+        if (commodity == null) {
             return null;
         }
         return typeMap.get(commodity.getCommodityTypeId());
@@ -315,7 +313,6 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
         // 最多 8 条；保留同时间下“优先名额在补齐条目之前”的原顺序。
         return selected.stream()
                 .sorted(this::compareByRecent)
-                .limit(8)
                 .map(this::toRepresentativeInteraction)
                 .toList();
     }
@@ -410,8 +407,7 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
     }
 
     private BigDecimal unitPurchasePrice(CommodityOrder order) {
-        if (order == null
-                || order.getPaymentAmount() == null
+        if (order.getPaymentAmount() == null
                 || order.getPaymentAmount().signum() < 0
                 || order.getBuyNumber() == null
                 || order.getBuyNumber() <= 0) {
@@ -504,9 +500,6 @@ public class AiUserPreferenceServiceImpl implements AiUserPreferenceService {
     }
 
     private double normalizedWeight(int score, int maximumScore) {
-        if (maximumScore <= 0) {
-            return 0D;
-        }
         return Math.round((double) score / maximumScore * 10_000D) / 10_000D;
     }
 

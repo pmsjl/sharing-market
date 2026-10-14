@@ -96,7 +96,6 @@ public class AiChatServiceImpl implements AiChatService {
 
         PendingChat pendingChat = transactionTemplate.execute(status -> persistPendingChat(
                 loginUser, content, shoppingContext, requestId));
-        ThrowUtils.throwIf(pendingChat == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
 
         AgentRunRequest agentRunRequest = buildAgentRunRequest(pendingChat);
         AiChatVO pendingResponse = buildChatVO(requestId, pendingChat.conversation(), shoppingContext,

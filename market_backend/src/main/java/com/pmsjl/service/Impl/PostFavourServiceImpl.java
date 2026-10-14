@@ -105,8 +105,7 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
         //所以只需要传入对应的Page类在这个方法里，它会自动检测到并利用分页插件替换语句实现分页，不需要显式写出
         List<Post> records = favourPostPage.getRecords();
         Page<PostVO> page = new Page<>(favourPostPage.getCurrent(), favourPostPage.getSize(), favourPostPage.getTotal());
-        if (records == null || records.isEmpty()) {
-            page.setRecords(List.of());
+        if (records.isEmpty()) {
             return page;
         }
 

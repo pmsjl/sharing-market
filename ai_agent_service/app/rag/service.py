@@ -4,10 +4,12 @@ import asyncio
 from pathlib import Path
 from typing import Protocol
 
-from app.clients.java_backend import JavaBackendClient
+import httpx
+
+from app.clients.java_backend import JavaBackendClient, JavaBackendClientError
 from app.core.config import Settings
 from app.rag.course_relations import CourseMatch, CourseRelationIndex
-from app.rag.index_store import KNOWLEDGE_ROOT, current_build_name
+from app.rag.index_store import KNOWLEDGE_ROOT, IndexStoreLoadError, current_build_name
 from app.rag.models import (
     CourseEvidenceState,
     PostVersionCandidate,
@@ -66,7 +68,7 @@ class RagService:
         if settings.rag_enabled and retriever is None:
             try:
                 self.retriever = Retriever.load(settings)
-            except Exception as exception:
+            except IndexStoreLoadError as exception:
                 # 缓存或本地 FAISS 环境异常也只能关闭可选 RAG 能力。
                 self.retriever = None
                 self.reload_error = str(exception)
@@ -130,7 +132,7 @@ class RagService:
         try:
             assert self.retriever is not None
             retrieved = await self.retriever.retrieve(query, plan)
-        except Exception as exception:
+        except (httpx.HTTPError, ValueError) as exception:
             # RAG 是可选增强；这里不能阻断既有商品 Tool 和普通回答。
             return self._resolution(
                 plan,
@@ -175,7 +177,7 @@ class RagService:
                 request_id,
                 candidates,
             )
-        except Exception as exception:
+        except JavaBackendClientError as exception:
             return self._resolution(
                 plan,
                 effective_match,
@@ -214,7 +216,7 @@ class RagService:
             try:
                 candidate = Retriever.load(self.settings,
                                            build_name=target_build)
-            except Exception as exception:
+            except IndexStoreLoadError as exception:
                 self.reload_error = str(exception)
                 return
 

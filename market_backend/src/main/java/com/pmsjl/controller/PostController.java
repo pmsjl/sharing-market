@@ -37,14 +37,12 @@ public class PostController {
 
     @PostMapping("/add")
     public Result<Long> addPost(@RequestBody PostAddRequest postAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(postAddRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = postService.addPost(postAddRequest, request);
         return ResultUtils.success(id);
     }
 
     @PostMapping("/delete")
     public Result<Boolean> deletePost(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(deleteRequest == null, ErrorCode.PARAMS_ERROR);
         Boolean result = postService.deletePost(deleteRequest, request);
         return ResultUtils.success(result);
     }
@@ -52,7 +50,6 @@ public class PostController {
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean> updatePost(@RequestBody PostUpdateRequest postUpdateRequest) {
-        ThrowUtils.throwIf(postUpdateRequest == null, ErrorCode.PARAMS_ERROR);
         Boolean result = postService.updatePost(postUpdateRequest);
         return ResultUtils.success(result);
     }
@@ -67,35 +64,30 @@ public class PostController {
     @PostMapping("/list/page")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Page<Post>> listPostByPage(@RequestBody PostAdminQueryRequest postQueryRequest) {
-        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<Post> postPage = postService.listPostByPage(postQueryRequest);
         return ResultUtils.success(postPage);
     }
 
     @PostMapping("/list/page/vo")
     public Result<Page<PostVO>> listPostVOByPage(@RequestBody PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<PostVO> postVOPage = postService.listPostVOByPage(postQueryRequest, request);
         return ResultUtils.success(postVOPage);
     }
 
     @PostMapping("/my/list/page/vo")
     public Result<Page<PostVO>> listMyPostVOByPage(@RequestBody PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<PostVO> postVOPage = postService.listMyPostVOByPage(postQueryRequest, request);
         return ResultUtils.success(postVOPage);
     }
 
     @PostMapping("/search/page/vo")
     public Result<Page<PostVO>> searchPostVOByPage(@RequestBody PostQueryRequest postQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<PostVO> postVOPage = postService.searchPostVOByPage(postQueryRequest, request);
         return ResultUtils.success(postVOPage);
     }
 
     @PostMapping("/edit")
     public Result<Boolean> editPost(@RequestBody PostEditRequest postEditRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(postEditRequest == null, ErrorCode.PARAMS_ERROR);
         Boolean result = postService.editPost(postEditRequest, request);
         return ResultUtils.success(result);
     }

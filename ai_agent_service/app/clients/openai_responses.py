@@ -134,8 +134,6 @@ class OpenAIResponsesClient:
                     raise error
                 await asyncio.sleep(1)
 
-        raise AssertionError("model retry loop must return or raise")
-
     @staticmethod
     def _can_retry(error: OpenAIResponsesClientError) -> bool:
         return error.agent_error_key in {

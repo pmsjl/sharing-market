@@ -1,13 +1,11 @@
 package com.pmsjl.controller;
 
-import com.pmsjl.common.ErrorCode;
 import com.pmsjl.model.dto.ai.internal.CommoditySearchToolRequest;
 import com.pmsjl.model.dto.ai.internal.UserPreferenceToolResponse;
 import com.pmsjl.model.dto.ai.internal.PostVersionValidationRequest;
 import com.pmsjl.model.dto.ai.internal.PostVersionValidationResponse;
 import com.pmsjl.model.vo.CommoditySearchToolResponse;
 import com.pmsjl.service.AiInternalToolService;
-import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +22,6 @@ public class AiInternalToolController {
     AiInternalToolService aiInternalToolService;
     @PostMapping("/commodities/search")
     public CommoditySearchToolResponse searchCommodities(@RequestBody CommoditySearchToolRequest commoditySearchToolRequest, HttpServletRequest request){
-        ThrowUtils.throwIf(commoditySearchToolRequest==null, ErrorCode.PARAMS_ERROR);
         CommoditySearchToolResponse response=aiInternalToolService.searchCommodities(commoditySearchToolRequest,request);
         return response;
 

@@ -11,7 +11,6 @@ import com.pmsjl.model.entity.CommodityType;
 import com.pmsjl.model.vo.CommodityTypeVO;
 import com.pmsjl.service.CommodityTypeService;
 import com.pmsjl.utils.ResultUtils;
-import com.pmsjl.utils.ThrowUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,7 +36,7 @@ public class CommodityTypeController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/add")
     public Result<Long> addCommodityType(@RequestBody CommodityTypeAddRequest commodityTypeAddRequest) {
-        if (commodityTypeAddRequest == null || commodityTypeAddRequest.getTypeName() == null) {
+        if (commodityTypeAddRequest.getTypeName() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         String typeName = commodityTypeAddRequest.getTypeName();
@@ -53,7 +52,7 @@ public class CommodityTypeController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/delete")
     public Result<Boolean> deleteCommodityType(@RequestBody CommodityTypeDeleteRequest commodityTypeDeleteRequest) {
-        if (commodityTypeDeleteRequest == null || commodityTypeDeleteRequest.getId() == null) {
+        if (commodityTypeDeleteRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         Long id = commodityTypeDeleteRequest.getId();
@@ -96,7 +95,6 @@ public class CommodityTypeController {
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean>updateCommodityType(@RequestBody CommodityTypeUpdateRequest commodityTypeUpdateRequest){
-        ThrowUtils.throwIf(commodityTypeUpdateRequest==null,ErrorCode.PARAMS_ERROR);
         Boolean result=commodityTypeService.updateCommodityType(commodityTypeUpdateRequest);
         return ResultUtils.success(result);
 

@@ -111,7 +111,7 @@ public class AiConversationServiceImpl extends ServiceImpl<AiConversationMapper,
         User loginUser = userService.getLoginUser();
         Page<AiConversation> page = new Page<>(current, pageSize);
         boolean ascending = "asc".equalsIgnoreCase(sortOrder);
-        if (StringUtils.isNotBlank(sortField) && ALLOWED_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_SORT_FIELDS.contains(sortField)) {
             page.addOrder(ascending ? OrderItem.asc(sortField) : OrderItem.desc(sortField));
             if (!"id".equals(sortField)) {
                 page.addOrder(OrderItem.desc("id"));

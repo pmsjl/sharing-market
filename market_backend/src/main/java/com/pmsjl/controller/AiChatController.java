@@ -37,7 +37,6 @@ public class AiChatController {
     @PostMapping
     public Result<AiChatVO> createConversation(@RequestBody AiChatMessageRequest aiChatMessageRequest,
                                                HttpServletRequest request) {
-        ThrowUtils.throwIf(aiChatMessageRequest == null, ErrorCode.PARAMS_ERROR);
         AiChatVO aiChatVO = aiChatService.createConversation(aiChatMessageRequest, request);
         return ResultUtils.success(aiChatVO);
     }
@@ -49,8 +48,7 @@ public class AiChatController {
     public Result<AiChatVO> sendMessage(@PathVariable("conversationId") Long conversationId,
                                         @RequestBody AiChatMessageRequest aiChatMessageRequest,
                                         HttpServletRequest request) {
-        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(aiChatMessageRequest == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(conversationId <= 0, ErrorCode.PARAMS_ERROR);
         AiChatVO aiChatVO = aiMessageService.sendMessage(conversationId, aiChatMessageRequest, request);
         return ResultUtils.success(aiChatVO);
 
@@ -88,7 +86,7 @@ public class AiChatController {
             @RequestParam(value = "sortField", defaultValue = "sequenceNo") String sortField,
             @RequestParam(value = "sortOrder", defaultValue = "desc") String sortOrder,
             HttpServletRequest request) {
-        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+        ThrowUtils.throwIf(conversationId <= 0, ErrorCode.PARAMS_ERROR,
                 "conversationId 必须为正整数");
         AiMessageQueryRequest queryRequest = new AiMessageQueryRequest();
         queryRequest.setCurrent(current);
@@ -106,7 +104,7 @@ public class AiChatController {
     @DeleteMapping("/{conversationId}")
     public Result<Boolean> deleteConversation(@PathVariable("conversationId") Long conversationId,
                                               HttpServletRequest request) {
-        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+        ThrowUtils.throwIf(conversationId <= 0, ErrorCode.PARAMS_ERROR,
                 "conversationId 必须为正整数");
         return ResultUtils.success(aiConversationService.deleteConversation(conversationId, request));
     }
@@ -117,7 +115,7 @@ public class AiChatController {
     @PostMapping("/{conversationId}/archive")
     public Result<Boolean> archiveConversation(@PathVariable("conversationId") Long conversationId,
                                                HttpServletRequest request) {
-        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+        ThrowUtils.throwIf(conversationId <= 0, ErrorCode.PARAMS_ERROR,
                 "conversationId 必须为正整数");
         return ResultUtils.success(aiConversationService.archiveConversation(conversationId, request));
     }
@@ -128,7 +126,7 @@ public class AiChatController {
     @PostMapping("/{conversationId}/restore")
     public Result<Boolean> restoreConversation(@PathVariable("conversationId") Long conversationId,
                                                HttpServletRequest request) {
-        ThrowUtils.throwIf(conversationId == null || conversationId <= 0, ErrorCode.PARAMS_ERROR,
+        ThrowUtils.throwIf(conversationId <= 0, ErrorCode.PARAMS_ERROR,
                 "conversationId 必须为正整数");
         return ResultUtils.success(aiConversationService.restoreConversation(conversationId, request));
     }

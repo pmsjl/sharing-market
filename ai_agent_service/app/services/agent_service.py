@@ -238,13 +238,6 @@ class AgentService:
         if not self.settings.openai_api_key or not self.settings.openai_base_url:
             raise AgentServiceError(503, "AI_MODEL_NOT_CONFIGURED", "模型服务尚未配置",
                                     False)
-        if not self.settings.internal_token:
-            raise AgentServiceError(
-                503,
-                "AI_AGENT_CONFIG_INVALID",
-                "AI服务内部Token未配置",
-                False,
-            )
         if self.settings.openai_reasoning_effort not in {
                 "none", "low", "medium", "high", "xhigh", "max"
         }:
@@ -668,7 +661,7 @@ class AgentService:
         try:
             arguments_data = json.loads(raw_arguments)
             arguments = CommoditySearchArguments.model_validate(arguments_data)
-        except (json.JSONDecodeError, ValidationError, TypeError) as exception:
+        except (json.JSONDecodeError, ValidationError) as exception:
             raise AgentServiceError(
                 502,
                 "AI_TOOL_ARGUMENTS_INVALID",
@@ -721,7 +714,7 @@ class AgentService:
         try:
             arguments_data = json.loads(raw_arguments)
             arguments = PreferenceToolArguments.model_validate(arguments_data)
-        except (json.JSONDecodeError, ValidationError, TypeError) as exception:
+        except (json.JSONDecodeError, ValidationError) as exception:
             raise AgentServiceError(
                 502,
                 "AI_TOOL_ARGUMENTS_INVALID",
@@ -905,7 +898,7 @@ class AgentService:
         try:
             response_object = json.loads(raw_text)
             return AgentFinalResult.model_validate(response_object)
-        except (json.JSONDecodeError, ValidationError, TypeError) as exception:
+        except (json.JSONDecodeError, ValidationError) as exception:
             raise AgentServiceError(
                 502,
                 "AI_MODEL_RESPONSE_INVALID",
@@ -972,18 +965,14 @@ class AgentService:
                     or len(source_id) > 150 or not normalized_chunk_id
                     or len(normalized_chunk_id) > 200):
                 continue
-            if item.source_type == "POST" and (
-                    not source_id.isdigit() or int(source_id) <= 0
-                    or document_id != f"POST:{source_id}"
-                    or not isinstance(source_version, str)
-                    or not re.fullmatch(r"[1-9]\d*", source_version)):
+            if item.source_type == "POST" and document_id != f"POST:{source_id}":
                 continue
             title = AgentService._clean_source_text(item.title, 200)
             content = AgentService._clean_source_content(item.content, 1200)
             excerpt = AgentService._clean_source_text(content, 300)
             section = (AgentService._clean_source_text(item.section, 200)
                        if item.section else None) or None
-            if not title or not excerpt or not content:
+            if not title or not excerpt:
                 continue
 
             citation = AgentCitation(
@@ -995,8 +984,6 @@ class AgentService:
             source = sources_by_document.get(document_id)
 
             if source is None:
-                if len(sources_by_document) >= 8:
-                    continue
                 sources_by_document[document_id] = AgentSource(
                     sourceType=item.source_type,
                     sourceId=source_id,
@@ -1079,10 +1066,7 @@ class AgentService:
                 continue
             source_id = item.source_id.strip()
             source_version = item.metadata.get("sourceVersion")
-            if (not source_id.isdigit() or int(source_id) <= 0
-                    or item.document_id != f"POST:{source_id}"
-                    or not isinstance(source_version, str)
-                    or not re.fullmatch(r"[1-9]\d*", source_version)):
+            if item.document_id != f"POST:{source_id}":
                 continue
             post_id = int(source_id)
             if post_id in seen_post_ids:

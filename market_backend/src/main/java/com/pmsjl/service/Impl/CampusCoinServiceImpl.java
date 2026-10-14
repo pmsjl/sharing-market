@@ -182,12 +182,10 @@ public class CampusCoinServiceImpl implements CampusCoinService {
     }
 
     private BigDecimal normalizePositive(BigDecimal amount, String message) {
-        ThrowUtils.throwIf(amount == null || amount.compareTo(BigDecimal.ZERO) < 0,
+        ThrowUtils.throwIf(amount == null || amount.compareTo(BigDecimal.ZERO) <= 0,
                 ErrorCode.PARAMS_ERROR, message);
         try {
-            BigDecimal normalized = amount.setScale(2, RoundingMode.UNNECESSARY);
-            ThrowUtils.throwIf(normalized.compareTo(BigDecimal.ZERO) <= 0, ErrorCode.PARAMS_ERROR, message);
-            return normalized;
+            return amount.setScale(2, RoundingMode.UNNECESSARY);
         } catch (ArithmeticException exception) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "校园币最多保留两位小数");
         }

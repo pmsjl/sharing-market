@@ -103,7 +103,7 @@ class JavaBackendClient:
         try:
             result = CommoditySearchToolResponse.model_validate(
                 response.json())
-        except (ValueError, TypeError) as exception:
+        except ValueError as exception:
             raise JavaBackendClientError(
                 "AI_JAVA_TOOL_RESPONSE_INVALID",
                 "Java商品搜索工具返回结构异常",
@@ -178,7 +178,7 @@ class JavaBackendClient:
             result = UserPreferenceToolResponse.model_validate(
                 response.json()
             )
-        except (ValueError, TypeError) as exception:
+        except ValueError as exception:
             raise JavaBackendClientError(
                 "AI_JAVA_TOOL_RESPONSE_INVALID",
                 "Java 用户偏好工具返回结构异常",
@@ -212,7 +212,6 @@ class JavaBackendClient:
         )
         after_id = 0
         posts: list[PostSnapshot] = []
-        seen_ids: set[int] = set()
 
         async with httpx.AsyncClient(
             timeout=self.settings.java_backend_timeout_seconds,
@@ -248,16 +247,15 @@ class JavaBackendClient:
 
                 try:
                     post_page = PostSnapshotPage.model_validate(response.json())
-                except (ValueError, TypeError) as exception:
+                except ValueError as exception:
                     raise JavaBackendClientError(
                         "AI_JAVA_RAG_SNAPSHOT_RESPONSE_INVALID",
                         "Java Post 快照接口返回结构异常",
                         False,
                     ) from exception
 
-                self._validate_post_snapshot_page(post_page, after_id, seen_ids)
+                self._validate_post_snapshot_page(post_page, after_id)
                 posts.extend(post_page.items)
-                seen_ids.update(item.id for item in post_page.items)
 
                 if not post_page.has_more:
                     return posts
@@ -290,7 +288,6 @@ class JavaBackendClient:
         self,
         post_page: PostSnapshotPage,
         after_id: int,
-        seen_ids: set[int],
     ) -> None:
         if post_page.next_after_id < after_id:
             raise JavaBackendClientError(
@@ -308,7 +305,7 @@ class JavaBackendClient:
         post_page_ids = [item.id for item in post_page.items]
         post_page_seen: set[int] = set()
         for post_id in post_page_ids:
-            if post_id in seen_ids or post_id in post_page_seen:
+            if post_id in post_page_seen:
                 raise JavaBackendClientError(
                     "AI_JAVA_RAG_SNAPSHOT_DUPLICATE_ID",
                     f"Post 快照包含重复 ID：{post_id}",
@@ -402,7 +399,7 @@ class JavaBackendClient:
             result = PostVersionValidationResponse.model_validate(
                 response.json()
             )
-        except (ValueError, TypeError) as exception:
+        except ValueError as exception:
             raise JavaBackendClientError(
                 "AI_JAVA_TOOL_RESPONSE_INVALID",
                 "Java Post 版本校验返回结构异常",

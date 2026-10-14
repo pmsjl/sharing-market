@@ -147,11 +147,11 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR);
         }
         if (title != null) {
-            ThrowUtils.throwIf(StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR, "标题不能为空");
+            ThrowUtils.throwIf(!add && StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR, "标题不能为空");
             ThrowUtils.throwIf(title.length() > 80, ErrorCode.PARAMS_ERROR, "标题过长");
         }
         if (content != null) {
-            ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "内容不能为空");
+            ThrowUtils.throwIf(!add && StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "内容不能为空");
             ThrowUtils.throwIf(content.length() > 8192, ErrorCode.PARAMS_ERROR, "内容过长");
         }
     }
@@ -182,7 +182,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<Post> page = new Page<>(current, pageSize);
-        if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {
@@ -242,7 +242,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 20 之间");
         }
         Page<Post> postPage = new Page<>(current, pageSize);
-        if (StringUtils.isNotBlank(sortField) && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_POST_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 postPage.addOrder(OrderItem.asc(sortField));
             } else {
@@ -280,8 +280,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         postPage = query.page(postPage);
         List<Post> records = postPage.getRecords();
         Page<PostVO> page = new Page<>(postPage.getCurrent(), postPage.getSize(), postPage.getTotal());
-        if (records == null || records.isEmpty()) {
-            page.setRecords(List.of());
+        if (records.isEmpty()) {
             return page;
         }
         List<PostVO> postVOList = records.stream().map(this::getPostVO).toList();

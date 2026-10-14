@@ -1,11 +1,13 @@
 FROM maven:3.9.9-eclipse-temurin-17 AS build
 
+ARG MAVEN_MIRROR_URL=https://repo.maven.apache.org/maven2
 WORKDIR /workspace
+COPY .mvn/docker-settings.xml ./maven-settings.xml
 COPY pom.xml ./
-RUN mvn -B -ntp dependency:go-offline
+RUN mvn -B -ntp -s ./maven-settings.xml "-Dmaven.mirror.url=${MAVEN_MIRROR_URL}" dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -ntp -DskipTests package
+RUN mvn -B -ntp -s ./maven-settings.xml "-Dmaven.mirror.url=${MAVEN_MIRROR_URL}" -DskipTests package
 
 FROM eclipse-temurin:17-jre-jammy
 

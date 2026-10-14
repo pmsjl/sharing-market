@@ -8,6 +8,7 @@ import pytest
 from app.clients import java_backend as java_backend_module
 from app.clients.java_backend import JavaBackendClient, JavaBackendClientError
 from app.core.config import Settings
+from app.models.tools import CommoditySearchArguments
 from app.rag.models import PostVersionCandidate
 
 
@@ -51,6 +52,28 @@ def _mock_client(monkeypatch, responses: list[dict | int]):
         lambda **_: client,
     )
     return captured
+
+
+@pytest.mark.parametrize("method, model, arguments", [
+    ("search_commodities", "CommoditySearchToolResponse",
+     {"request_id": "request-1", "arguments": CommoditySearchArguments(limit=1)}),
+    ("get_my_preference_signals", "UserPreferenceToolResponse",
+     {"request_id": "request-1", "user_id": 1}),
+    ("fetch_post_snapshot", "PostSnapshotPage", {}),
+    ("validate_post_versions", "PostVersionValidationResponse",
+     {"request_id": "request-1", "candidates": [
+         PostVersionCandidate(postId=1, sourceVersion="1")]}),
+])
+def test_response_parser_programming_errors_are_not_wrapped(
+        monkeypatch, method, model, arguments):
+    _mock_client(monkeypatch, [{}])
+
+    def fail_validation(_):
+        raise TypeError("internal validator error")
+
+    monkeypatch.setattr(getattr(java_backend_module, model), "model_validate", fail_validation)
+    with pytest.raises(TypeError, match="internal validator error"):
+        asyncio.run(getattr(JavaBackendClient(_settings()), method)(**arguments))
 
 
 def test_fetch_post_snapshot_reads_all_pages_and_uses_scanned_cursor(monkeypatch):
@@ -127,7 +150,7 @@ def test_fetch_post_snapshot_rejects_duplicate_id_across_pages(monkeypatch):
     with pytest.raises(JavaBackendClientError) as raised:
         asyncio.run(JavaBackendClient(_settings()).fetch_post_snapshot())
 
-    assert raised.value.agent_error_key == "AI_JAVA_RAG_SNAPSHOT_DUPLICATE_ID"
+    assert raised.value.agent_error_key == "AI_JAVA_RAG_SNAPSHOT_CURSOR_INVALID"
     assert raised.value.retryable is False
 
 
@@ -146,6 +169,14 @@ def test_fetch_post_snapshot_rejects_stalled_cursor(monkeypatch):
 @pytest.mark.parametrize(
     ("page", "expected_key"),
     [
+        (
+            {
+                "items": [_post(1), _post(1)],
+                "nextAfterId": 1,
+                "hasMore": False,
+            },
+            "AI_JAVA_RAG_SNAPSHOT_DUPLICATE_ID",
+        ),
         (
             {
                 "items": [_post(2), _post(1)],

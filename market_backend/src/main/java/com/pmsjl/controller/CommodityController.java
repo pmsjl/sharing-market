@@ -50,7 +50,6 @@ public class CommodityController {
      */
     @PostMapping("/add")
     public Result<Long> addCommodity(@RequestBody CommodityAddRequest commodityAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityAddRequest == null, ErrorCode.PARAMS_ERROR);
         Commodity commodity = new Commodity();
         BeanUtils.copyProperties(commodityAddRequest, commodity);
         Long id = commodityService.addCommodity(commodity, request);
@@ -66,7 +65,6 @@ public class CommodityController {
      */
     @PostMapping("/buy")
     public Result<Map<String, Object>> buyCommodity(@RequestBody BuyCommodityRequest buyCommodityRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(buyCommodityRequest == null, ErrorCode.PARAMS_ERROR, "购买参数不能为空");
         Map<String, Object> result = commodityService.createOrderAndTryPay(buyCommodityRequest, request);
         return ResultUtils.success(result);
     }
@@ -74,7 +72,6 @@ public class CommodityController {
 
     @PostMapping("/pay")
     public Result<Boolean>payCommodity(@RequestBody PayCommodityOrderRequest payRequest, HttpServletRequest request){
-        ThrowUtils.throwIf(payRequest == null, ErrorCode.PARAMS_ERROR, "购买参数不能为空");
         Boolean result=commodityService.payPendingOrder(payRequest,request);
         return ResultUtils.success(result);
     }
@@ -123,7 +120,7 @@ public class CommodityController {
      */
     @GetMapping("/get/vo")
     public Result<CommodityVO> getCommodityVOById(@RequestParam("id") Long id,HttpServletRequest request) {
-        ThrowUtils.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(id < 0, ErrorCode.PARAMS_ERROR);
         CommodityVO commodityVO = commodityService.getCommodityVOById(id,request);
         return ResultUtils.success(commodityVO);
     }

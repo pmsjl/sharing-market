@@ -100,7 +100,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<CommodityScore> page = new Page<>(current, pageSize);
-        if (sortField != null && !sortField.trim().isEmpty() && ALLOWED_COMMODITY_SCORE_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_COMMODITY_SCORE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {
@@ -122,8 +122,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
         Page<CommodityScore> commodityScorePage = listCommodityScoreByPage(commodityScoreQueryRequest);
         List<CommodityScore> records = commodityScorePage.getRecords();
         Page<CommodityScoreVO> page = new Page<>(commodityScorePage.getCurrent(), commodityScorePage.getSize(), commodityScorePage.getTotal());
-        if (records == null || records.isEmpty()) {
-            page.setRecords(List.of());
+        if (records.isEmpty()) {
             return page;
         }
         List<CommodityScoreVO> commodityScoreVOList = records.stream().map(this::getCommodityScoreVO).toList();

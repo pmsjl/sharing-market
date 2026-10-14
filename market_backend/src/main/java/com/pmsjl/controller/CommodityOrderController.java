@@ -54,7 +54,6 @@ public class CommodityOrderController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/add")
     public Result<Long> addCommodityOrder(@RequestBody CommodityOrderAddRequest commodityOrderAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityOrderAddRequest == null, ErrorCode.PARAMS_ERROR);
         CommodityOrder commodityOrder = new CommodityOrder();
         BeanUtil.copyProperties(commodityOrderAddRequest, commodityOrder);
         Long id = commodityOrderService.addCommodityOrder(commodityOrder, request);
@@ -64,7 +63,6 @@ public class CommodityOrderController {
 
     @PostMapping("/delete")
     public Result<Boolean> deleteCommodityOrder(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(deleteRequest == null, ErrorCode.PARAMS_ERROR);
         Boolean result = commodityOrderService.deleteCommodityOrder(deleteRequest, request);
         return ResultUtils.success(result);
     }
@@ -73,7 +71,6 @@ public class CommodityOrderController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/update")
     public Result<Boolean> updateCommodityOrder(@RequestBody CommodityOrderUpdateRequest commodityOrderUpdateRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityOrderUpdateRequest == null, ErrorCode.PARAMS_ERROR);
         CommodityOrder commodityOrder = new CommodityOrder();
         BeanUtil.copyProperties(commodityOrderUpdateRequest, commodityOrder);
         Boolean result = commodityOrderService.updateCommodityOrder(commodityOrder);
@@ -90,7 +87,6 @@ public class CommodityOrderController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/list/page/vo")
     public Result<Page<CommodityOrderVO>> listCommodityOrderVOByPage(@RequestBody CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityOrderQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<CommodityOrderVO> page = commodityOrderService.listCommodityOrderVOByPage(commodityOrderQueryRequest, request);
         return ResultUtils.success(page);
     }
@@ -103,7 +99,6 @@ public class CommodityOrderController {
      */
     @PostMapping("/my/list/page/vo")
     public Result<Page<CommodityOrderVO>> listMyCommodityOrderVOByPage(@RequestBody CommodityOrderQueryRequest commodityOrderQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityOrderQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<CommodityOrderVO>page=commodityOrderService.listMyCommodityOrderVOByPage(commodityOrderQueryRequest,request);
         return ResultUtils.success(page);
 

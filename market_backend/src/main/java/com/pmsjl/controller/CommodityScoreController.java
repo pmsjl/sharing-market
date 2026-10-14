@@ -38,7 +38,6 @@ public class CommodityScoreController {
 
     @PostMapping("/add")
     public Result<Long> addCommodityScore(@RequestBody CommodityScoreAddRequest commodityScoreAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityScoreAddRequest == null, ErrorCode.PARAMS_ERROR);
         CommodityScore commodityScore = new CommodityScore();
         BeanUtil.copyProperties(commodityScoreAddRequest, commodityScore);
         Long id = commodityScoreService.addCommodityScore(commodityScore, request);
@@ -47,14 +46,12 @@ public class CommodityScoreController {
 
     @PostMapping("/list/page/vo")
     public Result<Page<CommodityScoreVO>> listCommodityScoreVOByPage(@RequestBody CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityScoreQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<CommodityScoreVO> page = commodityScoreService.listCommodityScoreVOByPage(commodityScoreQueryRequest, request);
         return ResultUtils.success(page);
     }
 
     @PostMapping("/my/list/page/vo")
     public Result<Page<CommodityScoreVO>> listMyCommodityScoreVOByPage(@RequestBody CommodityScoreQueryRequest commodityScoreQueryRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(commodityScoreQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<CommodityScoreVO> page = commodityScoreService.listMyCommodityScoreVOByPage(commodityScoreQueryRequest, request);
         return ResultUtils.success(page);
     }
@@ -62,7 +59,7 @@ public class CommodityScoreController {
 
     @GetMapping("/averageScore")
     public Result<Double> getAverageScore(@RequestParam Long commodityId) {
-        ThrowUtils.throwIf(commodityId==null||commodityId<=0,ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(commodityId<=0,ErrorCode.PARAMS_ERROR);
         Double score=commodityScoreService.getAverageScoreById(commodityId);
         if(score==null){
             return ResultUtils.success(0.0D);

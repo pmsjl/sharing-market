@@ -98,7 +98,7 @@ public class PrivateMessageServiceImpl extends ServiceImpl<PrivateMessageMapper,
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<PrivateMessage> page = new Page<>(current, pageSize);
-        if (!StringUtils.isBlank(sortField) && ALLOWED_PRIVATE_MESSAGE_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_PRIVATE_MESSAGE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {

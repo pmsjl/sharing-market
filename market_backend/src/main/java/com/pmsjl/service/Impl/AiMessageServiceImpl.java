@@ -113,7 +113,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
 
         Page<AiMessage> page = new Page<>(current, pageSize);
         boolean ascending = "asc".equalsIgnoreCase(sortOrder);
-        if (StringUtils.isNotBlank(sortField) && ALLOWED_MESSAGE_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_MESSAGE_SORT_FIELDS.contains(sortField)) {
             page.addOrder(ascending ? OrderItem.asc(sortField) : OrderItem.desc(sortField));
             page.addOrder(OrderItem.desc("id"));
         } else {
@@ -204,7 +204,6 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
             return this.addPendingMessage(loginUser, content, aiShoppingContext, requestId,
                     conversationId, conversation, agentHistoryMessages, usageReservation, userSequenceNo);
         });
-        ThrowUtils.throwIf(pendingMessage == null, ErrorCode.OPERATION_ERROR, "创建 AI 会话失败");
 
         //5.构建传入Python的请求类
         AgentRunRequest agentRunRequest = buildAgentRunRequest(pendingMessage);
@@ -270,7 +269,7 @@ public class AiMessageServiceImpl extends ServiceImpl<AiMessageMapper, AiMessage
                 "batchSize 必须在 1 到 1000 之间");
 
         List<AiMessage> candidates = baseMapper.selectStalePendingMessages(expireBefore, batchSize);
-        if (candidates == null || candidates.isEmpty()) {
+        if (candidates.isEmpty()) {
             return 0;
         }
 

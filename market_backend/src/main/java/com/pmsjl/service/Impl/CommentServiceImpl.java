@@ -48,7 +48,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     public long addComment(CommentAddRequest commentAddRequest, HttpServletRequest request) {
         Comment comment = new Comment();
         BeanUtils.copyProperties(commentAddRequest, comment);
-        this.validComment(comment, true);
+        this.validComment(comment);
         User loginUser = userService.getLoginUser();
         Long userId = loginUser.getId();
         comment.setUserId(userId);
@@ -175,9 +175,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     }
 
-    private void validComment(Comment comment, boolean add) {
-        ThrowUtils.throwIf(comment == null, ErrorCode.PARAMS_ERROR);
-
+    private void validComment(Comment comment) {
         String content = comment.getContent();
         Long parentId = comment.getParentId();
         Long postId = comment.getPostId();
@@ -189,17 +187,15 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         ThrowUtils.throwIf(content.length() > 1024, ErrorCode.PARAMS_ERROR, "评论过长");
 
 
-        if (add) {
-            ThrowUtils.throwIf(postId == null || postId <= 0, ErrorCode.OPERATION_ERROR, "评价帖子id异常");
-            Post post = postService.getById(postId);
-            ThrowUtils.throwIf(post == null, ErrorCode.OPERATION_ERROR, "帖子不存在");
-            //校验父id
-            if (parentId != null) {
-                ThrowUtils.throwIf(parentId <= 0, ErrorCode.PARAMS_ERROR, "父评论 id 异常");
-                Comment parentComment = this.getById(parentId);
-                ThrowUtils.throwIf(parentComment == null, ErrorCode.NOT_FOUND_ERROR);
-                ThrowUtils.throwIf(!parentComment.getPostId().equals(postId), ErrorCode.PARAMS_ERROR, "父评论不属于当前帖子");
-            }
+        ThrowUtils.throwIf(postId == null || postId <= 0, ErrorCode.OPERATION_ERROR, "评价帖子id异常");
+        Post post = postService.getById(postId);
+        ThrowUtils.throwIf(post == null, ErrorCode.OPERATION_ERROR, "帖子不存在");
+        //校验父id
+        if (parentId != null) {
+            ThrowUtils.throwIf(parentId <= 0, ErrorCode.PARAMS_ERROR, "父评论 id 异常");
+            Comment parentComment = this.getById(parentId);
+            ThrowUtils.throwIf(parentComment == null, ErrorCode.NOT_FOUND_ERROR);
+            ThrowUtils.throwIf(!parentComment.getPostId().equals(postId), ErrorCode.PARAMS_ERROR, "父评论不属于当前帖子");
         }
     }
 

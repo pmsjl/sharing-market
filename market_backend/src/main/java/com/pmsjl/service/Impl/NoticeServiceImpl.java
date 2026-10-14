@@ -162,7 +162,7 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "pageSize 必须在 1 到 100 之间");
         }
         Page<Notice> page = new Page<>(current, pageSize);
-        if (StringUtils.isNotBlank(sortField) && ALLOWED_NOTICE_SORT_FIELDS.contains(sortField)) {
+        if (sortField != null && ALLOWED_NOTICE_SORT_FIELDS.contains(sortField)) {
             if ("asc".equalsIgnoreCase(sortOrder)) {
                 page.addOrder(OrderItem.asc(sortField));
             } else {
@@ -205,8 +205,7 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice> impleme
         long total = noticePage.getTotal();
         List<Notice> records = noticePage.getRecords();
         Page<NoticeVO> page = new Page<>(current, sizes, total);
-        if (records == null || records.isEmpty()) {
-            page.setRecords(List.of());
+        if (records.isEmpty()) {
             return page;
         }
         List<NoticeVO> list = records.stream().map(this::getNoticeVO).toList();

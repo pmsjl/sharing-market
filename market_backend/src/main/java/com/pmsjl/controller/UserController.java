@@ -74,7 +74,7 @@ public class UserController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
 
     public Result<User> getUserById(@RequestParam("id") Long id) {
-        if (id == null || id < 0) {
+        if (id < 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getById(id);
@@ -89,7 +89,6 @@ public class UserController {
      */
     @GetMapping("/get/login")
     public Result<LoginUserVO> getLoginUser(HttpServletRequest request) {
-        ThrowUtils.throwIf(request==null,ErrorCode.PARAMS_ERROR);
         User user=userService.getLoginUser();
         LoginUserVO loginUserVO = userService.getVOFromUser(user, new LoginUserVO());
         return ResultUtils.success(loginUserVO);
@@ -144,9 +143,6 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
-        if (userLoginRequest == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
         //登录校验
         LoginUserVO loginUserVO = userService.userLogin(userLoginRequest, request);
         //登陆状态字段设置完成
@@ -178,7 +174,6 @@ public class UserController {
      */
     @PostMapping("/logout")
     public Result<Boolean> userLogout(HttpServletRequest request) {
-        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         boolean result = userService.userLogout(request);
         return ResultUtils.success(result);
 
@@ -189,7 +184,6 @@ public class UserController {
      */
     @PostMapping("/register")
     public Result<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
-        ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
         Long result = userService.userRegister(userRegisterRequest);
         return ResultUtils.success(result);
     }
@@ -201,7 +195,7 @@ public class UserController {
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public Result<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest) {
-        if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
+        if (userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         boolean result = userService.updateUser(userUpdateRequest);
@@ -214,9 +208,6 @@ public class UserController {
      */
     @PostMapping("/update/my")
     public Result<Boolean> updateMyUser(@RequestBody UserUpdateMyRequest userUpdateRequest,HttpServletRequest request) {
-        if (userUpdateRequest == null||request==null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
         boolean result = userService.updateMyUser(userUpdateRequest,request);
         return ResultUtils.success(result);
 
