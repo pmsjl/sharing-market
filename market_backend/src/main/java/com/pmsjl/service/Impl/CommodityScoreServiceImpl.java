@@ -21,6 +21,7 @@ import com.pmsjl.utils.ThrowUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -52,6 +53,7 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
 
     @Override
     public Long addCommodityScore(CommodityScore commodityScore, HttpServletRequest request) {
+        ThrowUtils.throwIf(commodityScore == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser();
         commodityScore.setUserId(loginUser.getId());
         validCommodityScore(commodityScore);
@@ -76,9 +78,13 @@ public class CommodityScoreServiceImpl extends ServiceImpl<CommodityScoreMapper,
                 ErrorCode.PARAMS_ERROR,
                 "不能评价自己的商品"
         );
-        //同时注意表建立了联合约束，建立了索引都是限制了(commodityId,userId)这一组不会重复
-
-        boolean result = save(commodityScore);
+        // 由数据库唯一约束兜底，包含多次点击或多个页面同时提交的情况。
+        boolean result;
+        try {
+            result = save(commodityScore);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ErrorCode.CONFLICT_ERROR, "您已评分，不可重复评分");
+        }
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return commodityScore.getId();
     }

@@ -130,7 +130,9 @@
             </p></el-tab-pane
           ><el-tab-pane label="同学评价" name="second"
             ><div class="score-area">
-              <CommodityScore /><CommodityScoreList /></div></el-tab-pane
+              <CommodityScore
+                :disabled-reason="ratingDisabledReason"
+              /><CommodityScoreList /></div></el-tab-pane
         ></el-tabs>
       </section>
     </template>
@@ -254,6 +256,13 @@ const sourceConversationId = computed(() =>
   routeValue(route.query.conversationId)
 );
 const sellerId = computed(() => String(commodity.value.adminId || ""));
+const ratingDisabledReason = computed(() =>
+  sellerId.value === currentUserId
+    ? "不能评价自己的商品"
+    : commodity.value.isListed !== 1
+    ? "商品未上架，不能评价"
+    : ""
+);
 const canContactSeller = computed(
   () => Boolean(sellerId.value) && sellerId.value !== currentUserId
 );

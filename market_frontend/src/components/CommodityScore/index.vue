@@ -2,7 +2,7 @@
   <div class="rating-component">
     <!-- 左侧评分区域 -->
     <div class="rating-left">
-      <p class="rating-text">点此处进行评分</p>
+      <p class="rating-text">{{ ratingHint }}</p>
       <div class="star-container">
         <el-icon
           v-for="index in 5"
@@ -14,7 +14,8 @@
           @click="handleRating(index)"
           @mouseover="hoverRating = index"
           @mouseleave="hoverRating = 0"
-          :class="{ disabled: hasRated }"
+          :class="{ disabled: ratingDisabled }"
+          :aria-disabled="ratingDisabled"
         >
           <StarFilled />
         </el-icon>
@@ -30,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { StarFilled } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import {
@@ -40,6 +41,8 @@ import {
 } from "@/api/commodityScoreController"; // 根据实际路径导入接口
 import { useRoute } from "vue-router";
 import eventBus from "@/utils/eventBus";
+
+const props = defineProps<{ disabledReason?: string }>();
 
 // 使用路由获取当前商品 ID
 const route = useRoute();
@@ -53,6 +56,33 @@ const hoverRating = ref(0);
 const averageRating = ref(0);
 // 用户是否已评分
 const hasRated = ref(false);
+const submitting = ref(false);
+const checkingRating = ref(true);
+const ratingDisabled = computed(
+  () =>
+    hasRated.value ||
+    submitting.value ||
+    checkingRating.value ||
+    !!props.disabledReason
+);
+const ratingHint = computed(
+  () =>
+    props.disabledReason ||
+    (checkingRating.value
+      ? "正在检查评分状态…"
+      : submitting.value
+      ? "正在提交评分…"
+      : hasRated.value
+      ? "感谢您的评分"
+      : "点此处进行评分")
+);
+
+const showRequestError = (error: unknown, fallback: string) => {
+  const failure = error as { message?: string; requestMessageShown?: boolean };
+  if (!failure?.requestMessageShown) {
+    ElMessage.error(failure?.message || fallback);
+  }
+};
 
 // 获取平均评分
 const fetchAverageScore = async () => {
@@ -64,19 +94,24 @@ const fetchAverageScore = async () => {
       ElMessage.info(res.message);
     }
   } catch (error) {
-    ElMessage.error("获取平均评分失败");
+    showRequestError(error, "获取平均评分失败");
   }
 };
 
 // 检查用户是否已评分
 const checkUserRating = async () => {
+  checkingRating.value = true;
   try {
     const res = await listMyCommodityScoreVoByPageUsingPost({
       commodityId: commodityId,
       pageSize: 1,
       current: 1
     });
-    if (res.code === 200 && res.data.records.length > 0) {
+    if (res.code !== 200) {
+      ElMessage.error(res.message || "检查用户评分失败");
+      return;
+    }
+    if (res.data.records.length > 0) {
       // 用户已评分
       hasRated.value = true;
       currentRating.value = res.data.records[0].score;
@@ -85,16 +120,24 @@ const checkUserRating = async () => {
       hasRated.value = false;
     }
   } catch (error) {
-    ElMessage.error("检查用户评分失败");
+    showRequestError(error, "检查用户评分失败");
+  } finally {
+    checkingRating.value = false;
   }
 };
 
 // 处理评分点击事件
 const handleRating = async (rating: number) => {
+  if (submitting.value || checkingRating.value) return;
+  if (props.disabledReason) {
+    ElMessage.warning(props.disabledReason);
+    return;
+  }
   if (hasRated.value) {
     ElMessage.warning("您已评分，不可重复评分");
     return;
   }
+  submitting.value = true;
   try {
     const res = await addCommodityScoreUsingPost({
       commodityId: commodityId,
@@ -109,10 +152,13 @@ const handleRating = async (rating: number) => {
       // 触发事件，通知 CommodityScoreList 刷新数据
       eventBus.emit("refresh-commodity-score-list");
     } else {
-      ElMessage.error("评分失败");
+      ElMessage.error(res.message || "评分失败，请稍后重试");
+      if (res.code === 40900) await checkUserRating();
     }
   } catch (error) {
-    ElMessage.error("评分失败");
+    showRequestError(error, "评分失败，请稍后重试");
+  } finally {
+    submitting.value = false;
   }
 };
 
