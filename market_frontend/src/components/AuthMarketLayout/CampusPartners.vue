@@ -1,7 +1,7 @@
 <template>
   <div
     class="campus-partners"
-    :class="{ 'is-protecting': protecting }"
+    :class="{ 'is-protecting': protecting, 'is-facing-away': facingAway }"
     aria-hidden="true"
   >
     <div class="partners-entrance">
@@ -72,12 +72,59 @@
           </div>
         </div>
       </div>
-      <div class="campus-mascot" data-action="rest">
+      <div class="campus-mascot">
         <div class="mascot-shadow"></div>
-        <div class="mascot-travel">
+        <div class="mascot-frame">
           <div class="mascot-pose">
+            <div
+              v-if="!failed.rig"
+              class="mascot-image mascot-front mascot-rig"
+            >
+              <!-- The ponytail turns with the head from behind the body. -->
+              <div class="rig-group rig-lift">
+                <div class="rig-group rig-tail-follow" :style="origins.neck">
+                  <img
+                    v-bind="rigImage('ponytail', 'tailRoot')"
+                    class="rig-tail"
+                  />
+                </div>
+              </div>
+              <div class="rig-group rig-torso" :style="origins.feet">
+                <img v-bind="rigImage('body')" />
+                <img
+                  v-bind="rigImage('charm', 'charmRing')"
+                  class="rig-charm"
+                />
+                <img v-bind="rigImage('arm-wave', 'elbow')" class="rig-arm" />
+              </div>
+              <div class="rig-group rig-lift">
+                <div class="rig-group rig-head" :style="origins.neck">
+                  <img v-bind="rigImage('head')" />
+                  <div class="rig-eyes-open">
+                    <img v-bind="rigImage('eye-whites')" />
+                    <div class="rig-iris-clip" :style="irisClip">
+                      <img
+                        v-bind="rigImage('irises', undefined, 'eye-whites')"
+                        class="rig-irises"
+                      />
+                    </div>
+                    <img v-bind="rigImage('eyelids')" />
+                  </div>
+                  <img
+                    v-bind="rigImage('eyes-closed')"
+                    class="rig-eyes-closed"
+                  />
+                  <img
+                    v-bind="rigImage('mouth-smile')"
+                    class="rig-mouth-smile"
+                  />
+                  <img v-bind="rigImage('mouth-o')" class="rig-mouth-o" />
+                  <img v-bind="rigImage('mouth-open')" class="rig-mouth-open" />
+                </div>
+              </div>
+            </div>
             <img
-              v-if="!failed.mascot"
+              v-else-if="!failed.mascot"
               class="mascot-image mascot-front"
               src="/generated/auth-partners/mascot.webp"
               alt=""
@@ -96,10 +143,11 @@
               decoding="async"
               @error="failed.mascotAway = true"
             />
-            <div class="mascot-run" :style="spriteStyle('run')"></div>
-            <div class="mascot-walk" :style="spriteStyle('walk')"></div>
             <img
-              v-if="failed.mascot || (protecting && failed.mascotAway)"
+              v-if="
+                (failed.rig && failed.mascot) ||
+                (facingAway && failed.mascotAway)
+              "
               class="mascot-logo-fallback"
               :src="setting.logo"
               alt=""
@@ -116,9 +164,35 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import setting from "@/setting";
-import { spriteStyle } from "@/utils/authMascotMotion";
-defineProps<{ protecting: boolean }>();
+import {
+  groupOrigin,
+  layerSrc,
+  layerStyle,
+  type RigLayer,
+  type RigPivot
+} from "@/utils/authMascotRig";
+defineProps<{ protecting: boolean; facingAway: boolean }>();
 const failed = reactive<Record<string, boolean>>({});
+// Any missing layer falls back to the single standing image.
+const rigImage = (name: RigLayer, pivot?: RigPivot, within?: RigLayer) => ({
+  src: layerSrc(name),
+  alt: "",
+  decoding: "async",
+  draggable: false,
+  style: layerStyle(name, pivot, within),
+  onError: () => (failed.rig = true)
+});
+const origins = {
+  feet: { transformOrigin: groupOrigin("feet") },
+  neck: { transformOrigin: groupOrigin("neck") }
+};
+// Irises move inside the eye whites, never over the skin.
+const eyeMask = `url(${layerSrc("eye-whites")}) center / 100% 100% no-repeat`;
+const irisClip = {
+  ...layerStyle("eye-whites"),
+  mask: eyeMask,
+  WebkitMask: eyeMask
+};
 const partners = [
   {
     id: "blue",
@@ -281,16 +355,16 @@ const partners = [
   height: 88%;
   pointer-events: none;
 }
-.mascot-travel,
+.mascot-frame,
 .mascot-pose {
   position: relative;
   width: 100%;
   height: 100%;
   transform-origin: 50% 95%;
 }
-// The unrotated wrapper keeps hover stable while its child sways.
+// The untransformed wrapper keeps hover stable while the pose moves.
 @media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .mascot-travel {
+  .mascot-frame {
     pointer-events: auto;
   }
 }
@@ -309,25 +383,42 @@ const partners = [
 .mascot-away {
   visibility: hidden;
 }
-.mascot-run,
-.mascot-walk {
+// The box is always wider than 315:640, so the canvas fits its height.
+.mascot-rig {
+  inset: 0 auto auto 50%;
+  width: auto;
+  aspect-ratio: 315 / 640;
+  transform: translateX(-50%);
+}
+.rig-group,
+.rig-eyes-open {
   position: absolute;
-  bottom: 0;
-  left: 50%;
+  inset: 0;
+}
+.mascot-rig img,
+.rig-iris-clip {
+  position: absolute;
+  display: block;
+  max-width: none;
+  user-select: none;
+}
+.rig-irises {
+  will-change: transform;
+}
+// Expressions switch with data attributes; `inherit` keeps them hidden
+// together with the whole front image while she faces away.
+.rig-eyes-closed,
+.rig-mouth-o,
+.rig-mouth-open,
+.mascot-rig[data-eyes="closed"] .rig-eyes-open,
+.mascot-rig[data-mouth="o"] .rig-mouth-smile,
+.mascot-rig[data-mouth="open"] .rig-mouth-smile {
   visibility: hidden;
-  background-repeat: no-repeat;
-  pointer-events: none;
 }
-.mascot-run.is-active,
-.mascot-walk.is-active {
-  visibility: visible;
-}
-.mascot-run.is-left,
-.mascot-walk.is-left {
-  transform: scaleX(-1);
-}
-.campus-mascot.is-moving .mascot-front {
-  visibility: hidden;
+.mascot-rig[data-eyes="closed"] .rig-eyes-closed,
+.mascot-rig[data-mouth="o"] .rig-mouth-o,
+.mascot-rig[data-mouth="open"] .rig-mouth-open {
+  visibility: inherit;
 }
 .mascot-shadow {
   position: absolute;
@@ -347,7 +438,7 @@ const partners = [
   width: 100%;
   height: auto;
 }
-.is-protecting {
+.is-facing-away {
   .mascot-front {
     visibility: hidden;
   }

@@ -1,5 +1,5 @@
 <template>
-  <AuthMarketLayout>
+  <AuthMarketLayout ref="layout">
     <el-form
       class="auth-entry-form"
       :model="loginForm"
@@ -74,12 +74,14 @@ import AuthMarketLayout from "@/components/AuthMarketLayout/index.vue";
 import { getTime } from "@/utils/time";
 import useUserStore from "@/store/modules/user";
 import { getSafeRedirectPath } from "@/utils/roleHome";
+import type { MascotReaction } from "@/composables/useAuthShowcaseMotion";
 
 const loginForm = reactive({
   userAccount: "",
   userPassword: ""
 });
 const loginForms = ref<FormInstance>();
+const layout = ref<{ react: (kind: MascotReaction) => Promise<void> }>();
 const loading = ref(false);
 const $router = useRouter();
 const $route = useRoute();
@@ -104,6 +106,11 @@ const login = async () => {
   try {
     await userStore.userLogin(loginForm);
     await userStore.userInfo();
+    // The jump is capped so a stalled animation never holds up navigation.
+    await Promise.race([
+      layout.value?.react("success"),
+      new Promise((resolve) => setTimeout(resolve, 700))
+    ]);
     const redirect: any = $route.query.redirect;
     $router.push({
       path: getSafeRedirectPath(redirect, userStore.userRole)
@@ -115,6 +122,7 @@ const login = async () => {
       duration: 3000
     });
   } catch (error) {
+    void layout.value?.react("error");
     ElNotification({
       type: "error",
       message: "用户名或密码错误"

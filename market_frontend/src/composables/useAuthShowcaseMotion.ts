@@ -8,28 +8,38 @@ import {
 } from "vue";
 import { useRouter } from "vue-router";
 import gsap from "gsap";
-import { AUTH_MASCOT_SPRITES } from "@/generated/authMascotSprites";
 import {
-  createMotionProfile,
-  distanceAtTime,
-  frameAtDistance,
-  MASCOT_GAITS,
-  nearestContactFrame,
-  spriteLayout,
-  type MascotGait
-} from "@/utils/authMascotMotion";
+  blinkDelay,
+  BREATH_LIFT_PERCENT,
+  BREATH_SCALE,
+  faceAnchor,
+  gazeTarget,
+  waveDelay
+} from "@/utils/authMascotRig";
 
 // Presentation state lasts only while moving between the two auth routes.
 const session = { phases: [0, 0], entered: false };
 const isAuthRoute = (path: string) => path === "/login" || path === "/register";
 
+export type MascotReaction = "error" | "success";
+
 export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
   const router = useRouter();
   const isProtecting = ref(false);
+  // Follows isProtecting, but switches halfway through the animated turn.
+  const facingAway = ref(false);
   const canAnimate = ref(false);
   const copyCounts = ref([2, 2]);
   let media: ReturnType<typeof gsap.matchMedia> | undefined;
   let removePrivacyListeners: (() => void) | undefined;
+  let reactor: ((kind: MascotReaction, done: () => void) => void) | undefined;
+
+  // Resolves at once when the mascot cannot animate, so callers never wait.
+  const react = (kind: MascotReaction) =>
+    new Promise<void>((resolve) => {
+      if (reactor) reactor(kind, resolve);
+      else resolve();
+    });
 
   onMounted(() => {
     const page = root.value;
@@ -57,6 +67,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
     panel?.addEventListener("focusin", syncPrivacy);
     panel?.addEventListener("focusout", syncPrivacy);
     syncPrivacy();
+    facingAway.value = isProtecting.value;
     removePrivacyListeners = () => {
       privacyObserver.disconnect();
       panel?.removeEventListener("focusin", syncPrivacy);
@@ -75,6 +86,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         const allowed =
           !!context.conditions?.motion && !!context.conditions?.desktop;
         canAnimate.value = allowed;
+        const firstEntrance = !hasEntered;
         const entranceTargets = (
           hasEntered
             ? [".auth-panel-content"]
@@ -101,6 +113,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         const showcase = page.querySelector<HTMLElement>(
           ".auth-market-showcase"
         );
+        const form = page.querySelector<HTMLElement>(".auth-panel-content");
         const rows = Array.from(
           page.querySelectorAll<HTMLElement>(".poster-row")
         );
@@ -112,45 +125,100 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         const pupils = Array.from(
           page.querySelectorAll<SVGElement>(".partner-pupils")
         );
-        const actor = page.querySelector<HTMLElement>(".campus-mascot");
-        const travel = page.querySelector<HTMLElement>(".mascot-travel");
+        const frame = page.querySelector<HTMLElement>(".mascot-frame");
         const pose = page.querySelector<HTMLElement>(".mascot-pose");
         const shadow = page.querySelector<HTMLElement>(".mascot-shadow");
-        const spriteRun = page.querySelector<HTMLElement>(".mascot-run");
-        const spriteWalk = page.querySelector<HTMLElement>(".mascot-walk");
-        const spritesReady = { run: false, walk: false };
-        const probes: HTMLImageElement[] = [];
-        const setFrame = (gait: MascotGait, frame: number) => {
-          const sprite = gait === "run" ? spriteRun : spriteWalk;
-          if (sprite)
-            sprite.style.backgroundPositionX = `${
-              -frame * spriteLayout(gait).width
-            }px`;
+        const rig = page.querySelector<HTMLElement>(".mascot-rig");
+        const part = (selector: string) =>
+          rig?.querySelector<HTMLElement>(selector) ?? null;
+        const parts = {
+          torso: part(".rig-torso"),
+          lifts: Array.from(
+            rig?.querySelectorAll<HTMLElement>(".rig-lift") || []
+          ),
+          head: part(".rig-head"),
+          tailFollow: part(".rig-tail-follow"),
+          tail: part(".rig-tail"),
+          charm: part(".rig-charm"),
+          arm: part(".rig-arm"),
+          irises: part(".rig-irises")
         };
-        const setMoving = (gait: "run" | "walk" | null, flipped = false) => {
-          spriteRun?.classList.remove("is-active", "is-left");
-          spriteWalk?.classList.remove("is-active", "is-left");
-          const sprite =
-            gait === "run" ? spriteRun : gait === "walk" ? spriteWalk : null;
-          if (sprite && gait && spritesReady[gait]) {
-            sprite.classList.add("is-active");
-            if (flipped) sprite.classList.add("is-left");
-            actor?.classList.add("is-moving");
-          } else {
-            actor?.classList.remove("is-moving");
-          }
+        // Idle loops, gaze, and actions each own their values; one ticker sums them.
+        const idle = { breath: 0, drift: 0, tail: 0, charm: 0 };
+        const gaze = { rotation: 0, irisX: 0, irisY: 0 };
+        const act = { head: 0, tail: 0, charm: 0, arm: 0 };
+        const face = { blink: false, hold: false, mouth: "smile" };
+        let dirty = true;
+        const markDirty = () => (dirty = true);
+        // Rotation setters need an explicit unit; GSAP renders it verbatim.
+        const setter = (
+          target: Element | Element[] | null,
+          property: string,
+          unit?: string
+        ) =>
+          target ? gsap.quickSetter(target, property, unit) : () => undefined;
+        const setRig = {
+          breath: setter(parts.torso, "scaleY"),
+          lift: setter(parts.lifts, "yPercent"),
+          head: setter(parts.head, "rotation", "deg"),
+          tailFollow: setter(parts.tailFollow, "rotation", "deg"),
+          tail: setter(parts.tail, "rotation", "deg"),
+          charm: setter(parts.charm, "rotation", "deg"),
+          arm: setter(parts.arm, "rotation", "deg"),
+          irisX: setter(parts.irises, "xPercent"),
+          irisY: setter(parts.irises, "yPercent")
         };
-        let mascotAction: gsap.core.Timeline | undefined;
-        let mascotTimer: gsap.core.Tween | undefined;
-        let hoverSway: gsap.core.Timeline | undefined;
+        const renderRig = () => {
+          if (!dirty || frozen()) return;
+          dirty = false;
+          const head = idle.drift + gaze.rotation + act.head;
+          setRig.breath(1 + idle.breath * (BREATH_SCALE - 1));
+          setRig.lift(idle.breath * BREATH_LIFT_PERCENT);
+          setRig.head(head);
+          setRig.tailFollow(head);
+          setRig.tail(idle.tail + act.tail);
+          setRig.charm(idle.charm + act.charm);
+          setRig.arm(act.arm);
+          setRig.irisX(gaze.irisX);
+          setRig.irisY(gaze.irisY);
+        };
+        const applyFace = () => {
+          if (!rig) return;
+          rig.dataset.eyes = face.blink || face.hold ? "closed" : "open";
+          rig.dataset.mouth = face.mouth;
+        };
+        const gazeTo = {
+          rotation: gsap.quickTo(gaze, "rotation", {
+            duration: 0.35,
+            ease: "power2.out",
+            onUpdate: markDirty
+          }),
+          irisX: gsap.quickTo(gaze, "irisX", {
+            duration: 0.2,
+            onUpdate: markDirty
+          }),
+          irisY: gsap.quickTo(gaze, "irisY", {
+            duration: 0.2,
+            onUpdate: markDirty
+          })
+        };
+
+        let blinkTimer: gsap.core.Tween | undefined;
+        let blinkAction: gsap.core.Timeline | undefined;
+        let waveTimer: gsap.core.Tween | undefined;
+        let waveAction: gsap.core.Timeline | undefined;
+        let turn: gsap.core.Timeline | undefined;
+        let reaction: gsap.core.Timeline | undefined;
+        let finishReaction: (() => void) | undefined;
         let pointerInPage = false;
-        let mascotHovered = false;
-        let lastAction = -1;
         let hovered = false;
+        let formFocused = false;
+        let lookAtForm = false;
         let resizeFrame = 0;
         let pointerFrame = 0;
         let pointer = { x: 0, y: 0 };
         let centers: Array<{ x: number; y: number }> = [];
+        let faceCenter: { x: number; y: number } | undefined;
         let entranceSuspended = false;
         const frozen = () => document.hidden;
         const pointerFrozen = () => frozen() || isProtecting.value;
@@ -162,6 +230,7 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         const syncPlayback = (smooth = false) => {
           if (disposed) return;
           const paused = frozen();
+          const slow = hovered || formFocused;
           loops.forEach((loop) => {
             if (!loop) return;
             gsap.killTweensOf(loop);
@@ -170,23 +239,24 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
               loop.resume();
               if (smooth)
                 gsap.to(loop, {
-                  timeScale: hovered ? 0.25 : 1,
+                  timeScale: slow ? 0.25 : 1,
                   duration: 0.4,
                   ease: "power2.out"
                 });
-              else loop.timeScale(hovered ? 0.25 : 1);
+              else loop.timeScale(slow ? 0.25 : 1);
             }
           });
           floats.forEach((float) => (paused ? float.pause() : float.resume()));
+          [blinkTimer, blinkAction].forEach((timer) =>
+            paused ? timer?.pause() : timer?.resume()
+          );
           if (paused || isProtecting.value) {
-            mascotAction?.pause();
-            mascotTimer?.pause();
+            waveTimer?.pause();
+            waveAction?.pause();
           } else {
-            mascotAction?.resume();
-            if (!mascotHovered && !hoverSway) mascotTimer?.resume();
+            waveTimer?.resume();
+            waveAction?.resume();
           }
-          if (paused || isProtecting.value) hoverSway?.pause();
-          else hoverSway?.resume();
           if (pointerFrozen()) stopPointer();
         };
         const measureScene = () => {
@@ -197,32 +267,12 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
               y: rect.top + rect.height * 0.35
             };
           });
+          faceCenter = rig
+            ? faceAnchor(rig.getBoundingClientRect())
+            : undefined;
         };
         const rebuildLoops = () => {
           if (disposed) return;
-          if (
-            actor?.dataset.action === "peek" ||
-            actor?.dataset.action === "walk"
-          ) {
-            // A resized form can move into the old destination. Reset before measuring.
-            mascotAction?.kill();
-            mascotAction = undefined;
-            hoverSway?.kill();
-            hoverSway = undefined;
-            gsap.set([travel, pose].filter(Boolean), {
-              x: 0,
-              y: 0,
-              rotation: 0,
-              scaleX: 1,
-              scaleY: 1
-            });
-            if (shadow) gsap.set(shadow, { opacity: 0.2 });
-            actor.dataset.action = "rest";
-            setMoving(null);
-            void nextTick().then(() => {
-              if (!disposed) settleIdle();
-            });
-          }
           measureScene();
           rows.forEach((row, index) => {
             const track = row.querySelector<HTMLElement>(".poster-track");
@@ -284,226 +334,203 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
         // Own loops explicitly: media reversion must not rewind saved progress.
         context.ignore(rebuildLoops);
 
-        const refreshMascotHover = () => {
-          // CSS :hover may lag when a transformed actor moves under a stationary
-          // mouse. Use the stable wrapper and the latest real mouse coordinates.
-          const rect = travel?.getBoundingClientRect();
-          mascotHovered = !!(
-            pointerInPage &&
-            rect &&
-            pointer.x >= rect.left &&
-            pointer.x <= rect.right &&
-            pointer.y >= rect.top &&
-            pointer.y <= rect.bottom
-          );
-          return mascotHovered;
+        const scheduleBlink = () => {
+          blinkTimer?.kill();
+          blinkTimer = gsap.delayedCall(blinkDelay(Math.random()), () => {
+            blinkTimer = undefined;
+            const twice = Math.random() < 0.2;
+            const setBlink = (closed: boolean) => () => {
+              face.blink = closed;
+              applyFace();
+            };
+            blinkAction = gsap
+              .timeline({
+                onComplete: () => {
+                  blinkAction = undefined;
+                  if (!disposed) scheduleBlink();
+                }
+              })
+              .add(setBlink(true))
+              .add(setBlink(false), 0.12);
+            if (twice)
+              blinkAction.add(setBlink(true), 0.28).add(setBlink(false), 0.4);
+            syncPlayback();
+          });
+          syncPlayback();
         };
-        const startHoverSway = () => {
-          if (
-            disposed ||
-            !allowed ||
-            pointerFrozen() ||
-            !pose ||
-            !actor ||
-            !mascotHovered ||
-            mascotAction ||
-            hoverSway
-          )
+        const scheduleWave = (delay = waveDelay(Math.random())) => {
+          waveTimer?.kill();
+          waveTimer = gsap.delayedCall(delay, () => {
+            waveTimer = undefined;
+            startWave();
+          });
+          syncPlayback();
+        };
+        const startWave = () => {
+          if (disposed || !rig || waveAction) return;
+          if (pointerFrozen() || turn || reaction) {
+            if (!waveTimer) scheduleWave();
             return;
-          mascotTimer?.kill();
-          mascotTimer = undefined;
-          actor.dataset.action = "sway";
-          hoverSway = gsap
-            .timeline()
-            .to(pose, { rotation: -4, duration: 0.45, ease: "sine.inOut" })
-            .to(pose, {
-              rotation: 4,
-              duration: 0.65,
+          }
+          waveTimer?.kill();
+          waveTimer = undefined;
+          waveAction = gsap
+            .timeline({
+              onComplete: () => {
+                waveAction = undefined;
+                if (!disposed) scheduleWave();
+              }
+            })
+            .to(act, {
+              arm: -18,
+              head: 3,
+              duration: 0.22,
+              ease: "sine.out",
+              onUpdate: markDirty
+            })
+            .to(act, {
+              arm: 18,
+              duration: 0.26,
               ease: "sine.inOut",
-              repeat: -1,
-              yoyo: true
+              repeat: 4,
+              yoyo: true,
+              onUpdate: markDirty
+            })
+            .to(act, {
+              arm: 0,
+              head: 0,
+              duration: 0.3,
+              ease: "sine.inOut",
+              onUpdate: markDirty
             });
           syncPlayback();
         };
-        const settleIdle = (first = false) => {
-          if (disposed || !allowed || !actor || isProtecting.value) return;
-          refreshMascotHover();
-          if (mascotHovered) startHoverSway();
-          else scheduleMascot(first);
+        const stopWave = () => {
+          waveAction?.kill();
+          waveAction = undefined;
         };
-        const stopHoverSway = () => {
-          if (!hoverSway || !pose || !actor) return;
-          hoverSway.kill();
-          hoverSway = undefined;
-          actor.dataset.action = "settle";
-          hoverSway = gsap
-            .timeline({
-              onComplete: () => {
-                hoverSway = undefined;
-                actor.dataset.action = "rest";
-                settleIdle();
-              }
-            })
-            .to(pose, { rotation: 0, duration: 0.25, ease: "sine.out" });
-          syncPlayback();
-        };
-        const mascotEnter = (event: PointerEvent) => {
-          if (event.pointerType !== "mouse") return;
-          pointerInPage = true;
-          pointer = { x: event.clientX, y: event.clientY };
-          mascotHovered = true;
-          startHoverSway();
-        };
-        const mascotLeave = () => {
-          mascotHovered = false;
-          if (actor?.dataset.action === "sway") stopHoverSway();
-        };
-        const windowLeave = () => {
-          pointerInPage = false;
-          mascotLeave();
-        };
-        // Bounds include the mirrored sprite and standing image at the endpoint.
-        const availableDistance = (gait: MascotGait, left: boolean) => {
-          if (!actor) return 0;
-          const rect = actor.getBoundingClientRect();
-          const center = rect.left + rect.width / 2;
-          const layout = spriteLayout(gait);
-          const origin = center + layout.offset;
-          // Include both orientations: turning around must also remain safe.
-          const spriteLeft =
-            origin - Math.max(layout.anchor, layout.width - layout.anchor);
-          const spriteRight =
-            origin + Math.max(layout.anchor, layout.width - layout.anchor);
-          const scene = page.getBoundingClientRect();
-          const form = page
-            .querySelector(".auth-panel-content")
-            ?.getBoundingClientRect();
-          const safeRight = Math.min(
-            scene.right - 8,
-            (form?.left ?? scene.right) - 48
-          );
-          return left
-            ? Math.max(0, Math.min(rect.left, spriteLeft) - scene.left - 8)
-            : Math.max(0, safeRight - Math.max(rect.right, spriteRight));
-        };
-        const addTravelLeg = (
-          timeline: gsap.core.Timeline,
-          gait: MascotGait,
-          from: number,
-          to: number
-        ) => {
-          const profile = createMotionProfile(
-            to - from,
-            MASCOT_GAITS[gait].speed
-          );
-          const clock = { elapsed: 0 };
-          const direction = to < from ? -1 : 1;
-          timeline
-            .add(() => {
-              setFrame(gait, 0);
-              setMoving(gait, direction < 0);
-            })
-            .to(clock, {
-              elapsed: profile.duration,
-              duration: profile.duration,
-              ease: "none",
-              onUpdate: () => {
-                const distance = distanceAtTime(clock.elapsed, profile);
-                gsap.set(travel, { x: from + direction * distance });
-                setFrame(gait, frameAtDistance(distance, gait));
-              }
-            })
-            .add(() => {
-              gsap.set(travel, { x: to });
-              setFrame(
-                gait,
-                nearestContactFrame(frameAtDistance(profile.length, gait), gait)
-              );
-            })
-            .to({}, { duration: 0.08 })
-            .add(() => setMoving(null));
-        };
-        const scheduleMascot = (first = false) => {
-          if (disposed || !allowed || !actor || !travel || !pose) return;
-          mascotTimer?.kill();
-          mascotTimer = gsap.delayedCall(
-            first ? 4 + Math.random() * 3 : 10 + Math.random() * 6,
-            () => {
-              mascotTimer = undefined;
-              if (disposed || isProtecting.value) return;
-              if (refreshMascotHover()) {
-                startHoverSway();
-                return;
-              }
-              const actions = ["hop", "peek", "walk"] as const;
-              let action = Math.floor(Math.random() * actions.length);
-              if (action === lastAction) action = (action + 1) % actions.length;
-              lastAction = action;
-              const name = actions[action];
-              const gait = name === "peek" ? "run" : "walk";
-              const distance =
-                name === "hop"
-                  ? 0
-                  : Math.min(
-                      availableDistance(gait, name === "walk"),
-                      name === "walk" ? 60 + Math.random() * 80 : Infinity
-                    );
-              if (name !== "hop" && (!spritesReady[gait] || distance < 1)) {
-                actor.dataset.action = "rest";
-                settleIdle();
-                return;
-              }
-              actor.dataset.action = name;
-              mascotAction = gsap.timeline({
-                onComplete: () => {
-                  mascotAction = undefined;
-                  actor.dataset.action = "rest";
-                  setMoving(null);
-                  settleIdle();
-                }
-              });
-              if (name === "hop") {
-                mascotAction
-                  .to(pose, { scaleY: 0.96, scaleX: 1.03, duration: 0.13 })
-                  .to(pose, {
-                    y: -26,
-                    scaleY: 1.02,
-                    scaleX: 0.99,
-                    rotation: -2,
-                    duration: 0.27,
-                    ease: "power2.out"
-                  })
-                  .to(pose, {
-                    y: 0,
-                    scaleY: 1,
-                    scaleX: 1,
-                    rotation: 0,
-                    duration: 0.4,
-                    ease: "bounce.out"
-                  });
-              } else {
-                const destination = name === "walk" ? -distance : distance;
-                gsap.set(travel, { x: 0 });
-                addTravelLeg(mascotAction, gait, 0, destination);
-                mascotAction.to(shadow, { opacity: 0, duration: 0.25 }, 0);
-                if (name === "peek") {
-                  mascotAction
-                    .to(pose, { rotation: 7, duration: 0.3 })
-                    .to(pose, { rotation: -3, duration: 0.45 }, "+=0.9")
-                    .to(pose, { rotation: 0, duration: 0.3 });
-                } else {
-                  mascotAction
-                    .to(pose, { rotation: -3, duration: 0.45 }, "+=0.5")
-                    .to(pose, { rotation: 0, duration: 0.35 });
-                }
-                addTravelLeg(mascotAction, gait, destination, 0);
-                mascotAction.to(shadow, { opacity: 0.2, duration: 0.3 });
-              }
-              syncPlayback();
+        // Close the eyes and lean, then swap images at the narrowest point.
+        const turnTo = (away: boolean) => {
+          turn?.kill();
+          stopWave();
+          turn = gsap.timeline({
+            onComplete: () => {
+              turn = undefined;
+              if (!away && !disposed && !waveTimer) scheduleWave();
             }
-          );
-          syncPlayback();
+          });
+          if (away) {
+            turn
+              .add(() => {
+                face.hold = true;
+                applyFace();
+              })
+              .to(act, {
+                head: -5,
+                arm: 0,
+                duration: 0.12,
+                ease: "power2.out",
+                onUpdate: markDirty
+              });
+          }
+          if (facingAway.value !== away) {
+            turn
+              .to(pose, { scaleX: 0.92, duration: 0.11, ease: "power1.in" })
+              .add(() => {
+                facingAway.value = away;
+              })
+              .to(pose, { scaleX: 1, duration: 0.11, ease: "power1.out" });
+          } else {
+            turn.to(pose, { scaleX: 1, duration: 0.1 });
+          }
+          if (!away) {
+            turn
+              .add(() => {
+                face.hold = false;
+                applyFace();
+              })
+              .to(act, {
+                head: 0,
+                duration: 0.2,
+                ease: "sine.out",
+                onUpdate: markDirty
+              });
+          }
         };
+        const endReaction = () => {
+          reaction = undefined;
+          const finish = finishReaction;
+          finishReaction = undefined;
+          finish?.();
+        };
+        const buildReaction = (kind: MascotReaction) => {
+          const timeline = gsap.timeline({ onComplete: endReaction });
+          if (kind === "error") {
+            return timeline
+              .add(() => {
+                face.mouth = "o";
+                face.blink = true;
+                applyFace();
+              })
+              .add(() => {
+                face.blink = false;
+                applyFace();
+              }, 0.12)
+              .to(pose, { x: -4, rotation: -2, duration: 0.14 }, 0)
+              .to(
+                act,
+                { head: -6, arm: 0, duration: 0.14, onUpdate: markDirty },
+                0
+              )
+              .to(pose, { x: 0, rotation: 0, duration: 0.24 }, 0.36)
+              .to(act, { head: 0, duration: 0.24, onUpdate: markDirty }, 0.36)
+              .add(() => {
+                face.mouth = "smile";
+                applyFace();
+              });
+          }
+          // Crouch, jump with the hair and charm trailing, then land.
+          return timeline
+            .add(() => {
+              face.mouth = "open";
+              applyFace();
+            })
+            .to(pose, { scaleY: 0.95, duration: 0.1, ease: "power2.in" })
+            .to(pose, {
+              y: -22,
+              scaleY: 1.03,
+              duration: 0.2,
+              ease: "power2.out"
+            })
+            .to(
+              act,
+              {
+                tail: -8,
+                charm: 12,
+                arm: 0,
+                duration: 0.2,
+                ease: "power1.out",
+                onUpdate: markDirty
+              },
+              "<"
+            )
+            .to(shadow, { opacity: 0.08, scaleX: 0.8, duration: 0.2 }, "<")
+            .to(pose, { y: 0, scaleY: 1, duration: 0.18, ease: "power2.in" })
+            .to(
+              act,
+              { tail: 5, charm: -8, duration: 0.18, onUpdate: markDirty },
+              "<"
+            )
+            .to(shadow, { opacity: 0.2, scaleX: 1, duration: 0.18 }, "<")
+            .to(pose, { scaleY: 0.98, duration: 0.05 })
+            .to(pose, { scaleY: 1, duration: 0.05 })
+            .to(
+              act,
+              { tail: 0, charm: 0, duration: 0.1, onUpdate: markDirty },
+              "<"
+            );
+        };
+
         if (allowed)
           context.ignore(() => {
             page
@@ -521,23 +548,55 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
                   })
                 );
               });
-            (["run", "walk"] as const).forEach((gait) => {
-              const probe = new Image();
-              probe.onload = () => {
-                if (!disposed) spritesReady[gait] = true;
-              };
-              probe.onerror = () => {
-                if (!disposed) spritesReady[gait] = false;
-              };
-              probes.push(probe);
-              probe.src = AUTH_MASCOT_SPRITES[gait].src;
-            });
-            scheduleMascot(true);
+            if (!rig) return;
+            const idleLoop = (
+              key: keyof typeof idle,
+              from: number,
+              to: number,
+              duration: number
+            ) =>
+              floats.push(
+                gsap.fromTo(
+                  idle,
+                  { [key]: from },
+                  {
+                    [key]: to,
+                    duration,
+                    repeat: -1,
+                    yoyo: true,
+                    ease: "sine.inOut",
+                    paused: true,
+                    onUpdate: markDirty
+                  }
+                )
+              );
+            idleLoop("breath", 0, 1, 1.6);
+            idleLoop("drift", -1, 1, 4.6);
+            idleLoop("tail", 2.5, -2.5, 1.9);
+            idleLoop("charm", -6, 6, 1.3);
+            gsap.ticker.add(renderRig);
+            applyFace();
+            scheduleBlink();
+            // The first visit waves once the entrance has settled.
+            scheduleWave(firstEntrance ? 2 : waveDelay(Math.random()));
+            reactor = (kind, done) => {
+              if (disposed || frozen()) {
+                done();
+                return;
+              }
+              reaction?.kill();
+              finishReaction?.();
+              stopWave();
+              finishReaction = done;
+              reaction = buildReaction(kind);
+            };
           });
 
         const updatePointer = () => {
           pointerFrame = 0;
           if (disposed || pointerFrozen()) return;
+          updateGaze();
+          if (!pointerInPage) return;
           aims.forEach((aim, index) => {
             const center = centers[index];
             if (!center) return;
@@ -559,17 +618,37 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             });
           });
         };
+        // Look at the form while typing an account, otherwise at the mouse.
+        const updateGaze = () => {
+          if (!rig || !faceCenter) return;
+          let target: { x: number; y: number } | undefined;
+          if (lookAtForm && form) {
+            const rect = form.getBoundingClientRect();
+            target = {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height * 0.4
+            };
+          } else if (pointerInPage) target = pointer;
+          const next = target
+            ? gazeTarget(target.x - faceCenter.x, target.y - faceCenter.y)
+            : { rotation: 0, irisX: 0, irisY: 0 };
+          gazeTo.rotation(next.rotation);
+          gazeTo.irisX(next.irisX);
+          gazeTo.irisY(next.irisY);
+        };
+        const requestPointerFrame = () => {
+          if (!pointerFrame)
+            pointerFrame = requestAnimationFrame(updatePointer);
+        };
         const pointerMove = (event: PointerEvent) => {
           if (event.pointerType !== "mouse") return;
           pointerInPage = true;
           pointer = { x: event.clientX, y: event.clientY };
           if (pointerFrozen()) return;
-          if (refreshMascotHover()) startHoverSway();
-          if (!pointerFrame)
-            pointerFrame = requestAnimationFrame(updatePointer);
+          requestPointerFrame();
         };
         const resetPointer = () => {
-          windowLeave();
+          pointerInPage = false;
           if (pointerFrozen()) return;
           gsap.to([...aims, ...pupils], {
             rotation: 0,
@@ -578,6 +657,11 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             duration: 0.3,
             overwrite: true
           });
+          updateGaze();
+        };
+        const windowBlur = () => {
+          pointerInPage = false;
+          if (!pointerFrozen()) updateGaze();
         };
         const pointerEnter = (event: PointerEvent) => {
           if (event.pointerType !== "mouse") return;
@@ -588,28 +672,27 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
           hovered = false;
           syncPlayback(true);
         };
+        const mascotEnter = (event: PointerEvent) => {
+          if (event.pointerType === "mouse") startWave();
+        };
+        const focusChanged = () => {
+          const active = document.activeElement;
+          formFocused =
+            active instanceof HTMLInputElement && !!panel?.contains(active);
+          lookAtForm = formFocused && !isProtecting.value;
+          syncPlayback(true);
+          if (!pointerFrozen()) requestPointerFrame();
+        };
         const privacyChanged = () => {
           if (isProtecting.value) {
             stopPointer();
             gsap.set([...aims, ...pupils], { rotation: 0, x: 0, y: 0 });
-            mascotAction?.kill();
-            mascotAction = undefined;
-            hoverSway?.kill();
-            hoverSway = undefined;
-            gsap.set([travel, pose].filter(Boolean), {
-              x: 0,
-              y: 0,
-              rotation: 0,
-              scaleX: 1,
-              scaleY: 1
-            });
-            if (shadow) gsap.set(shadow, { opacity: 0.2 });
-            setMoving(null);
-            if (actor) actor.dataset.action = "privacy";
-          } else if (actor && allowed) {
-            actor.dataset.action = "rest";
-            settleIdle(true);
+            gazeTo.rotation(0);
+            gazeTo.irisX(0);
+            gazeTo.irisY(0);
           }
+          if (allowed && rig && !disposed) turnTo(isProtecting.value);
+          else facingAway.value = isProtecting.value;
           syncPlayback();
         };
         const visibilityChanged = () => {
@@ -620,34 +703,27 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             entrance?.resume();
             entranceSuspended = false;
           }
-          if (!document.hidden) {
-            refreshMascotHover();
-            if (actor?.dataset.action === "sway" && !mascotHovered)
-              stopHoverSway();
-            else if (
-              actor?.dataset.action === "rest" &&
-              (mascotHovered || !mascotTimer)
-            )
-              settleIdle();
-          }
           syncPlayback();
         };
         const stopPrivacyWatch = watch(isProtecting, privacyChanged);
         if (allowed) {
-          travel?.addEventListener("pointerenter", mascotEnter);
-          travel?.addEventListener("pointerleave", mascotLeave);
-          window.addEventListener("blur", windowLeave);
+          frame?.addEventListener("pointerenter", mascotEnter);
+          window.addEventListener("blur", windowBlur);
           showcase?.addEventListener("pointerenter", pointerEnter);
           showcase?.addEventListener("pointerleave", pointerLeave);
           page.addEventListener("pointermove", pointerMove);
           page.addEventListener("pointerleave", resetPointer);
+          panel?.addEventListener("focusin", focusChanged);
+          panel?.addEventListener("focusout", focusChanged);
         }
         document.addEventListener("visibilitychange", visibilityChanged);
-        privacyChanged();
+        facingAway.value = isProtecting.value;
+        if (isProtecting.value) privacyChanged();
         visibilityChanged();
 
         return () => {
           disposed = true;
+          reactor = undefined;
           loops.forEach((loop, index) => {
             if (!loop) return;
             session.phases[index] = loop.progress();
@@ -655,39 +731,50 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
             loop.kill();
           });
           floats.forEach((float) => float.kill());
-          mascotAction?.kill();
-          mascotTimer?.kill();
-          hoverSway?.kill();
-          probes.forEach((probe) => {
-            probe.onload = null;
-            probe.onerror = null;
-          });
+          [
+            blinkTimer,
+            blinkAction,
+            waveTimer,
+            waveAction,
+            turn,
+            reaction
+          ].forEach((animation) => animation?.kill());
+          finishReaction?.();
+          finishReaction = undefined;
+          gsap.ticker.remove(renderRig);
+          gsap.killTweensOf([idle, gaze, act]);
           stopPointer();
-          setMoving(null);
-          spriteRun?.style.removeProperty("background-position-x");
-          spriteWalk?.style.removeProperty("background-position-x");
-          if (actor) actor.dataset.action = "rest";
+          facingAway.value = isProtecting.value;
+          if (rig) {
+            delete rig.dataset.eyes;
+            delete rig.dataset.mouth;
+          }
           stopPrivacyWatch();
           observer.disconnect();
           cancelAnimationFrame(resizeFrame);
           images.forEach((image) =>
             image.removeEventListener("load", scheduleRebuild)
           );
-          travel?.removeEventListener("pointerenter", mascotEnter);
-          travel?.removeEventListener("pointerleave", mascotLeave);
-          window.removeEventListener("blur", windowLeave);
+          frame?.removeEventListener("pointerenter", mascotEnter);
+          window.removeEventListener("blur", windowBlur);
           showcase?.removeEventListener("pointerenter", pointerEnter);
           showcase?.removeEventListener("pointerleave", pointerLeave);
           page.removeEventListener("pointermove", pointerMove);
           page.removeEventListener("pointerleave", resetPointer);
+          panel?.removeEventListener("focusin", focusChanged);
+          panel?.removeEventListener("focusout", focusChanged);
           document.removeEventListener("visibilitychange", visibilityChanged);
           entrance?.kill();
+          // Only transforms are cleared; layer origins come from inline styles.
           gsap.set(
             page.querySelectorAll(
-              ".poster-track, .partner-float, .partner-aim, .partner-pupils, .mascot-travel, .mascot-pose, .mascot-shadow"
+              ".poster-track, .partner-float, .partner-aim, .partner-pupils, .mascot-pose, .mascot-rig .rig-group, .mascot-rig img"
             ),
-            { clearProps: "transform,opacity" }
+            { clearProps: "transform" }
           );
+          gsap.set(page.querySelectorAll(".mascot-shadow"), {
+            clearProps: "transform,opacity"
+          });
         };
       },
       page
@@ -702,5 +789,5 @@ export const useAuthShowcaseMotion = (root: Ref<HTMLElement | null>) => {
       session.entered = false;
     }
   });
-  return { canAnimate, isProtecting, copyCounts };
+  return { canAnimate, isProtecting, facingAway, copyCounts, react };
 };

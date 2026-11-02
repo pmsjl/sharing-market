@@ -124,7 +124,10 @@
               </div>
             </div>
           </div>
-          <CampusPartners :protecting="isProtecting" />
+          <CampusPartners
+            :protecting="isProtecting"
+            :facing-away="facingAway"
+          />
           <span class="scene-spark scene-spark-blue" aria-hidden="true">✦</span>
           <span class="scene-spark scene-spark-yellow" aria-hidden="true"
             >✦</span
@@ -217,8 +220,9 @@ const posterRows = [
 ];
 const layoutRoot = ref<HTMLElement | null>(null);
 const failedImages = reactive<Record<string, boolean>>({});
-const { canAnimate, isProtecting, copyCounts } =
+const { canAnimate, isProtecting, facingAway, copyCounts, react } =
   useAuthShowcaseMotion(layoutRoot);
+defineExpose({ react });
 </script>
 
 <style scoped lang="scss" src="./scene.scss"></style>
