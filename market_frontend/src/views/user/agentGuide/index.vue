@@ -14,14 +14,18 @@
       :size="Math.min(340, viewportWidth - 24)"
       append-to-body
       class="agent-history-drawer"
-      ><nav class="quiet-tabs" aria-label="咨询记录分类">
+      header-class="agent-history-drawer-header"
+      body-class="agent-history-drawer-body"
+    >
+      <nav class="quiet-tabs history-tabs" aria-label="咨询记录分类">
         <button
           type="button"
           :class="{ active: !showArchived }"
           @click="setHistory(false)"
         >
-          最近咨询</button
-        ><button
+          最近咨询
+        </button>
+        <button
           type="button"
           :class="{ active: showArchived }"
           @click="setHistory(true)"
@@ -29,17 +33,23 @@
           已归档
         </button>
       </nav>
-      <ArchivedAiConversations
-        v-if="showArchived"
-        @restored="reloadConversations"
-      />
-      <div v-else class="conversation-rail">
-        <el-button class="new-chat-button" type="primary" @click="startNewChat">
-          <span aria-hidden="true">＋</span>
-          新建咨询
-        </el-button>
+      <el-button class="new-chat-button" type="primary" @click="startNewChat">
+        <span aria-hidden="true">＋</span>
+        新建咨询
+      </el-button>
 
-        <div class="conversation-list" v-loading="conversationLoading">
+      <div
+        :key="showArchived ? 'archived' : 'recent'"
+        class="conversation-rail"
+        role="region"
+        :aria-label="showArchived ? '已归档' : '最近咨询'"
+        tabindex="0"
+      >
+        <ArchivedAiConversations
+          v-if="showArchived"
+          @restored="reloadConversations"
+        />
+        <div v-else v-loading="conversationLoading" class="conversation-list">
           <button
             v-for="draft in pendingDrafts"
             :key="draft.key"
@@ -128,29 +138,25 @@
             <p>还没有历史咨询</p>
             <small>第一条消息会自动建立会话</small>
           </div>
+          <button
+            v-if="conversations.length < conversationTotal"
+            type="button"
+            class="load-more"
+            :disabled="conversationLoading"
+            @click="loadMoreConversations"
+          >
+            加载更多
+          </button>
         </div>
+      </div>
 
-        <button
-          v-if="conversations.length < conversationTotal"
-          type="button"
-          class="load-more"
-          :disabled="conversationLoading"
-          @click="loadMoreConversations"
-        >
-          加载更多
-        </button>
-
-        <div class="rail-note">
-          <span
-            class="status-dot"
-            :class="{ offline: agentUnavailable }"
-          ></span>
-          <span>{{
-            agentUnavailable ? "AI 服务暂不可用" : "智能导购可开始咨询"
-          }}</span>
-        </div>
-      </div></el-drawer
-    >
+      <div v-if="!showArchived" class="rail-note">
+        <span class="status-dot" :class="{ offline: agentUnavailable }"></span>
+        <span>{{
+          agentUnavailable ? "AI 服务暂不可用" : "智能导购可开始咨询"
+        }}</span>
+      </div>
+    </el-drawer>
 
     <main class="chat-workspace">
       <header class="chat-toolbar">

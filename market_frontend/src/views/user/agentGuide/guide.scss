@@ -697,23 +697,43 @@ button {
   border-left: 1px solid var(--market-line);
   background: var(--market-surface);
 }
-.conversation-rail {
+:global(.el-drawer__header.agent-history-drawer-header) {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+:global(.el-drawer__body.agent-history-drawer-body) {
   display: flex;
-  height: 100%;
   min-height: 0;
   flex-direction: column;
-  color: var(--market-ink);
+  overflow: clip;
+  padding-block: 8px 12px;
+  padding-inline: clamp(12px, 5vw, 20px);
+}
+.history-tabs {
+  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 .new-chat-button {
+  flex-shrink: 0;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   box-shadow: none;
 }
-.conversation-list {
+.conversation-rail {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: var(--market-line-strong) transparent;
+  scrollbar-gutter: stable;
+  &:focus-visible {
+    outline: 2px solid var(--market-primary);
+    outline-offset: -2px;
+  }
+}
+.conversation-list {
+  min-height: 100%;
 }
 .conversation-ticket {
   display: block;
@@ -778,9 +798,10 @@ button {
 }
 .rail-note {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 7px;
-  padding-top: 18px;
+  padding-top: 10px;
   font-size: 13px;
   color: var(--market-muted);
 }
@@ -809,6 +830,7 @@ button {
   }
 }
 .load-more {
+  width: 100%;
   min-height: 40px;
   border: 0;
   color: var(--market-primary);
